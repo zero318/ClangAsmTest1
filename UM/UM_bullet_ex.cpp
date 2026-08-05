@@ -703,11 +703,13 @@ struct ZUNRect {
 VSS32(0x10, ZUNRect);
 #pragma endregion
 
+// size: 0x10
 struct FloatRect {
-	float left;
-	float top;
-	float right;
-	float bottom;
+	float left; // 0x0
+	float top; // 0x4
+	float right; // 0x8
+	float bottom; // 0xC
+	// 0x10
 
 	inline Float2& top_left() {
 		return *(Float2*)&this->left;
@@ -8984,6 +8986,20 @@ struct ScorefileShottypeSection : ScorefileSectionHeader {
 		}
 	}
 
+	inline void add_clear(int32_t difficulty) {
+		int32_t count = this->__total_clears[difficulty];
+		if (count < 9999999) {
+			this->__total_clears[difficulty] = count + 1;
+		}
+	}
+
+	inline void add_1cc_clear(int32_t difficulty) {
+		int32_t count = this->__1cc_clears[difficulty];
+		if (count < 9999999) {
+			this->__1cc_clears[difficulty] = count + 1;
+		}
+	}
+
 	// 0x463350
 	dllexport gnu_noinline void thiscall initialize() ASR(0x463350) {
 		this->zero_contents();
@@ -13661,10 +13677,10 @@ struct GameThread : ZUNTask {
 		uint32_t flags; // 0xB0
 		struct {
 			uint32_t __unknown_flag_gt_A : 1; // 1
-			uint32_t __pause_world : 1; // 2
+			uint32_t __pause_world : 1; // 2 This only applies to world list ANMs, enemies, some screen effects, and sort of lasers?
 			uint32_t skip_flag : 1; // 3 why is this called skip_flag? Doesn't seem to be related to skipping anything...
 			uint32_t __marked_for_cleanup : 1; // 4
-			uint32_t __unknown_flag_gt_I : 1; // 5
+			uint32_t __unknown_flag_gt_I : 1; // 5 Set by the pause menu
 			uint32_t __unknown_flag_gt_L : 1; // 6
 			uint32_t __unknown_flag_gt_M : 1; // 7
 			uint32_t __unknown_flag_gt_J : 1; // 8
@@ -15689,7 +15705,6 @@ enum AnmRunRet : int32_t {
 
 typedef int32_t (*fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*fastcall AnmOnFuncArg)(AnmVM*, int32_t);
-typedef int32_t (*cdecl AnmOnFuncArg19)(AnmVM*, int32_t);
 typedef AnmRunRet (*fastcall AnmOnTickFunc)(AnmVM*);
 
 extern inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
@@ -42902,6 +42917,8 @@ dllexport gnu_noinline BOOL BombBase::bomb_allowed() {
 dllexport gnu_noinline void __pause_menu_end_game_screen() ASR(0x4588F0);
 // 0x458A30
 dllexport gnu_noinline void __pause_menu_game_over_screen() ASR(0x458A30);
+// 0x458BD0
+dllexport gnu_noinline void __pause_menu_practice_end_screen() ASR(0x458BD0);
 
 // 0x45BE90
 dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
@@ -57176,7 +57193,7 @@ struct PauseMenu : ZUNTask {
 	int32_t previous_primary_state; // 0x1F0
 	int32_t secondary_state; // 0x1F4
 	int32_t __name_length; // 0x1F8
-	int __int_1FC; // 0x1FC
+	BOOL __bool_1FC; // 0x1FC
 	int __int_200; // 0x200
 	BOOL __bool_204; // 0x204
 	int __int_208; // 0x208
@@ -57647,14 +57664,14 @@ struct PauseMenu : ZUNTask {
 						case NormalGame: { // 0
 							int32_t current_stage = GAME_MANAGER.globals.current_stage;
 							if (current_stage == ExtraStage) { // 7
-								GAME_MANAGER.globals.current_stage = this->__int_1FC
+								GAME_MANAGER.globals.current_stage = this->__bool_1FC
 																		? STAGE_COUNT + 1 // 9
 																		: current_stage;
 							}
 							int32_t index = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].__init_new_record_index();
 							current_stage = GAME_MANAGER.globals.current_stage;
 							if (current_stage == STAGE_COUNT + 1) { // 9
-								GAME_MANAGER.globals.current_stage = this->__int_1FC
+								GAME_MANAGER.globals.current_stage = this->__bool_1FC
 																		? ExtraStage // 7
 																		: current_stage;
 							}
@@ -57985,7 +58002,7 @@ struct PauseMenu : ZUNTask {
 						this->change_secondary_state(12);
 						this->__menu_select_10C.initialize(MenuChoice0, (MenuLength)KEYBOARD_STRING_TOTAL_KEY_COUNT, MenuWrapEnable);
 						if (
-							this->__int_1FC &&
+							this->__bool_1FC &&
 							GAME_MANAGER.game_type == NormalGame
 						) {
 							__replay_manager_global_set_time_and_end_stage(1);
@@ -58119,7 +58136,7 @@ struct PauseMenu : ZUNTask {
 									}
 									break;
 								case 2:
-									if (this->__int_1FC) {
+									if (this->__bool_1FC) {
 										SUPERVISOR.gamemode_switch = GameMode::StartGameplay; // 10
 									}
 									else if (GAME_MANAGER.globals.current_stage == ExtraStage) { // 7
@@ -58214,7 +58231,7 @@ VFO32(0x1EC, PauseMenu, primary_state);
 VFO32(0x1F0, PauseMenu, previous_primary_state);
 VFO32(0x1F4, PauseMenu, secondary_state);
 VFO32(0x1F8, PauseMenu, __name_length);
-VFO32(0x1FC, PauseMenu, __int_1FC);
+VFO32(0x1FC, PauseMenu, __bool_1FC);
 VFO32(0x200, PauseMenu, __int_200);
 VFO32(0x204, PauseMenu, __bool_204);
 VFO32(0x208, PauseMenu, __int_208);
@@ -58292,12 +58309,89 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 		clang_forceinline SOUND_MANAGER.__play_music_with_unlock(0, 0);
 	}
 
-	pause_menu->__int_1FC = 0;
+	pause_menu->__bool_1FC = false;
 	pause_menu->__float_2E0 = GAME_SPEED;
 	GAME_SPEED.set(1.0f);
 	pause_menu->__int_208 = WINDOW_DATA.__int_20D0;
 	WINDOW_DATA.__int_20D0 = 0;
 	pause_menu->__unknown_flag_pm_B = false;
+}
+
+// 0x458BD0
+dllexport gnu_noinline void __pause_menu_practice_end_screen() {
+	PauseMenu* pause_menu = PAUSE_MENU_PTR;
+	GAME_MANAGER.__update_scorefile_game_time();
+	GameThread* game_thread_ptr = GAME_THREAD_PTR;
+	if (game_thread_ptr->replay_mode == ReplayPlayback) {
+		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
+		return;
+	}
+	game_thread_ptr->__unknown_flag_gt_I = true;
+	pause_menu->change_primary_state(3);
+	clang_forceinline pause_menu->change_secondary_state(3);
+
+	uint32_t game_type = GAME_MANAGER.game_type;
+	if (game_type == SpellPractice) {
+		clang_forceinline pause_menu->change_secondary_state(5);
+		game_type = GAME_MANAGER.game_type;
+	}
+
+	// ??????
+	if (game_type == NormalGame) {
+		AnmID id = SUPERVISOR.text_anm->instantiate_vm_to_ui_list_back(59);
+		pause_menu->__vm_id_1E8 = id;
+
+		AnmManager* anm_manager = ANM_MANAGER_PTR;
+
+		float scale = WINDOW_DATA.game_scale;
+		int32_t src_h = SCREEN_HEIGHT * scale;
+		int32_t src_w = SCREEN_WIDTH * scale;
+		float src_x = SCREEN_LEFT_BORDER * scale;
+		float src_y = SCREEN_TOP_BORDER * scale;
+
+		AnmVM* vm = id.get_vm_ptr(anm_manager);
+
+		int32_t slot = vm->data.slot2;
+		AnmSprite* sprite = &anm_manager->loaded_anm_files[slot]->sprites[vm->data.sprite_id];
+		int32_t entry_index = sprite->entry_index;
+
+		int32_t dst_h = sprite->__size_y;
+		int32_t dst_w = sprite->__size_x;
+		int32_t dst_y = sprite->bounds.top;
+		int32_t dst_x = sprite->bounds.left;
+
+		for (int32_t i = 0; i < countof(AnmManager::backbuffer_textures); ++i) {
+			BackbufferTexture& texture = anm_manager->backbuffer_textures[i];
+			if (texture.anm_loaded_index < 0) {
+				texture.anm_loaded_index = slot;
+				texture.anm_image_index = entry_index;
+				texture.dst.x = dst_x;
+				texture.src.x = (int32_t)src_x;
+				texture.src.y = (int32_t)src_y;
+				texture.src.w = src_w;
+				texture.src.h = src_h;
+				texture.dst.y = dst_y;
+				texture.dst.w = dst_w;
+				texture.dst.h = dst_h;
+				break;
+			}
+		}
+	}
+
+	Gui* gui = GUI_PTR;
+	pause_menu->front_anm = gui->front_anm;
+	pause_menu->__bool_1FC = true;
+	pause_menu->__float_2E0 = GAME_SPEED;
+	GAME_SPEED.set(1.0f);
+	pause_menu->__int_208 = WINDOW_DATA.__int_20D0;
+	WINDOW_DATA.__int_20D0 = 0;
+
+	if (MsgVM* msg_vm = gui->msg_vm) {
+		msg_vm->__hide_all_anms();
+	}
+	__hide_gui_vm_id_114();
+
+	pause_menu->__unknown_flag_pm_B = true;
 }
 
 // 0x417CC0
@@ -62746,8 +62840,6 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 	}
 }
 
-//#include "udoalg_lifebars.cpp"
-
 // 0x43BB70
 dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 	if (this->__unknown_flag_gu_A) {
@@ -64487,176 +64579,200 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 		if (GAME_MANAGER.game_type != SpellPractice) {
 			Gui* gui = GUI_PTR;
 			gui->__stage_clear_bonus_vm = gui->front_anm->instantiate_vm_to_world_list_back(111);
-			
+
 			int32_t stage_clear_bonus = GAME_MANAGER.globals.current_stage * 1000000;
 			gui->__clear_bonus = stage_clear_bonus;
 			GAME_MANAGER.add_to_score(stage_clear_bonus);
 
 			gui->__unknown_flag_gu_A = true;
 			gui->__timer_198.reset();
+		}
 
-			PLAYER_PTR->__hide_options();
+		PLAYER_PTR->__hide_options();
 
-			// TODO: ask about whether this needs bug notes
-			BOMB_PTR->cleanup_if_active();
+		// TODO: ask about whether this needs bug notes
+		BOMB_PTR->cleanup_if_active();
 
-			uint32_t game_type = GAME_MANAGER.game_type;
-			if (game_type == NormalGame) {
-				int32_t ending_type;
-				ScorefileManager* scorefile_manager;
-				switch ((current_stage = GAME_MANAGER.globals.current_stage)) {
-					case Stage6: {
-						game_thread->__unknown_flag_gt_E = true;
-						game_thread->__int_D4 = 0;
-						GUI_PTR->__unknown_flag_gu_C = true;
-						GAME_MANAGER.__update_scorefile_game_time();
+		ScorefileManager* scorefile_manager;
+		uint32_t game_type = GAME_MANAGER.game_type;
+		if (game_type == NormalGame) {
+			int32_t ending_type;
+			switch ((current_stage = GAME_MANAGER.globals.current_stage)) {
+				case Stage6: {
+					game_thread->__unknown_flag_gt_E = true;
+					game_thread->__int_D4 = 0;
+					GUI_PTR->__unknown_flag_gu_C = true;
+					GAME_MANAGER.__update_scorefile_game_time();
 						
+					scorefile_manager = SCOREFILE_MANAGER_PTR;
+					if (
+						scorefile_manager->primary_file.common.__int_array_1C0[0] == 1 &&
+						scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD
+					) {
+						scorefile_manager->__sub_442450(1);
+						scorefile_manager->primary_file.common.__int_array_1C0[0] = 2;
+					}
+
+					if (GAME_MANAGER.globals.continues != 0) {
+						ending_type = 8 + GAME_MANAGER.globals.shottype_index();
+					}
+					else {
+						int32_t shottype = GAME_MANAGER.globals.shottype_index();
+						ending_type = shottype * 2 + !ABILITY_MANAGER_PTR->card_equipped_inline<CardBlank>();
+					}
+					GAME_MANAGER.__ending_type = ending_type;
+					__unlock_trophy(ending_type);
+
+					if (
+						GAME_MANAGER.globals.continues == 0 &&
+						ABILITY_MANAGER_PTR->card_equipped<CardBlank>()
+					) {
+						__unlock_trophy(24);
 						scorefile_manager = SCOREFILE_MANAGER_PTR;
-						if (
-							scorefile_manager->primary_file.common.__int_array_1C0[0] == 1 &&
-							scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD
-						) {
-							scorefile_manager->__sub_442450(1);
-							scorefile_manager->primary_file.common.__int_array_1C0[0] = 2;
-						}
-
-						if (GAME_MANAGER.globals.continues != 0) {
-							ending_type = 8 + GAME_MANAGER.globals.shottype_index();
-						}
-						else {
-							int32_t shottype = GAME_MANAGER.globals.shottype_index();
-							ending_type = shottype * 2 + !ABILITY_MANAGER_PTR->card_equipped_inline<CardBlank>();
-						}
-						GAME_MANAGER.__ending_type = ending_type;
-						__unlock_trophy(ending_type);
-
-						if (
-							GAME_MANAGER.globals.continues == 0 &&
-							ABILITY_MANAGER_PTR->card_equipped<CardBlank>()
-						) {
-							__unlock_trophy(24);
-							scorefile_manager = SCOREFILE_MANAGER_PTR;
-							switch (scorefile_manager->primary_file.common.__int_array_1C0[0]) {
-								case 1:
-									if (scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD) {
-										scorefile_manager->__sub_442450(1);
-										scorefile_manager->primary_file.common.__int_array_1C0[0] = 2;
-									}
-									break;
-								case 2:
-									if (scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD) {
-										scorefile_manager->__sub_442450(2);
-										scorefile_manager->primary_file.common.__int_array_1C0[0] = 3;
-									}
-									break;
-							}
-						}
-
-						__unlock_trophy(16 + GAME_MANAGER.globals.difficulty);
-						if (GAME_MANAGER.globals.continues == 0) {
-							__unlock_trophy(20 + GAME_MANAGER.globals.difficulty);
-						}
-						if (GAME_MANAGER.globals.miss_count_in_game == 0) {
-							__unlock_trophy(25);
-							if (GAME_MANAGER.globals.difficulty == LUNATIC) {
-								__unlock_trophy(26);
-							}
-						}
-
-						switch (GAME_MANAGER.globals.character) {
-							case Reimu:
-								__unlock_card(REIMU_OP2_CARD, true);
+						switch (scorefile_manager->primary_file.common.__int_array_1C0[0]) {
+							case 1:
+								if (scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD) {
+									scorefile_manager->__sub_442450(1);
+									scorefile_manager->primary_file.common.__int_array_1C0[0] = 2;
+								}
 								break;
-							case Marisa:
-								__unlock_card(MARISA_OP2_CARD, true);
-								break;
-							case Sakuya:
-								__unlock_card(SAKUYA_OP2_CARD, true);
-								break;
-							case Sanae:
-								__unlock_card(SANAE_OP2_CARD, true);
+							case 2:
+								if (scorefile_manager->primary_file.common.__card_ids_150[3][2] == BLANK_CARD) {
+									scorefile_manager->__sub_442450(2);
+									scorefile_manager->primary_file.common.__int_array_1C0[0] = 3;
+								}
 								break;
 						}
-
-						if (GAME_MANAGER.globals.continues == 0) {
-							__unlock_card(MAGATAMA2_CARD, true);
-							__unlock_card(BLANK_CARD, true);
-							if (SCOREFILE_MANAGER_PTR->primary_file.common.__card_ids_150[3][3] == BLANK_CARD) {
-								SCOREFILE_MANAGER_PTR->__sub_442450(3);
-							}
-						}
-
-						// MSVC generated a full jumptable of 4 identical cases here.
-						// idk how this crap is even possible
-						int32_t score_bonus = 0;
-						switch (GAME_MANAGER.globals.difficulty) {
-							case EASY: case NORMAL: case HARD: case LUNATIC:
-								score_bonus = (GAME_MANAGER.globals.life_stocks * 5 + GAME_MANAGER.globals.bomb_stocks) * 1000000;
-								break;
-						}
-						GAME_MANAGER.add_to_score(score_bonus);
-						GUI_PTR->__clear_bonus += score_bonus;
-
-						if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
-							// TODO: add to scorefile clear count
-						}
-						break;
 					}
 
-					case ExtraStage: {
-						GUI_PTR->__unknown_flag_gu_C = true;
-						if (ACHIEVEMENT_MODE_STATE >= 0) {
-							ACHIEVEMENT_MODE_STATE = -1;
-							SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
+					__unlock_trophy(16 + GAME_MANAGER.globals.difficulty);
+					if (GAME_MANAGER.globals.continues == 0) {
+						__unlock_trophy(20 + GAME_MANAGER.globals.difficulty);
+					}
+					if (GAME_MANAGER.globals.miss_count_in_game == 0) {
+						__unlock_trophy(25);
+						if (GAME_MANAGER.globals.difficulty == LUNATIC) {
+							__unlock_trophy(26);
+						}
+					}
+
+					switch (GAME_MANAGER.globals.character) {
+						case Reimu:
+							__unlock_card(REIMU_OP2_CARD, true);
 							break;
-						}
-						__unlock_card(MUKADE_CARD, true);
-
-						int32_t score_bonus = (GAME_MANAGER.globals.life_stocks * 5 + GAME_MANAGER.globals.bomb_stocks) * 1000000;
-						GAME_MANAGER.add_to_score(score_bonus);
-						GUI_PTR->__clear_bonus += score_bonus;
-
-						__unlock_trophy(12 + GAME_MANAGER.globals.shottype_index());
-						if (GAME_MANAGER.globals.miss_count_in_game == 0) {
-							__unlock_trophy(27);
-						}
-						if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
-							// TODO: add to scorefile clear count
-						}
-						GAME_MANAGER.__update_scorefile_game_time();
-						game_thread->__unknown_flag_gt_E = true;
-						game_thread->__int_D4 = 0;
-						break;
+						case Marisa:
+							__unlock_card(MARISA_OP2_CARD, true);
+							break;
+						case Sakuya:
+							__unlock_card(SAKUYA_OP2_CARD, true);
+							break;
+						case Sanae:
+							__unlock_card(SANAE_OP2_CARD, true);
+							break;
 					}
 
-					default:
-						if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
-							SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
-								.practice[GAME_MANAGER.globals.difficulty][current_stage]
-									.cleared = true;
-							current_stage = GAME_MANAGER.globals.current_stage;
+					if (GAME_MANAGER.globals.continues == 0) {
+						__unlock_card(MAGATAMA2_CARD, true);
+						__unlock_card(BLANK_CARD, true);
+						scorefile_manager = SCOREFILE_MANAGER_PTR;
+						if (scorefile_manager->primary_file.common.__card_ids_150[3][3] == BLANK_CARD) {
+							scorefile_manager->__sub_442450(3);
+							scorefile_manager = SCOREFILE_MANAGER_PTR;
 						}
-						SUPERVISOR.gamemode_switch = GameMode::StageTransition; // 12
-						// codegen is weird here, again
-						if (current_stage < ExtraStage) {
-							GAME_MANAGER.globals.current_stage = current_stage + 1;
+					}
+
+					// MSVC generated a full jumptable of 4 identical cases here.
+					// idk how this crap is even possible
+					int32_t score_bonus = 0;
+					switch (GAME_MANAGER.globals.difficulty) {
+						case EASY: case NORMAL: case HARD: case LUNATIC:
+							score_bonus = (GAME_MANAGER.globals.life_stocks * 5 + GAME_MANAGER.globals.bomb_stocks) * 1000000;
+							break;
+					}
+					GAME_MANAGER.add_to_score(score_bonus);
+					GUI_PTR->__clear_bonus += score_bonus;
+
+					if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
+						scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].add_clear(GAME_MANAGER.globals.difficulty);
+						if (GAME_MANAGER.globals.continues == 0) {
+							scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].add_1cc_clear(GAME_MANAGER.globals.difficulty);
 						}
-						current_stage = current_stage < ExtraStage ? current_stage + 1 : current_stage;
-						STAGE_DATA_PTR = &STAGE_DATA[current_stage];
+					}
+					break;
+				}
+
+				case ExtraStage: {
+					GUI_PTR->__unknown_flag_gu_C = true;
+					if (ACHIEVEMENT_MODE_STATE >= 0) {
+						ACHIEVEMENT_MODE_STATE = -1;
+						SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 						break;
+					}
+					__unlock_card(MUKADE_CARD, true);
+
+					int32_t score_bonus = (GAME_MANAGER.globals.life_stocks * 5 + GAME_MANAGER.globals.bomb_stocks) * 1000000;
+					GAME_MANAGER.add_to_score(score_bonus);
+					GUI_PTR->__clear_bonus += score_bonus;
+
+					__unlock_trophy(12 + GAME_MANAGER.globals.shottype_index());
+					if (GAME_MANAGER.globals.miss_count_in_game == 0) {
+						__unlock_trophy(27);
+					}
+					if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
+						scorefile_manager = SCOREFILE_MANAGER_PTR;
+						scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].add_clear(GAME_MANAGER.globals.difficulty);
+						if (GAME_MANAGER.globals.continues == 0) {
+							scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()].add_1cc_clear(GAME_MANAGER.globals.difficulty);
+						}
+					}
+					GAME_MANAGER.__update_scorefile_game_time();
+					game_thread->__unknown_flag_gt_E = true;
+					game_thread->__int_D4 = 0;
+					break;
 				}
-				return ZUN_SUCCESS;
+
+				default:
+					if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
+						SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+							.practice[GAME_MANAGER.globals.difficulty][current_stage]
+								.cleared = true;
+						current_stage = GAME_MANAGER.globals.current_stage;
+					}
+					SUPERVISOR.gamemode_switch = GameMode::StageTransition; // 12
+					// codegen is weird here, again
+					if (current_stage < ExtraStage) {
+						GAME_MANAGER.globals.current_stage = current_stage + 1;
+					}
+					current_stage = current_stage < ExtraStage ? current_stage + 1 : current_stage;
+					STAGE_DATA_PTR = &STAGE_DATA[current_stage];
+					break;
 			}
-			else if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
+			return ZUN_SUCCESS;
+		}
+		else {
+			scorefile_manager = SCOREFILE_MANAGER_PTR;
+			GameThread* game_thread = GAME_THREAD_PTR;
+			if (game_thread->replay_mode == ReplayRecording) {
+				if (game_type == SpellPractice) {
+					ScorefileSpellcard& spellcard_data = scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+																					.spells[GAME_MANAGER.globals.spell_practice_id];
+					// BUG?: The score is already stored divided by 10?
+					int32_t spell_score = GAME_MANAGER.globals.score / 10 * 10;
+					if (spellcard_data.spell_practice_score < spell_score) {
+						spellcard_data.spell_practice_score = spell_score;
+						if (game_thread->replay_mode != ReplayRecording) {
+							goto literally_what_is_this_goto;
+						}
+					}
+					game_type = GAME_MANAGER.game_type;
+				}
 				if (game_type != SpellPractice) {
-					// TODO: spell practice scoring
-				}
-				if (GAME_MANAGER.game_type != SpellPractice) {
-					SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+					scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
 						.practice[GAME_MANAGER.globals.difficulty][GAME_MANAGER.globals.current_stage]
-							.cleared = true;
+						.cleared = true;
 				}
-				//PAUSE_MENU_PTR->__sub_458BD0();
+			literally_what_is_this_goto:
+				__pause_menu_practice_end_screen();
 				return ZUN_SUCCESS;
 			}
 		}
