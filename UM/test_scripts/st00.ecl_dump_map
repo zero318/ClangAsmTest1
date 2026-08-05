@@ -879,7 +879,6 @@ void main() {
     enemy_create_abs("full_power_dummy", PLAYER_X, PLAYER_Y, 1, 0, 0);
 	
 	//anm_create_zero_front(5, 1);
-    
 	
 +120:
 

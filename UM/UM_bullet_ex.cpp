@@ -88,9 +88,10 @@
 
 #define ALLOCATE_CONSOLE 1
 #define TESTING_FEATURES 1
+#define IMAGE_REPLACEMENT 0
 
 #define THE_BEST_ENDING_SCREEN 1
-#define DEBUG_NO_GAME_OVER 1
+#define DEBUG_NO_GAME_OVER 0
 
 #define PROTECT_ORIGINAL_FILES 1
 #define OVERRIDE_PATH_CHECKS 1
@@ -2306,10 +2307,12 @@ struct UpdateFunc {
 	}
 
 	inline ZUNResult run_init() {
+		ZUNResult ret = ZUN_SUCCESS;
 		if (auto* func = this->on_init_func) {
-			return func(this->func_arg);
+			ret = func(this->func_arg);
+			this->on_init_func = NULL;
 		}
-		return ZUN_SUCCESS;
+		return ret;
 	}
 
 	inline ZUNResult run_cleanup() {
@@ -2428,21 +2431,21 @@ struct DrawPriority { enum : int32_t {
 	AnmManager_draw_layer_22 = 54,
 	AsciiManager_draw_group_1 = 55,
 	AnmManager_draw_layer_23 = 56,
-	AnmManager_draw_layer_37 = 57,
+	AnmManager_draw_ui_layer_0 = 57,
 	Supervisor_H = 58,
 	Supervisor_arcade_vm_D = 59,
-	AnmManager_draw_layer_24 = 60,
-	AnmManager_draw_layer_25 = 61,
-	AnmManager_draw_layer_38 = 62,
+	AnmManager_draw_layer_B0 = 60,
+	AnmManager_draw_layer_B1 = 61,
+	AnmManager_draw_ui_layer_1 = 62,
 	AsciiManager_draw_group_3 = 63,
-	AnmManager_draw_layer_26 = 64,
-	AnmManager_draw_layer_39 = 65,
-	AnmManager_draw_layer_27 = 66,
-	AnmManager_draw_layer_40 = 67,
-	AnmManager_draw_layer_41A = 68,
-	AnmManager_draw_layer_28 = 69,
-	AnmManager_draw_layer_41B = 70,
-	AnmManager_draw_layer_29 = 71,
+	AnmManager_draw_layer_B2 = 64,
+	AnmManager_draw_ui_layer_2 = 65,
+	AnmManager_draw_layer_B3 = 66,
+	AnmManager_draw_ui_layer_3 = 67,
+	AnmManager_draw_ui_layer_4A = 68,
+	AnmManager_draw_layer_B4 = 69,
+	AnmManager_draw_ui_layer_4B = 70,
+	AnmManager_draw_layer_B5 = 71,
 	AsciiManager_draw_group_2 = 72,
 	Ending = 73,
 	LoadingThread = 74,
@@ -2457,13 +2460,13 @@ struct DrawPriority { enum : int32_t {
 	PauseMenu = 81,
 	AbilityShop = 81,
 	FpsCounter = 82,
-	AnmManager_draw_layer_30 = 84,
-	AnmManager_draw_layer_43 = 85,
-	AnmManager_draw_layer_31 = 86,
-	AnmManager_draw_layer_44 = 87,
+	AnmManager_draw_layer_B6 = 84,
+	AnmManager_draw_ui_layer_6 = 85,
+	AnmManager_draw_layer_B7 = 86,
+	AnmManager_draw_ui_layer_7 = 87,
 	AsciiManager_draw_group_0 = 88,
-	AnmManager_draw_layer_32 = 89,
-	AnmManager_draw_layer_45 = 90,
+	AnmManager_draw_layer_B8 = 89,
+	AnmManager_draw_ui_layer_8 = 90,
 	Supervisor_J = 92
 };};
 
@@ -16065,6 +16068,7 @@ enum AnmVMCreationListType {
 	UiListBack = 2,
 	UiListFront = 3,
 };
+using AnmVMCreationFlagsRaw = uint32_t;
 union AnmVMCreationFlags {
 	uint32_t raw;
 	struct {
@@ -16072,6 +16076,9 @@ union AnmVMCreationFlags {
 		uint32_t list_type : 2; // 2-3
 		uint32_t __unknown_flag_B : 1; // 4
 	};
+	inline constexpr operator AnmVMCreationFlagsRaw() const {
+		return this->raw;
+	}
 };
 
 // 0x4CDB00
@@ -16096,6 +16103,84 @@ static inline constexpr AnmVMCreationFlags WORLD_LIST_FRONT = { .list_type = Wor
 static inline constexpr AnmVMCreationFlags UI_LIST_BACK = { .list_type = UiListBack };
 // 0x6
 static inline constexpr AnmVMCreationFlags UI_LIST_FRONT = { .list_type = UiListFront };
+
+static inline constexpr int32_t UI_LAYER_COUNT = 9;
+static inline constexpr int32_t WORLD_LAYER_A_COUNT = 24;
+static inline constexpr int32_t WORLD_LAYER_B_COUNT = UI_LAYER_COUNT;
+static inline constexpr int32_t WORLD_LAYER_C_COUNT = 4;
+static inline constexpr int32_t WORLD_LAYER_COUNT = WORLD_LAYER_A_COUNT + WORLD_LAYER_B_COUNT + WORLD_LAYER_C_COUNT;
+
+static inline constexpr int32_t WORLD_LAYERS_A_START = 0;
+static inline constexpr int32_t WORLD_LAYERS_A_END = WORLD_LAYERS_A_START + WORLD_LAYER_A_COUNT - 1;
+static inline constexpr int32_t WORLD_LAYERS_B_START = WORLD_LAYERS_A_END + 1;
+static inline constexpr int32_t WORLD_LAYERS_B_END = WORLD_LAYERS_B_START + WORLD_LAYER_B_COUNT - 1;
+static inline constexpr int32_t WORLD_LAYERS_C_START = WORLD_LAYERS_B_END + 1;
+static inline constexpr int32_t WORLD_LAYERS_C_END = WORLD_LAYERS_C_START + WORLD_LAYER_C_COUNT - 1;
+static inline constexpr int32_t WORLD_LAYERS_START = 0;
+static inline constexpr int32_t WORLD_LAYERS_END = WORLD_LAYERS_START + WORLD_LAYER_COUNT - 1;
+static inline constexpr int32_t UI_LAYERS_START = WORLD_LAYERS_END + 1;
+static inline constexpr int32_t UI_LAYERS_END = UI_LAYERS_START + UI_LAYER_COUNT - 1;
+
+enum AnmLayer : int32_t {
+	// Group A: World layers
+	// Layers 0-2 set OriginMode0
+	Layer0 = 0,
+	Layer1 = 1,
+	Layer2 = 2,
+	// Layers 3 - 19 set OriginMode1
+	Layer3 = 3, // Enables fog
+	Layer4 = 4,
+	Layer5 = 5,
+	Layer6 = 6,
+	Layer7 = 7,
+	Layer8 = 8,
+	Layer9 = 9,
+	Layer10 = 10,
+	Layer11 = 11,
+	Layer12 = 12,
+	Layer13 = 13,
+	Layer14 = 14,
+	Layer15 = 15,
+	Layer16 = 16,
+	Layer17 = 17,
+	Layer18 = 18,
+	Layer19 = 19,
+	// Layers 20 - 23 set OriginMode2
+	// Layers 20 - 32 set ResolutionMode1
+	Layer20 = 20, // Disables zwrite
+	Layer21 = 21,
+	Layer22 = 22,
+	Layer23 = 23, // Disables zwrite
+
+	// Group B: World list mirror of UI layers
+	LayerB0 = 24, // Disables zwrite
+	LayerB1 = 25,
+	LayerB2 = 26,
+	LayerB3 = 27,
+	LayerB4 = 28,
+	LayerB5 = 29,
+	LayerB6 = 30,
+	LayerB7 = 31,
+	LayerB8 = 32,
+
+	// Group C: other
+	StageLayer0 = 33, // ZFUNC = D3DCMP_ALWAYS
+	StageLayer1 = 34, // ZFUNC = D3DCMP_LESSEQAUL
+
+	SupervisorLayer0 = 35,
+	// 36 doesn't seem to exist?
+
+	// UI Layers set ResolutionMode1
+	UILayer0 = 37, // Disables zwrite
+	UILayer1 = 38,
+	UILayer2 = 39,
+	UILayer3 = 40,
+	UILayer4 = 41,
+	UILayer5 = 42,
+	UILayer6 = 43,
+	UILayer7 = 44,
+	UILayer8 = 45
+};
 
 struct AnmVMState { enum : int32_t {
 	Normal = 0, // 0
@@ -16514,7 +16599,9 @@ struct AnmVM {
 				break;
 		}
 		switch (layer) {
-			case 20 ... 32: case 37 ... 45:
+			case 20 ... 23:
+			case WORLD_LAYERS_B_START ... WORLD_LAYERS_B_END: // 24 ... 32
+			case UI_LAYERS_START ... UI_LAYERS_END: // 37 ... 45
 				this->data.resolution_mode = ResolutionScaled; // 1
 				break;
 		}
@@ -18514,9 +18601,9 @@ public:
 
 private:
 	// 0x488770
-	dllexport AnmID& thiscall instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) ASR(0x488770);
+	dllexport AnmID& thiscall instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlagsRaw flags, AnmVM** raw_out) ASR(0x488770);
 public:
-	inline AnmID instantiate_vm(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) {
+	inline AnmID instantiate_vm(int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlagsRaw flags, AnmVM** raw_out) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
 		return this->instantiate_vm(dummy, script_index, position, z_rotation, layer, flags, raw_out);
 	}
@@ -18610,38 +18697,38 @@ public:
 
 private:
 	// 0x43A030
-	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(uint32_t flags)) ASR(0x43A030);
+	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) ASR(0x43A030);
 public:
-	inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, int32_t layer, AnmVMCreationFlags flags = GARBAGE_ARG(AnmVMCreationFlags)) {
+	inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, int32_t layer, AnmVMCreationFlagsRaw flags = GARBAGE_ARG(AnmVMCreationFlagsRaw)) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
-		return this->instantiate_vm_to_world_list_front(dummy, script_index, layer, bitcast<uint32_t>(flags));
+		return this->instantiate_vm_to_world_list_front(dummy, script_index, layer, flags);
 	}
 
 private:
 	// 0x43A110
-	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(uint32_t flags)) ASR(0x43A110);
+	dllexport AnmID& thiscall instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(AnmVMCreationFlagsRaw flags)) ASR(0x43A110);
 public:
-	inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, Float3* position, float z_rotation, int32_t layer = -1, AnmVMCreationFlags flags = {}) {
+	inline AnmID instantiate_vm_to_world_list_front(int32_t script_index, Float3* position, float z_rotation, int32_t layer = -1, AnmVMCreationFlagsRaw flags = {}) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
-		return this->instantiate_vm_to_world_list_front(dummy, script_index, position, z_rotation, layer, bitcast<uint32_t>(flags));
+		return this->instantiate_vm_to_world_list_front(dummy, script_index, position, z_rotation, layer, flags);
 	}
 
 private:
 	// 0x416A10
-	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(uint32_t flags)) ASR(0x416A10);
+	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) ASR(0x416A10);
 public:
 	inline AnmID instantiate_vm_to_ui_list_back(int32_t script_index) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
-		return this->instantiate_vm_to_ui_list_back(dummy, script_index, bitcast<uint32_t>(GARBAGE_ARG(AnmVMCreationFlags)));
+		return this->instantiate_vm_to_ui_list_back(dummy, script_index, GARBAGE_ARG(AnmVMCreationFlagsRaw));
 	}
 
 private:
 	// 0x409670
-	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) ASR(0x409670);
+	dllexport AnmID& thiscall instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) ASR(0x409670);
 public:
 	inline AnmID instantiate_vm_to_ui_list_back(int32_t script_index, Float3* position) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
-		return this->instantiate_vm_to_ui_list_back(dummy, script_index, position, bitcast<uint32_t>(GARBAGE_ARG(AnmVMCreationFlags)));
+		return this->instantiate_vm_to_ui_list_back(dummy, script_index, position, GARBAGE_ARG(AnmVMCreationFlagsRaw));
 	}
 
 private:
@@ -18654,27 +18741,27 @@ public:
 
 private:
 	// 0x409590
-	dllexport AnmID& thiscall instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) ASR(0x409590);
+	dllexport AnmID& thiscall instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) ASR(0x409590);
 public:
 	inline AnmID instantiate_vm_to_ui_list_front(int32_t script_index, Float3* position) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
-		return this->instantiate_vm_to_ui_list_front(dummy, script_index, position, bitcast<uint32_t>(GARBAGE_ARG(AnmVMCreationFlags)));
+		return this->instantiate_vm_to_ui_list_front(dummy, script_index, position, GARBAGE_ARG(AnmVMCreationFlagsRaw));
 	}
 
 private:
 	// 0x4888F0
-	dllexport AnmID& thiscall instantiate_child_vm(AnmID& out, int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) ASR(0x4888F0);
+	dllexport AnmID& thiscall instantiate_child_vm(AnmID& out, int32_t script_index, AnmVM* parent, AnmVMCreationFlagsRaw flags) ASR(0x4888F0);
 public:
-	inline AnmID instantiate_child_vm(int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) {
+	inline AnmID instantiate_child_vm(int32_t script_index, AnmVM* parent, AnmVMCreationFlagsRaw flags) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
 		return this->instantiate_child_vm(dummy, script_index, parent, flags);
 	}
 
 private:
 	// 0x488A40
-	dllexport AnmID& thiscall instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlags flags)) ASR(0x488A40);
+	dllexport AnmID& thiscall instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) ASR(0x488A40);
 public:
-	inline AnmID instantiate_orphan_vm_to_world_list_back(int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags = {}) {
+	inline AnmID instantiate_orphan_vm_to_world_list_back(int32_t script_index, AnmVM* parent, AnmVMCreationFlagsRaw flags = {}) {
 		AnmID dummy{ GARBAGE_VALUE(int) };
 		return this->instantiate_orphan_vm_to_world_list_back(dummy, script_index, parent, flags);
 	}
@@ -18876,12 +18963,6 @@ static inline constexpr float TEXT_FONT_TABLE[] = {
 
 // size: 0x39724B8
 struct AnmManager {
-
-#define WORLD_LAYER_A_COUNT 24
-#define WORLD_LAYER_B_COUNT 13
-#define WORLD_LAYER_COUNT (WORLD_LAYER_A_COUNT + WORLD_LAYER_B_COUNT)
-#define UI_LAYER_COUNT 9
-
 	ZUNThreadB __thread_0; // 0x0
 	unknown_fields(0x4); // 0x1C
 	BackbufferTexture backbuffer_textures[4]; // 0x20
@@ -22152,7 +22233,8 @@ public:
 			this->world_list.for_each_safeB([&, this](AnmVM* vm) {
 				if (vm->data.state == AnmVMState::Normal) { // 0
 					uint32_t vm_layer = vm->data.layer;
-					vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - WORLD_LAYER_B_COUNT;
+					// Remap UI layers to world layers B
+					vm_layer = (vm_layer - WORLD_LAYER_COUNT) >= UI_LAYER_COUNT ? vm_layer : vm_layer - (UI_LAYERS_START - WORLD_LAYERS_B_START);
 					if (vm_layer == layer_index) {
 						this->draw_vm(vm);
 						++this->__counter_E0;
@@ -22162,14 +22244,16 @@ public:
 			this->ui_list.for_each_safeB([=](AnmVM* vm) {
 				if (vm->data.state == AnmVMState::Normal) { // 0
 					int32_t vm_layer = vm->data.layer;
+					// Remap world layers B to UI layers
 					if ((uint32_t)(vm_layer - WORLD_LAYER_A_COUNT) < UI_LAYER_COUNT) {
-						vm_layer += WORLD_LAYER_B_COUNT;
+						vm_layer += UI_LAYERS_START - WORLD_LAYERS_B_START;
 					}
+					// Remap everything else to UILayer2
 					else if (
 						vm_layer < WORLD_LAYER_COUNT ||
 						vm_layer >= (WORLD_LAYER_COUNT + UI_LAYER_COUNT)
 					) {
-						vm_layer = 39;
+						vm_layer = UILayer2; // 39
 					}
 					if (vm_layer == layer_index) {
 						this->draw_vm(vm);
@@ -22199,45 +22283,45 @@ public:
 		return ((AnmManager*)ptr)->on_tick_ui();
 	}
 
-	/* 0x487670 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_0(void* self) ASR(0x487670) { return ((AnmManager*)self)->render_layer(0); }
-	/* 0x487680 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_1(void* self) ASR(0x487680) { return ((AnmManager*)self)->render_layer(1); }
-	/* 0x487690 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_2(void* self) ASR(0x487690) { return ((AnmManager*)self)->render_layer(2); }
-	/* 0x4876A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) ASR(0x4876A0) { return ((AnmManager*)self)->render_layer(4); }
+	/* 0x487670 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_0(void* self) ASR(0x487670) { return ((AnmManager*)self)->render_layer(Layer0); }
+	/* 0x487680 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_1(void* self) ASR(0x487680) { return ((AnmManager*)self)->render_layer(Layer1); }
+	/* 0x487690 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_2(void* self) ASR(0x487690) { return ((AnmManager*)self)->render_layer(Layer2); }
+	/* 0x4876A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_4(void* self) ASR(0x4876A0) { return ((AnmManager*)self)->render_layer(Layer4); }
 	// 0x4876B0
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_3(void* self) ASR(0x4876B0) {
 		SUPERVISOR.__setup_camera(&SUPERVISOR.cameras[StdCamera]);
 		SUPERVISOR.set_camera_by_index_disable_fog(StdCamera);
-		return ((AnmManager*)self)->render_layer(3);
+		return ((AnmManager*)self)->render_layer(Layer3);
 	}
-	/* 0x487770 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_5(void* self) ASR(0x487770) { return ((AnmManager*)self)->render_layer(5); }
-	/* 0x487780 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_6(void* self) ASR(0x487780) { return ((AnmManager*)self)->render_layer(6); }
-	/* 0x487790 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_7(void* self) ASR(0x487790) { return ((AnmManager*)self)->render_layer(7); }
-	/* 0x4877A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_8(void* self) ASR(0x4877A0) { return ((AnmManager*)self)->render_layer(8); }
-	/* 0x4877B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_9(void* self) ASR(0x4877B0) { return ((AnmManager*)self)->render_layer(9); }
-	/* 0x4877C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_10(void* self) ASR(0x4877C0) { return ((AnmManager*)self)->render_layer(10); }
-	/* 0x4877D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_11(void* self) ASR(0x4877D0) { return ((AnmManager*)self)->render_layer(11); }
-	/* 0x4877E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_13(void* self) ASR(0x4877E0) { return ((AnmManager*)self)->render_layer(13); }
-	/* 0x4877F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_14(void* self) ASR(0x4877F0) { return ((AnmManager*)self)->render_layer(14); }
-	/* 0x487800 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_15(void* self) ASR(0x487800) { return ((AnmManager*)self)->render_layer(15); }
-	/* 0x487810 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_16(void* self) ASR(0x487810) { return ((AnmManager*)self)->render_layer(16); }
-	/* 0x487820 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_17(void* self) ASR(0x487820) { return ((AnmManager*)self)->render_layer(17); }
-	/* 0x487830 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_18(void* self) ASR(0x487830) { return ((AnmManager*)self)->render_layer(18); }
-	/* 0x487840 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_12(void* self) ASR(0x487840) { return ((AnmManager*)self)->render_layer(12); }
-	/* 0x487850 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_19(void* self) ASR(0x487850) { return ((AnmManager*)self)->render_layer(19); }
-	/* 0x487860 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_21(void* self) ASR(0x487860) { return ((AnmManager*)self)->render_layer(21); }
-	/* 0x487870 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_22(void* self) ASR(0x487870) { return ((AnmManager*)self)->render_layer(22); }
-	/* 0x487880 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_31(void* self) ASR(0x487880) { return ((AnmManager*)self)->render_layer(31); }
-	/* 0x487890 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_32(void* self) ASR(0x487890) { return ((AnmManager*)self)->render_layer(32); }
-	/* 0x4878A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_30(void* self) ASR(0x4878A0) { return ((AnmManager*)self)->render_layer(30); }
-	/* 0x4878B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_26(void* self) ASR(0x4878B0) { return ((AnmManager*)self)->render_layer(26); }
-	/* 0x4878C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_27(void* self) ASR(0x4878C0) { return ((AnmManager*)self)->render_layer(27); }
-	/* 0x4878D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_25(void* self) ASR(0x4878D0) { return ((AnmManager*)self)->render_layer(25); }
-	/* 0x4878E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_38(void* self) ASR(0x4878E0) { return ((AnmManager*)self)->render_layer(38); }
-	/* 0x4878F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_39(void* self) ASR(0x4878F0) { return ((AnmManager*)self)->render_layer(39); }
-	/* 0x487900 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_40(void* self) ASR(0x487900) { return ((AnmManager*)self)->render_layer(40); }
-	/* 0x487910 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_43(void* self) ASR(0x487910) { return ((AnmManager*)self)->render_layer(43); }
-	/* 0x487920 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_44(void* self) ASR(0x487920) { return ((AnmManager*)self)->render_layer(44); }
-	/* 0x487930 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_45(void* self) ASR(0x487930) { return ((AnmManager*)self)->render_layer(45); }
+	/* 0x487770 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_5(void* self) ASR(0x487770) { return ((AnmManager*)self)->render_layer(Layer5); }
+	/* 0x487780 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_6(void* self) ASR(0x487780) { return ((AnmManager*)self)->render_layer(Layer6); }
+	/* 0x487790 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_7(void* self) ASR(0x487790) { return ((AnmManager*)self)->render_layer(Layer7); }
+	/* 0x4877A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_8(void* self) ASR(0x4877A0) { return ((AnmManager*)self)->render_layer(Layer8); }
+	/* 0x4877B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_9(void* self) ASR(0x4877B0) { return ((AnmManager*)self)->render_layer(Layer9); }
+	/* 0x4877C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_10(void* self) ASR(0x4877C0) { return ((AnmManager*)self)->render_layer(Layer10); }
+	/* 0x4877D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_11(void* self) ASR(0x4877D0) { return ((AnmManager*)self)->render_layer(Layer11); }
+	/* 0x4877E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_13(void* self) ASR(0x4877E0) { return ((AnmManager*)self)->render_layer(Layer13); }
+	/* 0x4877F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_14(void* self) ASR(0x4877F0) { return ((AnmManager*)self)->render_layer(Layer14); }
+	/* 0x487800 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_15(void* self) ASR(0x487800) { return ((AnmManager*)self)->render_layer(Layer15); }
+	/* 0x487810 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_16(void* self) ASR(0x487810) { return ((AnmManager*)self)->render_layer(Layer16); }
+	/* 0x487820 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_17(void* self) ASR(0x487820) { return ((AnmManager*)self)->render_layer(Layer17); }
+	/* 0x487830 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_18(void* self) ASR(0x487830) { return ((AnmManager*)self)->render_layer(Layer18); }
+	/* 0x487840 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_12(void* self) ASR(0x487840) { return ((AnmManager*)self)->render_layer(Layer12); }
+	/* 0x487850 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_19(void* self) ASR(0x487850) { return ((AnmManager*)self)->render_layer(Layer19); }
+	/* 0x487860 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_21(void* self) ASR(0x487860) { return ((AnmManager*)self)->render_layer(Layer21); }
+	/* 0x487870 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_22(void* self) ASR(0x487870) { return ((AnmManager*)self)->render_layer(Layer22); }
+	/* 0x487880 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B7(void* self) ASR(0x487880) { return ((AnmManager*)self)->render_layer(LayerB7); } // 31
+	/* 0x487890 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B8(void* self) ASR(0x487890) { return ((AnmManager*)self)->render_layer(LayerB8); } // 32
+	/* 0x4878A0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B6(void* self) ASR(0x4878A0) { return ((AnmManager*)self)->render_layer(LayerB6); } // 30
+	/* 0x4878B0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B2(void* self) ASR(0x4878B0) { return ((AnmManager*)self)->render_layer(LayerB2); } // 26
+	/* 0x4878C0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B3(void* self) ASR(0x4878C0) { return ((AnmManager*)self)->render_layer(LayerB3); } // 27
+	/* 0x4878D0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B1(void* self) ASR(0x4878D0) { return ((AnmManager*)self)->render_layer(LayerB1); } // 25
+	/* 0x4878E0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_1(void* self) ASR(0x4878E0) { return ((AnmManager*)self)->render_layer(UILayer1); } // 38
+	/* 0x4878F0 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_2(void* self) ASR(0x4878F0) { return ((AnmManager*)self)->render_layer(UILayer2); } // 39
+	/* 0x487900 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_3(void* self) ASR(0x487900) { return ((AnmManager*)self)->render_layer(UILayer3); } // 40
+	/* 0x487910 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_6(void* self) ASR(0x487910) { return ((AnmManager*)self)->render_layer(UILayer6); } // 43
+	/* 0x487920 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_7(void* self) ASR(0x487920) { return ((AnmManager*)self)->render_layer(UILayer7); } // 44
+	/* 0x487930 */ dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_8(void* self) ASR(0x487930) { return ((AnmManager*)self)->render_layer(UILayer8); } // 45
 	// 0x487940
 	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_20(void* self) ASR(0x487940) {
 		SUPERVISOR.set_camera_by_index_disable_fog(1);
@@ -22251,49 +22335,49 @@ public:
 		return ((AnmManager*)self)->render_layer(23);
 	}
 	// 0x487AE0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_24(void* self) ASR(0x487AE0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B0(void* self) ASR(0x487AE0) {
 		SUPERVISOR.set_camera_by_index_disable_fog(2);
 		SUPERVISOR.d3d_zfunc_always();
 		AnmManager* anm_manager = (AnmManager*)self;
 		anm_manager->__vertex_offsetA = { 0.0f, 0.0f };
-		return anm_manager->render_layer(24);
+		return anm_manager->render_layer(LayerB0); // 24
 	}
 	// 0x487BC0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_28(void* self) ASR(0x487BC0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B4(void* self) ASR(0x487BC0) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
-		UpdateFuncRet ret = anm_manager->render_layer(28);
+		UpdateFuncRet ret = anm_manager->render_layer(LayerB4); // 28
 		SUPERVISOR.set_camera_by_index(2);
 		return ret;
 	}
 	// 0x487C50
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_29(void* self) ASR(0x487C50) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_B5(void* self) ASR(0x487C50) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
-		UpdateFuncRet ret = anm_manager->render_layer(29);
+		UpdateFuncRet ret = anm_manager->render_layer(LayerB5); // 29
 		SUPERVISOR.set_camera_by_index(2);
 		return ret;
 	}
 	// 0x487CE0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_37(void* self) ASR(0x487CE0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_0(void* self) ASR(0x487CE0) {
 		SUPERVISOR.set_camera_by_index_disable_fog(2);
 		SUPERVISOR.d3d_zfunc_always();
-		return ((AnmManager*)self)->render_layer(37);
+		return ((AnmManager*)self)->render_layer(UILayer0); // 37
 	}
 	// 0x487DB0
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_41A(void* self) ASR(0x487DB0) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_4A(void* self) ASR(0x487DB0) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
-		UpdateFuncRet ret = anm_manager->render_layer(41);
+		UpdateFuncRet ret = anm_manager->render_layer(UILayer4); // 41
 		SUPERVISOR.set_camera_by_index(2);
 		return ret;
 	}
 	// Was this supposed to be 42?
 	// 0x487E40
-	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_layer_41B(void* self) ASR(0x487E40) {
+	dllexport gnu_noinline static UpdateFuncRet UpdateFuncCC draw_ui_layer_4B(void* self) ASR(0x487E40) {
 		AnmManager* anm_manager = (AnmManager*)self;
 		SUPERVISOR.set_camera2_alt();
-		UpdateFuncRet ret = anm_manager->render_layer(41);
+		UpdateFuncRet ret = anm_manager->render_layer(UILayer4); // 41
 		SUPERVISOR.set_camera_by_index(2);
 		return ret;
 	}
@@ -22402,42 +22486,42 @@ public:
 		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_22); // 54
 		update_func = new UpdateFunc(&AnmManager::draw_layer_23, true, this);
 		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_23); // 56
-		update_func = new UpdateFunc(&AnmManager::draw_layer_26, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_26); // 64
-		update_func = new UpdateFunc(&AnmManager::draw_layer_27, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_27); // 66
-		update_func = new UpdateFunc(&AnmManager::draw_layer_30, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_30); // 30
-		update_func = new UpdateFunc(&AnmManager::draw_layer_31, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_31); // 86
-		update_func = new UpdateFunc(&AnmManager::draw_layer_32, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_32); // 89
-		update_func = new UpdateFunc(&AnmManager::draw_layer_25, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_25); // 61
-		update_func = new UpdateFunc(&AnmManager::draw_layer_24, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_24); // 60
-		update_func = new UpdateFunc(&AnmManager::draw_layer_28, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_28); // 69
-		update_func = new UpdateFunc(&AnmManager::draw_layer_29, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_29); // 71
-		update_func = new UpdateFunc(&AnmManager::draw_layer_37, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_37); // 57
-		update_func = new UpdateFunc(&AnmManager::draw_layer_38, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_38); // 62
-		update_func = new UpdateFunc(&AnmManager::draw_layer_39, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_39); // 65
-		update_func = new UpdateFunc(&AnmManager::draw_layer_40, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_40); // 67
-		update_func = new UpdateFunc(&AnmManager::draw_layer_41A, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_41A); // 68
-		update_func = new UpdateFunc(&AnmManager::draw_layer_41B, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_41B); // 70
-		update_func = new UpdateFunc(&AnmManager::draw_layer_43, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_43); // 85
-		update_func = new UpdateFunc(&AnmManager::draw_layer_44, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_44); // 87
-		update_func = new UpdateFunc(&AnmManager::draw_layer_45, true, this);
-		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_45); // 90
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B2, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B2); // 64
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B3, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B3); // 66
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B6, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B6); // 30
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B7, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B7); // 86
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B8, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B8); // 89
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B1, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B1); // 61
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B0, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B0); // 60
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B4, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B4); // 69
+		update_func = new UpdateFunc(&AnmManager::draw_layer_B5, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_layer_B5); // 71
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_0, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_0); // 57
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_1, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_1); // 62
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_2, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_2); // 65
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_3, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_3); // 67
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_4A, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_4A); // 68
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_4B, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_4B); // 70
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_6, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_6); // 85
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_7, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_7); // 87
+		update_func = new UpdateFunc(&AnmManager::draw_ui_layer_8, true, this);
+		UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::AnmManager_draw_ui_layer_8); // 90
 		SUPERVISOR.d3d_device->SetVertexShader(NULL);
 		this->next_snapshot_discriminator = 0;
 	}
@@ -22895,7 +22979,7 @@ public:
 
 			AnmVM* layer_lists[WORLD_LAYER_COUNT];
 			int32_t i = 0;
-			AnmVM* layer_heads = &this->layer_heads[0];
+			AnmVM* layer_heads = &this->layer_heads[WORLD_LAYERS_START];
 			NoUnroll do {
 				//layer_lists[i] = &layer_heads[i];
 				layer_heads[i].controller.next_in_layer = NULL;
@@ -22930,7 +23014,7 @@ public:
 
 			//AnmVM* layer_lists[UI_LAYER_COUNT];
 			int32_t i = 0;
-			AnmVM* layer_heads = &this->layer_heads[WORLD_LAYER_COUNT];
+			AnmVM* layer_heads = &this->layer_heads[UI_LAYERS_START];
 			do {
 				//layer_lists[i] = &layer_heads[i];
 				layer_heads[i].controller.next_in_layer = NULL;
@@ -23233,7 +23317,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_arcade_vm_
 			ANM_MANAGER_PTR->draw_vm(SUPERVISOR.__arcade_vm_ptr_A);
 			SUPERVISOR.__arcade_vm_ptr_A->data.color1 = COLOR_WHITE;
 
-			ANM_MANAGER_PTR->render_layer(35);
+			ANM_MANAGER_PTR->render_layer(SupervisorLayer0); // 35
 			ANM_MANAGER_PTR->flush_sprites();
 
 			SUPERVISOR.d3d_device->SetRenderState(D3DRS_ALPHATESTENABLE, TRUE);
@@ -25428,7 +25512,8 @@ dllexport gnu_noinline void stdcall Supervisor::__sub_4548E0(Camera* camera) {
 
 #pragma region // AnmLoaded instantiate funcs
 // 0x488770
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlags flags, AnmVM** raw_out) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_index, Float3* position, float z_rotation, int32_t layer, AnmVMCreationFlagsRaw flags_raw, AnmVM** raw_out) {
+	AnmVMCreationFlags flags{ flags_raw };
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -25440,7 +25525,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm(AnmID& out, int32_t script_i
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer <= 23) {
+			if (layer <= WORLD_LAYERS_A_END) { // 23
 				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
@@ -25506,7 +25591,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer <= 23) {
+			if (layer <= WORLD_LAYERS_A_END) { // 23
 				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
@@ -25549,7 +25634,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer <= 23) {
+			if (layer <= WORLD_LAYERS_A_END) { // 23
 				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
@@ -25576,7 +25661,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer <= 23) {
+			if (layer <= WORLD_LAYERS_A_END) { // 23
 				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
@@ -25616,7 +25701,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer <= 23) {
+			if (layer <= WORLD_LAYERS_A_END) { // 23
 				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
@@ -25643,7 +25728,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer <= 23) {
+			if (layer <= WORLD_LAYERS_A_END) { // 23
 				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
@@ -25695,7 +25780,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out,
 }
 
 // 0x43A030
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(uint32_t flags)) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, int32_t layer, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) {
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -25704,7 +25789,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& o
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
-			if (layer <= 23) {
+			if (layer <= WORLD_LAYERS_A_END) { // 23
 				vm->data.origin_mode = OriginFixedResolution; // 1
 			}
 		}
@@ -25720,7 +25805,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& o
 }
 
 // 0x43A110
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(uint32_t flags)) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& out, int32_t script_index, Float3* position, float z_rotation, UNUSED_ARG(int32_t layer), UNUSED_ARG(AnmVMCreationFlagsRaw flags)) {
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -25739,7 +25824,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_front(AnmID& o
 }
 
 // 0x416A10
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(uint32_t flags)) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) {
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -25759,7 +25844,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, 
 }
 
 // 0x409670
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) {
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -25801,7 +25886,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_back(AnmID& out, int
 }
 
 // 0x409590
-dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(uint32_t flags)) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out, int32_t script_index, Float3* position, UNUSED_ARG(AnmVMCreationFlagsRaw flags)) {
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -25821,7 +25906,8 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_ui_list_front(AnmID& out,
 }
 
 // 0x4888F0
-dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t script_index, AnmVM* parent, AnmVMCreationFlags flags) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t script_index, AnmVM* parent, AnmVMCreationFlagsRaw flags_raw) {
+	AnmVMCreationFlags flags{ flags_raw };
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -25860,7 +25946,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_child_vm(AnmID& out, int32_t sc
 }
 
 // 0x488A40
-dllexport AnmID& thiscall AnmLoaded::instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlags flags)) {
+dllexport AnmID& thiscall AnmLoaded::instantiate_orphan_vm_to_world_list_back(AnmID& out, int32_t script_index, AnmVM* parent, UNUSED_ARG(AnmVMCreationFlagsRaw flags_raw)) {
 	CRITICAL_SECTION_MANAGER.enter_section(AnmList_CS);
 	{
 		this->__counter_134++;
@@ -40470,7 +40556,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 	memset(special_data, 0, sizeof(AnmVMSpecialDataA));
 
 	vm->data.origin_mode = OriginWindow; // 0
-	vm->data.layer = 0;
+	vm->data.layer = Layer0;
 
 	Float3 position = { LOGICAL_WINDOW_HALF_WIDTH, LOGICAL_WINDOW_HALF_HEIGHT, 0.0f }; // 320, 240
 
@@ -40482,7 +40568,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, vo
 	}
 
 	special_data->__int_1E3C = 0;
-	vm->data.layer = 43;
+	vm->data.layer = UILayer6; // 43
 	vm->data.origin_mode = OriginWindow; // 0
 	vm->data.resolution_mode = ResolutionScaled; // 1
 
@@ -40664,11 +40750,11 @@ dllexport gnu_noinline int fastcall AnmVM::on_interrupt_special_dataA(AnmVM* vm,
 			break;
 		case 9:
 			special_data->__int_1E3C = 0;
-			vm->data.layer = 37;
+			vm->data.layer = UILayer0; // 37
 			break;
 		case 10:
 			special_data->__int_1E3C = 3;
-			vm->data.layer = 31;
+			vm->data.layer = LayerB7; // 31
 			vm->data.origin_mode = OriginWindow; // 0
 			vm->data.resolution_mode = ResolutionScaled; // 1
 			break;
@@ -40787,7 +40873,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, v
 	}
 
 	vm->controller.position = *position;
-	vm->data.layer = 15;
+	vm->data.layer = Layer15;
 	vm->data.origin_mode = OriginFixedResolution; // 1
 	vm->data.blend_mode = BlendAdditive; // 1
 
@@ -40872,7 +40958,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC2(AnmVM* vm, v
 
 	vm->controller.position = *(Float3*)arg;
 	vm->data.blend_mode = BlendNormal; // 0
-	vm->data.layer = 19;
+	vm->data.layer = Layer19;
 	vm->data.origin_mode = OriginFixedResolution; // 1
 
 	return 0;
@@ -41748,11 +41834,11 @@ struct Stage : ZUNTask {
 				SUPERVISOR.d3d_disable_zwrite();
 				SUPERVISOR.d3d_zfunc_always();
 
-				ANM_MANAGER_PTR->render_layer(33);
+				ANM_MANAGER_PTR->render_layer(StageLayer0); // 33
 
 				SUPERVISOR.d3d_zfunc_lessequal();
 
-				ANM_MANAGER_PTR->render_layer(34);
+				ANM_MANAGER_PTR->render_layer(StageLayer1); // 34
 
 				SUPERVISOR.d3d_zfunc_lessequal();
 
@@ -63544,8 +63630,19 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
 	}
 	anm_loaded->images[entry_index].entry = entry;
 	int32_t image_size;
+	const char* image_filename;
+#if IMAGE_REPLACEMENT && TESTING_FEATURES
+	int32_t file_size;
+	image_filename = based_pointer<const char>(entry, entry->image_path_offset);
+	void* file = read_file_to_buffer(image_filename, &file_size, true);
+	if (file) {
+		anm_loaded->images[entry_index].file = file;
+		anm_loaded->images[entry_index].file_size = file_size;
+		goto create_from_file;
+	}
+#endif
 	if (!entry->has_data) {
-		const char* image_filename = based_pointer<const char>(entry, entry->image_path_offset);
+		image_filename = based_pointer<const char>(entry, entry->image_path_offset);
 		if (image_filename[0] == '@') {
 			if (image_filename[1] == 'R') {
 				entry->width = WINDOW_DATA.scaled_window_width;
@@ -63555,6 +63652,9 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__sub_486BC0(AnmLoaded* anm_
 			}
 			image_size = __create_normal_texture(&anm_loaded->images[entry_index], entry->format, entry->width, entry->height);
 		} else {
+#if IMAGE_REPLACEMENT && TESTING_FEATURES
+	create_from_file:
+#endif
 			image_size = this->__create_texture_from_file(&anm_loaded->images[entry_index], entry->format, entry_index, entry->width, entry->height, entry->offset_x, entry->offset_y);
 			if (image_size < 0) {
 				LOG_BUFFER.write_error(
@@ -63706,8 +63806,8 @@ dllexport gnu_noinline void Supervisor::__camera2_sub_454F50() {
 	SUPERVISOR.cameras[2].__viewport_10C.Y = start_y;
 	SUPERVISOR.cameras[2].__viewport_10C.Width = scaled_window_width;
 	SUPERVISOR.cameras[2].__viewport_10C.Height = scaled_window_height;
-	SUPERVISOR.cameras[2].__viewport_124.X = scale * -SCREEN_LEFT_BORDER;
-	SUPERVISOR.cameras[2].__viewport_124.Y = scale * -SCREEN_TOP_BORDER;
+	SUPERVISOR.cameras[2].__viewport_124.X = start_x - (scale * -SCREEN_LEFT_BORDER);
+	SUPERVISOR.cameras[2].__viewport_124.Y = start_y - (scale * -SCREEN_TOP_BORDER);
 	SUPERVISOR.cameras[2].__viewport_124.Width = scale * SCREEN_WIDTH;
 	SUPERVISOR.cameras[2].__viewport_124.Height = scale * SCREEN_HEIGHT;
 }
