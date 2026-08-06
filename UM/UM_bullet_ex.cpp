@@ -8,7 +8,6 @@
 #pragma clang diagnostic ignored "-Wswitch"
 
 #if !CLANG_CL && __INTELLISENSE__
-//#define _HAS_CXX17 1
 #define _HAS_CXX20 1
 #endif
 #if __INTELLISENSE__
@@ -56,8 +55,6 @@
 #define HITBOX_VIEW 0
 
 #define INCLUDE_PATCH_CODE 0
-
-#define KOISHI_DEBUG_TEST 0
 
 #define USE_THE_DANG_EXE_ICON_PLZ 1
 
@@ -144,10 +141,12 @@ void APPLY_DEBUG_CONFIG();
 
 #if USE_EXTERN_FOR_CODEGEN
 #define externcg extern
+#define ecgconstinit
 #define cgasm(...) asm(__VA_ARGS__)
 #define ecginit(...)
 #else
 #define externcg
+#define ecgconstinit constinit
 #define cgasm(...)
 #define ecginit(...) __VA_ARGS__
 #endif
@@ -172,10 +171,10 @@ void APPLY_DEBUG_CONFIG();
 #include "Xinput.h"
 #include "xinput_sucks.h"
 extern "C" {
-	__declspec(dllimport) IDirect3D9* WINAPI Direct3DCreate9(UINT SDKVersion);
-	__declspec(dllimport) HRESULT WINAPI DirectSoundCreate8(__in_opt LPCGUID pcGuidDevice, __deref_out LPDIRECTSOUND8* ppDS8, __null LPUNKNOWN pUnkOuter);
-	__declspec(dllimport) HRESULT WINAPI DirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter);
-	__declspec(dllimport) BOOL WINAPI WINNLSEnableIME(IN HWND, IN BOOL);
+__declspec(dllimport) IDirect3D9* WINAPI Direct3DCreate9(UINT SDKVersion);
+__declspec(dllimport) HRESULT WINAPI DirectSoundCreate8(__in_opt LPCGUID pcGuidDevice, __deref_out LPDIRECTSOUND8* ppDS8, __null LPUNKNOWN pUnkOuter);
+__declspec(dllimport) HRESULT WINAPI DirectInput8Create(HINSTANCE hinst, DWORD dwVersion, REFIID riidltf, LPVOID *ppvOut, LPUNKNOWN punkOuter);
+__declspec(dllimport) BOOL WINAPI WINNLSEnableIME(IN HWND, IN BOOL);
 }
 
 #define WAVEFILE_READ   1
@@ -332,14 +331,14 @@ dllexport gnu_noinline const char* fastcall eval_expr(const char* expr, char end
 #define ValidateStructAlignment(...)
 #endif
 
-#define VFO(offset, struct_type, member_name) ValidateFieldOffset(offset, struct_type, member_name)
-#define VVFO(offset, struct_type, member_name) ValidateVirtualFieldOffset(offset, struct_type, member_name)
-#define VSS(size, ...) ValidateStructSize(size, __VA_ARGS__)
-#define VSA(align, ...) ValidateStructAlignment(align, __VA_ARGS__)
-#define VFO32(offset, struct_type, member_name) ValidateFieldOffset32(offset, struct_type, member_name)
-#define VVFO32(offset, struct_type, member_name) ValidateVirtualFieldOffset32(offset, struct_type, member_name)
-#define VSS32(size, ...) ValidateStructSize32(size, __VA_ARGS__)
-#define VSA32(align, ...) ValidateStructAlignment32(align, __VA_ARGS__)
+#define VFO(offset, member_name) ValidateFieldOffset(offset, VTYPE, member_name)
+#define VVFO(offset, member_name) ValidateVirtualFieldOffset(offset, VTYPE, member_name)
+#define VSS(size) ValidateStructSize(size, VTYPE)
+#define VSA(align) ValidateStructAlignment(align, VTYPE)
+#define VFO32(offset, member_name) ValidateFieldOffset32(offset, VTYPE, member_name)
+#define VVFO32(offset, member_name) ValidateVirtualFieldOffset32(offset, VTYPE, member_name)
+#define VSS32(size) ValidateStructSize32(size, VTYPE)
+#define VSA32(align) ValidateStructAlignment32(align, VTYPE)
 
 template<int key> requires(key == VK_NUMLOCK || key == VK_CAPITAL || key == VK_SCROLL)
 struct LockKey {
@@ -515,9 +514,10 @@ struct D3DMATRIXZ : D3DMATRIX {
 		}
 	}
 };
-#pragma region // D3DMATRIXZ Validation
-VSS32(0x40, D3DMATRIXZ);
-#pragma endregion
+// D3DMATRIXZ Validation
+#define VTYPE D3DMATRIXZ
+VSS32(0x40);
+#undef VTYPE
 
 inline float vectorcall __angle_diffB(float angle, float value, float temp) {
 	if (temp > PI_f) {
@@ -699,9 +699,10 @@ struct ZUNRect {
 	uint32_t h; // 0xC
 	// 0x10
 };
-#pragma region ZUNRect Validation
-VSS32(0x10, ZUNRect);
-#pragma endregion
+// ZUNRect Validation
+#define VTYPE ZUNRect
+VSS32(0x10);
+#undef VTYPE
 
 // size: 0x10
 struct FloatRect {
@@ -831,17 +832,18 @@ struct CriticalSectionManager {
 	static inline void enter_section_volatile(CriticalSectionIndex index);
 };
 /*
-#pragma region // CriticalSectionManager Validation
-VFO32(0x0, CriticalSectionManager, sections);
-VFO32(0x1C0, CriticalSectionManager, section_depths);
-VFO32(0x1CE, CriticalSectionManager, enable_sections);
-VSS32(0x1D0, CriticalSectionManager);
-#pragma endregion
+// CriticalSectionManager Validation
+#define VTYPE CriticalSectionManager
+VFO32(0x0, sections);
+VFO32(0x1C0, section_depths);
+VFO32(0x1CE, enable_sections);
+VSS32(0x1D0);
+#undef VTYPE
 */
 
 extern "C" {
-	// 0x521660
-	externcg CriticalSectionManager CRITICAL_SECTION_MANAGER cgasm("_CRITICAL_SECTION_MANAGER");
+// 0x521660
+externcg CriticalSectionManager CRITICAL_SECTION_MANAGER cgasm("_CRITICAL_SECTION_MANAGER");
 }
 
 // 0x404F60
@@ -1014,14 +1016,14 @@ struct DebugLogger {
 };
 
 extern "C" {
-	// 0x4CF290
-	externcg DebugLogger* DEBUG_LOG_PTR cgasm("_DEBUG_LOG_PTR");
+// 0x4CF290
+externcg DebugLogger* DEBUG_LOG_PTR cgasm("_DEBUG_LOG_PTR");
 
-	// 0x4CF2F0
-	externcg char REPLAY_FILENAME_BUFFER[MAX_PATH] cgasm("_REPLAY_FILENAME_BUFFER");
+// 0x4CF2F0
+externcg char REPLAY_FILENAME_BUFFER[MAX_PATH] cgasm("_REPLAY_FILENAME_BUFFER");
 
-	// 0x570FA4
-	externcg char REPLAY_USERDATA_NAME[5] cgasm("_REPLAY_USERDATA_NAME");
+// 0x570FA4
+externcg char REPLAY_USERDATA_NAME[5] cgasm("_REPLAY_USERDATA_NAME");
 }
 
 namespace Pbg {
@@ -1417,8 +1419,8 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
 }
 
 extern "C" {
-	// 0x51F660
-	externcg uint8_t DECOMPRESS_BUFFER[0x2000] cgasm("_DECOMPRESS_BUFFER");
+// 0x51F660
+externcg uint8_t DECOMPRESS_BUFFER[0x2000] cgasm("_DECOMPRESS_BUFFER");
 }
 
 // 0x46F5B0
@@ -1676,8 +1678,8 @@ error_free:
 	}
 };
 extern "C" {
-	// 0x5217C0
-	externcg ArcFile THDAT_ARCFILE cgasm("_THDAT_ARCFILE");
+// 0x5217C0
+externcg ArcFile THDAT_ARCFILE cgasm("_THDAT_ARCFILE");
 }
 
 // size: 0x10
@@ -1688,13 +1690,14 @@ struct DatFileHeader {
 	uint32_t file_count; // 0xC
 	// 0x10
 };
-#pragma region // DatFileHeader Validation
-VFO(0x0, DatFileHeader, magic);
-VFO(0x4, DatFileHeader, decompressed_size);
-VFO(0x8, DatFileHeader, compressed_size);
-VFO(0xC, DatFileHeader, file_count);
-VSS(0x10, DatFileHeader);
-#pragma endregion
+// DatFileHeader Validation
+#define VTYPE DatFileHeader
+VFO(0x0, magic);
+VFO(0x4, decompressed_size);
+VFO(0x8, compressed_size);
+VFO(0xC, file_count);
+VSS(0x10);
+#undef VTYPE
 
 // 0x46EE90
 // EH frame (free something)
@@ -1798,8 +1801,8 @@ struct ArcFileEx : ArcFile {
 };
 
 extern "C" {
-	// 0x568AF0
-	externcg ArcFileEx ARCFILE_ARRAY[20] cgasm("_ARCFILE_ARRAY");
+// 0x568AF0
+externcg ArcFileEx ARCFILE_ARRAY[20] cgasm("_ARCFILE_ARRAY");
 }
 
 #if TESTING_FEATURES
@@ -1980,8 +1983,8 @@ decode_file:
 }
 
 extern "C" {
-	// 0x570EA0
-	externcg char PATH_BUFFER[MAX_PATH] cgasm("_PATH_BUFFER");
+// 0x570EA0
+externcg char PATH_BUFFER[MAX_PATH] cgasm("_PATH_BUFFER");
 }
 forceinline void* read_file_from_dat(const char* path, int32_t* size_out = NULL) {
 	PATH_BUFFER[0] = '\0';
@@ -2070,8 +2073,8 @@ dllexport gnu_noinline ZUNResult fastcall __zun_create_new_file_from_buffer(cons
 }
 
 extern "C" {
-	// 0x4CA96C
-	externcg HANDLE STATIC_FILE_HANDLE cgasm("_STATIC_FILE_HANDLE");
+// 0x4CA96C
+externcg HANDLE STATIC_FILE_HANDLE cgasm("_STATIC_FILE_HANDLE") ecginit(= INVALID_HANDLE_VALUE);
 }
 
 inline ZUNResult __zun_open_file(const char* filename) {
@@ -2196,13 +2199,9 @@ dllexport gnu_noinline ZUNResult fastcall __zun_close_file() {
 // size: 0x2008
 template <size_t buffer_size>
 struct LogBuffer {
-	char buffer[buffer_size]; // 0x0
-	char* buffer_write; // 0x2000
-	bool is_error; // 0x2004
-
-	LogBuffer() {
-		this->buffer_write = this->buffer;
-	}
+	char buffer[buffer_size]{}; // 0x0
+	char* buffer_write = buffer; // 0x2000
+	bool is_error{}; // 0x2004
 
 	// 0x402530
 	dllexport gnu_noinline const char* cdecl write(const char* format, ...) ASR(0x402530) {
@@ -2248,8 +2247,8 @@ struct LogBuffer {
 	}
 };
 extern "C" {
-	// 0x4CABE8
-	externcg LogBuffer<0x2000> LOG_BUFFER cgasm("_LOG_BUFFER");
+// 0x4CABE8
+externcg ecgconstinit LogBuffer<0x2000> LOG_BUFFER cgasm("_LOG_BUFFER");
 }
 
 enum UpdateFuncRet : int32_t {
@@ -2332,21 +2331,22 @@ struct UpdateFunc {
 		return ret;
 	}
 };
-#pragma region // UpdateFunc Validation
-VFO32(0x0, UpdateFunc, priority);
-VFO32(0x4, UpdateFunc, flags);
-VFO32(0x8, UpdateFunc, on_update_func);
-VFO32(0xC, UpdateFunc, on_init_func);
-VFO32(0x10, UpdateFunc, on_cleanup_func);
-VFO32(0x14, UpdateFunc, list_node);
-VFO32(0x24, UpdateFunc, func_arg);
-VSS32(0x28, UpdateFunc);
-#pragma endregion
+// UpdateFunc Validation
+#define VTYPE UpdateFunc
+VFO32(0x0, priority);
+VFO32(0x4, flags);
+VFO32(0x8, on_update_func);
+VFO32(0xC, on_init_func);
+VFO32(0x10, on_cleanup_func);
+VFO32(0x14, list_node);
+VFO32(0x24, func_arg);
+VSS32(0x28);
+#undef VTYPE
 
 typedef struct UpdateFuncRegistry UpdateFuncRegistry;
 extern "C" {
-	// 0x4CF294
-	externcg UpdateFuncRegistry* UPDATE_FUNC_REGISTRY_PTR cgasm("_UPDATE_FUNC_REGISTRY_PTR");
+// 0x4CF294
+externcg UpdateFuncRegistry* UPDATE_FUNC_REGISTRY_PTR cgasm("_UPDATE_FUNC_REGISTRY_PTR");
 }
 
 struct TickPriority { enum : int32_t {
@@ -2700,13 +2700,14 @@ EndOnDraw:
 		return ret;
 	}
 };
-#pragma region // UpdateFuncRegistry Validation
-VFO32(0x0, UpdateFuncRegistry, on_tick_funcs);
-VFO32(0x28, UpdateFuncRegistry, on_draw_funcs);
-VFO32(0x50, UpdateFuncRegistry, __next_node);
-VFO32(0x54, UpdateFuncRegistry, __int_54);
-VSS32(0x58, UpdateFuncRegistry);
-#pragma endregion
+// UpdateFuncRegistry Validation
+#define VTYPE UpdateFuncRegistry
+VFO32(0x0, on_tick_funcs);
+VFO32(0x28, on_draw_funcs);
+VFO32(0x50, __next_node);
+VFO32(0x54, __int_54);
+VSS32(0x58);
+#undef VTYPE
 
 // size: 0x8
 struct Rng {
@@ -2786,17 +2787,18 @@ public:
 		}
 	}
 };
-#pragma region // Rng Validation
-VFO32(0x0, Rng, value);
-VFO32(0x4, Rng, index);
-VSS32(0x8, Rng);
-#pragma endregion
+// Rng Validation
+#define VTYPE Rng
+VFO32(0x0, value);
+VFO32(0x4, index);
+VSS32(0x8);
+#undef VTYPE
 
 extern "C" {
-	// 0x4CF280
-	externcg Rng RNG cgasm("_RNG");
-	// 0x4CF288
-	externcg Rng REPLAY_RNG cgasm("_REPLAY_RNG");
+// 0x4CF280
+externcg Rng RNG cgasm("_RNG");
+// 0x4CF288
+externcg Rng REPLAY_RNG cgasm("_REPLAY_RNG");
 }
 
 enum Difficulty : int32_t {
@@ -2817,7 +2819,7 @@ dllexport gnu_noinline Enemy* stdcall get_boss_by_index(int32_t boss_id) ASR(0x4
 // size: 0x8
 struct GameSpeed {
 	float value = 1.0f; // 0x0
-	int __counter_4; // 0x4
+	int __counter_4{}; // 0x4
 	// 0x8
 
 	// 0x43A200
@@ -2827,15 +2829,16 @@ struct GameSpeed {
 		return this->value;
 	}
 };
-#pragma region // GameSpeed Validation
-VFO32(0x0, GameSpeed, value);
-VFO32(0x4, GameSpeed, __counter_4);
-VSS32(0x8, GameSpeed);
-#pragma endregion
+// GameSpeed Validation
+#define VTYPE GameSpeed
+VFO32(0x0, value);
+VFO32(0x4, __counter_4);
+VSS32(0x8);
+#undef VTYPE
 
 extern "C" {
-	// 0x4CCBF0
-	externcg GameSpeed GAME_SPEED cgasm("_GAME_SPEED");
+// 0x4CCBF0
+externcg ecgconstinit GameSpeed GAME_SPEED cgasm("_GAME_SPEED");
 }
 // 0x43A200
 dllexport inline void vectorcall GameSpeed::set(float new_speed) {
@@ -2868,6 +2871,9 @@ struct Timer {
 	}
 
 	inline Timer() : initialized(false) {};
+
+	// constinit hack
+	inline constexpr Timer(std::nullptr_t) : previous(), current(), current_f(), scale_table_index(), flags() {}
 
 	inline void default_values() {
 		this->current = 0;
@@ -3239,14 +3245,15 @@ public:
 		return this->is_not_zero();
 	}
 };
-#pragma region // Timer Validation
-VFO32(0x0, Timer, previous);
-VFO32(0x4, Timer, current);
-VFO32(0x8, Timer, current_f);
-VFO32(0xC, Timer, scale_table_index);
-VFO32(0x10, Timer, flags);
-VSS32(0x14, Timer);
-#pragma endregion
+// Timer Validation
+#define VTYPE Timer
+VFO32(0x0, previous);
+VFO32(0x4, current);
+VFO32(0x8, current_f);
+VFO32(0xC, scale_table_index);
+VFO32(0x10, flags);
+VSS32(0x14);
+#undef VTYPE
 
 // size: 0x14
 struct InputMapping {
@@ -3262,24 +3269,16 @@ struct InputMapping {
 	int16_t switch_card; // 0x12
 	// 0x14
 };
-#pragma region // InputMapping Validation
-VFO32(0x0, InputMapping, shoot);
-VFO32(0x2, InputMapping, bomb);
-VFO32(0x4, InputMapping, focus);
-VFO32(0x6, InputMapping, pause);
-VFO32(0x10, InputMapping, use_card);
-VFO32(0x12, InputMapping, switch_card);
-VSS32(0x14, InputMapping);
-#pragma endregion
-
-extern "C" {
-	// 0x4CABA8
-	//externcg InputMapping DEFAULT_JOYPAD_MAPPINGS cgasm("_DEFAULT_JOYPAD_MAPPINGS");
-	// 0x4CABBC
-	//externcg InputMapping DEFAULT_XINPUT_MAPPINGS cgasm("_DEFAULT_XINPUT_MAPPINGS");
-	// 0x4CABD0
-	//externcg InputMapping DEFAULT_KEYBOARD_MAPPINGS cgasm("_DEFAULT_KEYBOARD_MAPPINGS");
-}
+// InputMapping Validation
+#define VTYPE InputMapping
+VFO32(0x0, shoot);
+VFO32(0x2, bomb);
+VFO32(0x4, focus);
+VFO32(0x6, pause);
+VFO32(0x10, use_card);
+VFO32(0x12, switch_card);
+VSS32(0x14);
+#undef VTYPE
 
 static inline constexpr size_t BUTTON_COUNT = 32;
 
@@ -3354,8 +3353,7 @@ static inline constexpr uint32_t XINPUT_GAMEPAD_RIGHT_THUMB_INDEX = 9;
 static inline constexpr uint32_t XINPUT_GAMEPAD_START_INDEX = 10;
 static inline constexpr uint32_t XINPUT_GAMEPAD_BACK_INDEX = 11;
 
-// 0x4CABA8
-static InputMapping DEFAULT_JOYPAD_MAPPINGS = {
+static inline constexpr InputMapping CONST_DEFAULT_JOYPAD_MAPPINGS = {
 	.shoot = 0, // BUTTON_0
 	.bomb = 1, // BUTTON_1
 	.focus = 2, // BUTTON_2
@@ -3364,8 +3362,7 @@ static InputMapping DEFAULT_JOYPAD_MAPPINGS = {
 	.use_card = 3, // BUTTON_3
 	.switch_card = 4 // BUTTON_4
 };
-// 0x4CABBC
-static InputMapping DEFAULT_XINPUT_MAPPINGS = {
+static inline constexpr InputMapping CONST_DEFAULT_XINPUT_MAPPINGS = {
 	.shoot = XINPUT_GAMEPAD_A_INDEX,
 	.bomb = XINPUT_GAMEPAD_B_INDEX,
 	.focus = XINPUT_GAMEPAD_RIGHT_SHOULDER_INDEX,
@@ -3374,8 +3371,7 @@ static InputMapping DEFAULT_XINPUT_MAPPINGS = {
 	.use_card = XINPUT_GAMEPAD_X_INDEX,
 	.switch_card = XINPUT_GAMEPAD_Y_INDEX
 };
-// 0x4CABD0
-static InputMapping DEFAULT_KEYBOARD_MAPPINGS = {
+static inline constexpr InputMapping CONST_DEFAULT_KEYBOARD_MAPPINGS = {
 	.shoot = 'Z',
 	.bomb = 'X',
 	.focus = VK_SHIFT,
@@ -3385,6 +3381,15 @@ static InputMapping DEFAULT_KEYBOARD_MAPPINGS = {
 	.switch_card = 'D'
 };
 
+extern "C" {
+// 0x4CABA8
+externcg ecgconstinit InputMapping DEFAULT_JOYPAD_MAPPINGS cgasm("_DEFAULT_JOYPAD_MAPPINGS") ecginit(= CONST_DEFAULT_JOYPAD_MAPPINGS);
+// 0x4CABBC
+externcg ecgconstinit InputMapping DEFAULT_XINPUT_MAPPINGS cgasm("_DEFAULT_XINPUT_MAPPINGS") ecginit(= CONST_DEFAULT_XINPUT_MAPPINGS);
+// 0x4CABD0
+externcg ecgconstinit InputMapping DEFAULT_KEYBOARD_MAPPINGS cgasm("_DEFAULT_KEYBOARD_MAPPINGS") ecginit(= CONST_DEFAULT_KEYBOARD_MAPPINGS);
+}
+
 enum InputMode : int32_t {
 	InputXInput = 0,
 	InputJoypad = 1,
@@ -3393,27 +3398,27 @@ enum InputMode : int32_t {
 
 // This matches UnknownV in the th19 repo
 struct InputState {
-	uint32_t hardware_inputs_current; // 0x0
-	uint32_t hardware_inputs_previous; // 0x4
-	uint32_t hardware_inputs_held_26_frames; // 0x8
-	uint32_t hardware_inputs_rising_edge; // 0xC
-	uint32_t hardware_inputs_falling_edge; // 0x10
-	uint32_t hardware_inputs_held_for_repeat[BUTTON_COUNT]; // 0x14
-	uint32_t inputs_held_for_repeat[BUTTON_COUNT]; // 0x94
-	uint32_t hardware_inputs_held[BUTTON_COUNT]; // 0x114
-	uint32_t inputs_held[BUTTON_COUNT]; // 0x194
-	int __dword_214; // 0x214
-	uint32_t inputs_current; // 0x218
-	uint32_t inputs_previous; // 0x21C
-	uint32_t inputs_held_26_frames; // 0x220
-	uint32_t inputs_rising_edge; // 0x224
-	uint32_t inputs_falling_edge; // 0x228
-	uint32_t hardware_inputs_held_8_frames; // 0x22C
-	uint32_t inputs_held_8_frames; // 0x230
-	InputMode __device_type; // 0x234
-	InputMapping joypad_mapping; // 0x238
-	InputMapping xinput_mapping; // 0x24C
-	InputMapping keyboard_mapping; // 0x260
+	uint32_t hardware_inputs_current{}; // 0x0
+	uint32_t hardware_inputs_previous{}; // 0x4
+	uint32_t hardware_inputs_held_26_frames{}; // 0x8
+	uint32_t hardware_inputs_rising_edge{}; // 0xC
+	uint32_t hardware_inputs_falling_edge{}; // 0x10
+	uint32_t hardware_inputs_held_for_repeat[BUTTON_COUNT]{}; // 0x14
+	uint32_t inputs_held_for_repeat[BUTTON_COUNT]{}; // 0x94
+	uint32_t hardware_inputs_held[BUTTON_COUNT]{}; // 0x114
+	uint32_t inputs_held[BUTTON_COUNT]{}; // 0x194
+	int __dword_214{}; // 0x214
+	uint32_t inputs_current{}; // 0x218
+	uint32_t inputs_previous{}; // 0x21C
+	uint32_t inputs_held_26_frames{}; // 0x220
+	uint32_t inputs_rising_edge{}; // 0x224
+	uint32_t inputs_falling_edge{}; // 0x228
+	uint32_t hardware_inputs_held_8_frames{}; // 0x22C
+	uint32_t inputs_held_8_frames{}; // 0x230
+	InputMode __device_type{}; // 0x234
+	InputMapping joypad_mapping = CONST_DEFAULT_JOYPAD_MAPPINGS; // 0x238
+	InputMapping xinput_mapping = CONST_DEFAULT_XINPUT_MAPPINGS; // 0x24C
+	InputMapping keyboard_mapping = CONST_DEFAULT_KEYBOARD_MAPPINGS; // 0x260
 	// 0x274
 
 	// 0x418CE0
@@ -3710,29 +3715,30 @@ struct InputState {
 		return buttons;
 	}
 };
-#pragma region // InputState Validation
-VFO32(0x0, InputState, hardware_inputs_current);
-VFO32(0x4, InputState, hardware_inputs_previous);
-VFO32(0x8, InputState, hardware_inputs_held_26_frames);
-VFO32(0xC, InputState, hardware_inputs_rising_edge);
-VFO32(0x14, InputState, hardware_inputs_held_for_repeat);
-VFO32(0x94, InputState, inputs_held_for_repeat);
-VFO32(0x114, InputState, hardware_inputs_held);
-VFO32(0x194, InputState, inputs_held);
-VFO32(0x214, InputState, __dword_214);
-VFO32(0x218, InputState, inputs_current);
-VFO32(0x21C, InputState, inputs_previous);
-VFO32(0x220, InputState, inputs_held_26_frames);
-VFO32(0x224, InputState, inputs_rising_edge);
-VFO32(0x228, InputState, inputs_falling_edge);
-VFO32(0x22C, InputState, hardware_inputs_held_8_frames);
-VFO32(0x230, InputState, inputs_held_8_frames);
-VFO32(0x234, InputState, __device_type);
-VFO32(0x238, InputState, joypad_mapping);
-VFO32(0x24C, InputState, xinput_mapping);
-VFO32(0x260, InputState, keyboard_mapping);
-VSS32(0x274, InputState);
-#pragma endregion
+// InputState Validation
+#define VTYPE InputState
+VFO32(0x0, hardware_inputs_current);
+VFO32(0x4, hardware_inputs_previous);
+VFO32(0x8, hardware_inputs_held_26_frames);
+VFO32(0xC, hardware_inputs_rising_edge);
+VFO32(0x14, hardware_inputs_held_for_repeat);
+VFO32(0x94, inputs_held_for_repeat);
+VFO32(0x114, hardware_inputs_held);
+VFO32(0x194, inputs_held);
+VFO32(0x214, __dword_214);
+VFO32(0x218, inputs_current);
+VFO32(0x21C, inputs_previous);
+VFO32(0x220, inputs_held_26_frames);
+VFO32(0x224, inputs_rising_edge);
+VFO32(0x228, inputs_falling_edge);
+VFO32(0x22C, hardware_inputs_held_8_frames);
+VFO32(0x230, inputs_held_8_frames);
+VFO32(0x234, __device_type);
+VFO32(0x238, joypad_mapping);
+VFO32(0x24C, xinput_mapping);
+VFO32(0x260, keyboard_mapping);
+VSS32(0x274);
+#undef VTYPE
 
 enum PlayerId : int32_t {
 	Player1 = 0,
@@ -3740,9 +3746,9 @@ enum PlayerId : int32_t {
 };
 
 extern "C" {
-	// why is this 3
-	// 0x4CA210
-	externcg InputState INPUT_STATES[3] cgasm("_INPUT_STATES");
+// why is this 3
+// 0x4CA210
+externcg ecgconstinit InputState INPUT_STATES[3] cgasm("_INPUT_STATES");
 }
 
 static inline InputState& INPUT_P1 = INPUT_STATES[Player1];
@@ -3816,7 +3822,7 @@ struct Config {
 	char __byte_4C; // 0x4C
 	uint8_t input_method; // 0x4D
 	uint8_t __ubyte_4E; // 0x4E
-	unknown_fields(0x1); // 0x4F
+	unsigned char __unknown_field_4F; // 0x4F
 	union {
 		int32_t flags; // 0x50
 		struct {
@@ -3834,7 +3840,8 @@ struct Config {
 	};
 	int32_t window_x; // 0x54
 	int32_t window_y; // 0x58
-	unknown_fields(0x2C); // 0x5C
+	unsigned char __unknown_fields_5C[0x2C]; // 0x5C
+	// 0x88
 	
 	inline void zero_contents() {
 		zero_this();
@@ -3865,30 +3872,37 @@ struct Config {
 	inline Config() {
 		this->initialize();
 	}
+	// horrible hack
+	inline constexpr Config(int)
+		: version(), joypad_mapping(), xinput_mapping(), keyboard_mapping(), deadzone_x(), deadzone_y(), __color_mode(), bgm_type(), sfx_type(),
+		resolution(), frame_skip(), __ubyte_49(), bgm_volume(), sound_volume(), __byte_4C(), input_method(), __ubyte_4E(), __unknown_field_4F(),
+		flags(), window_x(), window_y(), __unknown_fields_5C()
+	{}
 };
-#pragma region // Config Validation
-VFO(0x0, Config, version);
-VFO(0x4, Config, joypad_mapping);
-VFO(0x18, Config, xinput_mapping);
-VFO(0x2C, Config, keyboard_mapping);
-VFO(0x40, Config, deadzone_x);
-VFO(0x42, Config, deadzone_y);
-VFO(0x44, Config, __color_mode);
-VFO(0x45, Config, bgm_type);
-VFO(0x46, Config, sfx_type);
-VFO(0x47, Config, resolution);
-VFO(0x48, Config, frame_skip);
-VFO(0x49, Config, __ubyte_49);
-VFO(0x4A, Config, bgm_volume);
-VFO(0x4B, Config, sound_volume);
-VFO(0x4C, Config, __byte_4C);
-VFO(0x4D, Config, input_method);
-VFO(0x4E, Config, __ubyte_4E);
-VFO(0x50, Config, flags);
-VFO(0x54, Config, window_x);
-VFO(0x58, Config, window_y);
-VSS(0x88, Config);
-#pragma endregion
+// Config Validation
+#define VTYPE Config
+VFO(0x0, version);
+VFO(0x4, joypad_mapping);
+VFO(0x18, xinput_mapping);
+VFO(0x2C, keyboard_mapping);
+VFO(0x40, deadzone_x);
+VFO(0x42, deadzone_y);
+VFO(0x44, __color_mode);
+VFO(0x45, bgm_type);
+VFO(0x46, sfx_type);
+VFO(0x47, resolution);
+VFO(0x48, frame_skip);
+VFO(0x49, __ubyte_49);
+VFO(0x4A, bgm_volume);
+VFO(0x4B, sound_volume);
+VFO(0x4C, __byte_4C);
+VFO(0x4D, input_method);
+VFO(0x4E, __ubyte_4E);
+VFO(0x50, flags);
+VFO(0x54, window_x);
+VFO(0x58, window_y);
+VSS(0x88);
+#undef VTYPE
 
 // size: 0x10
 struct ZUN_COLORVALUE {
@@ -3968,13 +3982,14 @@ public:
 		return rhs * lhs;
 	}
 };
-#pragma region // StageSky Validation
-VFO32(0x0, StageSky, begin_distance);
-VFO32(0x4, StageSky, end_distance);
-VFO32(0x8, StageSky, color_components);
-VFO32(0x18, StageSky, color);
-VSS32(0x1C, StageSky);
-#pragma endregion
+// StageSky Validation
+#define VTYPE StageSky
+VFO32(0x0, begin_distance);
+VFO32(0x4, end_distance);
+VFO32(0x8, color_components);
+VFO32(0x18, color);
+VSS32(0x1C);
+#undef VTYPE
 
 enum CameraID : int32_t {
 	Camera0 = 0,
@@ -4033,28 +4048,29 @@ struct Camera {
 		};
 	}
 };
-#pragma region // Camera Validation
-VFO32(0x0, Camera, position);
-VFO32(0xC, Camera, facing);
-VFO32(0x18, Camera, rotation);
-VFO32(0x24, Camera, facing_normalized);
-VFO32(0x30, Camera, __side_vector);
-VFO32(0x3C, Camera, __shaking_position);
-VFO32(0x48, Camera, __shaking_facing);
-VFO32(0x54, Camera, fov);
-VFO32(0x58, Camera, window_resolution);
-VFO32(0x60, Camera, view_matrix);
-VFO32(0xA0, Camera, projection_matrix);
-VFO32(0xE0, Camera, viewport);
-VFO32(0xF8, Camera, camera_index);
-VFO32(0xFC, Camera, __vertex_offsetA);
-VFO32(0x104, Camera, __vertex_offsetB);
-VFO32(0x10C, Camera, __viewport_10C);
-VFO32(0x124, Camera, __viewport_124);
-VFO32(0x13C, Camera, __last_position_delta);
-VFO32(0x148, Camera, sky);
-VSS32(0x164, Camera);
-#pragma endregion
+// Camera Validation
+#define VTYPE Camera
+VFO32(0x0, position);
+VFO32(0xC, facing);
+VFO32(0x18, rotation);
+VFO32(0x24, facing_normalized);
+VFO32(0x30, __side_vector);
+VFO32(0x3C, __shaking_position);
+VFO32(0x48, __shaking_facing);
+VFO32(0x54, fov);
+VFO32(0x58, window_resolution);
+VFO32(0x60, view_matrix);
+VFO32(0xA0, projection_matrix);
+VFO32(0xE0, viewport);
+VFO32(0xF8, camera_index);
+VFO32(0xFC, __vertex_offsetA);
+VFO32(0x104, __vertex_offsetB);
+VFO32(0x10C, __viewport_10C);
+VFO32(0x124, __viewport_124);
+VFO32(0x13C, __last_position_delta);
+VFO32(0x148, sky);
+VSS32(0x164);
+#undef VTYPE
 
 // size: 0x124
 struct ScreenshotManager {
@@ -4065,13 +4081,14 @@ struct ScreenshotManager {
 	int32_t __int_1C; // 0x1C
 	char filename[MAX_PATH]; // 0x20
 };
-#pragma region // ScreenshotManager Validation
-VFO32(0x0, ScreenshotManager, bmp_header);
-VFO32(0x10, ScreenshotManager, info_header);
-VFO32(0x1C, ScreenshotManager, __int_1C);
-VFO32(0x20, ScreenshotManager, filename);
-VSS32(0x124, ScreenshotManager);
-#pragma endregion
+// ScreenshotManager Validation
+#define VTYPE ScreenshotManager
+VFO32(0x0, bmp_header);
+VFO32(0x10, info_header);
+VFO32(0x1C, __int_1C);
+VFO32(0x20, filename);
+VSS32(0x124);
+#undef VTYPE
 
 typedef struct AnmVM AnmVM;
 typedef struct AnmLoaded AnmLoaded;
@@ -4119,16 +4136,17 @@ struct ZUNThread {
 		this->stop_and_cleanup();
 	}
 };
-#pragma region // ZUNThread Validation
-//VVFO32(0x0, ZUNThread, vtable);
-VVFO32(0x4, ZUNThread, thread);
-VVFO32(0x8, ZUNThread, tid);
-VVFO32(0xC, ZUNThread, __bool_C);
-VVFO32(0x10, ZUNThread, __bool_10);
-VVFO32(0x14, ZUNThread, phModule);
-VVFO32(0x18, ZUNThread, start_func);
-VSS32(0x1C, ZUNThread);
-#pragma endregion
+// ZUNThread Validation
+#define VTYPE ZUNThread
+//VVFO32(0x0, vtable);
+VVFO32(0x4, thread);
+VVFO32(0x8, tid);
+VVFO32(0xC, __bool_C);
+VVFO32(0x10, __bool_10);
+VVFO32(0x14, phModule);
+VVFO32(0x18, start_func);
+VSS32(0x1C);
+#undef VTYPE
 
 // Couldn't figure out how to get the constructor right otherwise...
 struct ZUNThreadB : ZUNThread {
@@ -4148,15 +4166,16 @@ struct D3DThread : ZUNThread {
 	// 0x46FDD0
 	virtual ~D3DThread() NO_EH_TERMINATE {}
 };
-#pragma region // D3DThread Validation
-VSS32(0x58, D3DThread);
-#pragma endregion
+// D3DThread Validation
+#define VTYPE D3DThread
+VSS32(0x58);
+#undef VTYPE
 
 extern "C" {
-	// 0x4CD950
-	externcg D3DThread D3D_THREAD_A cgasm("_D3D_THREAD_A");
-	// 0x4CDAE0
-	externcg ZUNThread UNKNOWN_THREAD_A cgasm("_UNKNOWN_THREAD_A");
+// 0x4CD950
+externcg D3DThread D3D_THREAD_A cgasm("_D3D_THREAD_A");
+// 0x4CDAE0
+externcg ZUNThread UNKNOWN_THREAD_A cgasm("_UNKNOWN_THREAD_A");
 }
 
 // size: 0xC
@@ -4251,8 +4270,8 @@ struct ZUNTask {
 };
 
 extern "C" {
-	// 0x57095C
-	externcg size_t JOYPAD_INDEX cgasm("_JOYPAD_INDEX");
+// 0x57095C
+externcg size_t JOYPAD_INDEX cgasm("_JOYPAD_INDEX");
 }
 
 static constexpr LONG JOYPAD_MIN_RANGE = -1000;
@@ -4268,10 +4287,10 @@ dllexport gnu_noinline double vectorcall get_runtime() ASR(0x473390);
 dllexport gnu_noinline void __update_realtimes() ASR(0x4728A0);
 
 extern "C" {
-	// 0x4CF2DC
-	externcg FpsCounter* FPS_COUNTER_PTR cgasm("_FPS_COUNTER_PTR");
-	// 0x507644
-	externcg TickCounter* TICK_COUNTER_PTR cgasm("_TICK_COUNTER_PTR");
+// 0x4CF2DC
+externcg FpsCounter* FPS_COUNTER_PTR cgasm("_FPS_COUNTER_PTR");
+// 0x507644
+externcg TickCounter* TICK_COUNTER_PTR cgasm("_TICK_COUNTER_PTR");
 }
 
 // size: 0x38
@@ -4380,13 +4399,14 @@ struct TickCounter : ZUNTask {
 		return tick_counter;
 	}
 };
-#pragma region // TickCounter Validation
-VFO32(0x0, TickCounter, task_flags);
-VFO32(0x4, TickCounter, on_tick_func);
-VFO32(0x8, TickCounter, on_draw_func);
-VFO32(0xC, TickCounter, ticks);
-VSS32(0x10, TickCounter);
-#pragma endregion
+// TickCounter Validation
+#define VTYPE TickCounter
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, ticks);
+VSS32(0x10);
+#undef VTYPE
 
 // Indices used with anm_file_lookup to retrieve ANM files loaded from ECL
 enum EclAnmSourceIndex {
@@ -4450,10 +4470,10 @@ enum StageID : int32_t {
 };
 
 extern "C" {
-	// 0x4C9410
-	//externcg StageData STAGE_DATA[STAGE_COUNT] cgasm("_STAGE_DATA");
-	// 0x4CF428
-	externcg StageData* STAGE_DATA_PTR cgasm("_STAGE_DATA_PTR");
+// 0x4C9410
+//externcg StageData STAGE_DATA[STAGE_COUNT] cgasm("_STAGE_DATA");
+// 0x4CF428
+externcg StageData* STAGE_DATA_PTR cgasm("_STAGE_DATA_PTR");
 }
 
 // 0x4C9410
@@ -4475,25 +4495,6 @@ static StageData STAGE_DATA[STAGE_COUNT] = {
 				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
 				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
 			}
-#if KOISHI_DEBUG_TEST
-			,
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_background_anm_script = 24,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_cut_in_anm_script = 10,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_4, .intro_anm_script = 9,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
-			},
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_background_anm_script = 25,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_4, .spell_cut_in_anm_script = 10,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_4, .intro_anm_script = 9,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
-			}
-#endif
 		},
 		.__int_D0 = 0
 	},
@@ -4914,26 +4915,27 @@ public:
 		return this->__find_child_id_with_script(dummy, script);
 	}
 };
-#pragma region // AnmID Validation
-VFO32(0x0, AnmID, full);
-VSS32(0x4, AnmID);
-#pragma endregion
+// AnmID Validation
+#define VTYPE AnmID
+VFO32(0x0, full);
+VSS32(0x4);
+#undef VTYPE
 
 extern "C" {
-	// 0x4C5F90
-	externcg int32_t ACHIEVEMENT_MODE_STATE cgasm("_ACHIEVEMENT_MODE_STATE") ecginit(= -1);
+// 0x4C5F90
+externcg int32_t ACHIEVEMENT_MODE_STATE cgasm("_ACHIEVEMENT_MODE_STATE") ecginit(= -1);
 
-	// 0x4CF3FC
-	externcg void (*UNKNOWN_FUNC_PTR_B)() cgasm("_UNKNOWN_FUNC_PTR_B");
-	// 0x4CF400
-	externcg void (*UNKNOWN_FUNC_PTR_A)() cgasm("_UNKNOWN_FUNC_PTR_A");
+// 0x4CF3FC
+externcg void (*UNKNOWN_FUNC_PTR_B)() cgasm("_UNKNOWN_FUNC_PTR_B");
+// 0x4CF400
+externcg void (*UNKNOWN_FUNC_PTR_A)() cgasm("_UNKNOWN_FUNC_PTR_A");
 
-	// 0x5217D0
-	externcg AnmID UNKNOWN_ANM_ID_A cgasm("_UNKNOWN_ANM_ID_A");
-	// 0x5217D4
-	externcg AnmID UNKNOWN_ANM_ID_B cgasm("_UNKNOWN_ANM_ID_B");
-	// 0x5217D8
-	externcg AnmID UNKNOWN_ANM_ID_C cgasm("_UNKNOWN_ANM_ID_C");
+// 0x5217D0
+externcg AnmID UNKNOWN_ANM_ID_A cgasm("_UNKNOWN_ANM_ID_A");
+// 0x5217D4
+externcg AnmID UNKNOWN_ANM_ID_B cgasm("_UNKNOWN_ANM_ID_B");
+// 0x5217D8
+externcg AnmID UNKNOWN_ANM_ID_C cgasm("_UNKNOWN_ANM_ID_C");
 }
 
 typedef struct LoadingThread LoadingThread;
@@ -4965,92 +4967,95 @@ enum class GameMode : int32_t {
 
 // size: 0xB60
 struct Supervisor {
-	HINSTANCE current_instance; // 0x0
-	LPDIRECT3D9 d3d; // 0x4
-	LPDIRECT3DDEVICE9 d3d_device; // 0x8
-	LPDIRECTINPUT8 dinput; // 0xC
-	RECT window_rect; // 0x10
-	LPDIRECTINPUTDEVICE8 keyboard_device; // 0x20;
-	LPDIRECTINPUTDEVICE8 joypad_devices[2]; // 0x24
-	DIDEVCAPS joypad_caps; // 0x2C
-	HWND main_window_handle; // 0x58
+	HINSTANCE current_instance{}; // 0x0
+	LPDIRECT3D9 d3d{}; // 0x4
+	LPDIRECT3DDEVICE9 d3d_device{}; // 0x8
+	LPDIRECTINPUT8 dinput{}; // 0xC
+	RECT window_rect{}; // 0x10
+	LPDIRECTINPUTDEVICE8 keyboard_device{}; // 0x20;
+	LPDIRECTINPUTDEVICE8 joypad_devices[2]{}; // 0x24
+	DIDEVCAPS joypad_caps{}; // 0x2C
+	HWND main_window_handle{}; // 0x58
 	
 	// These fields are obsolete and never referenced
-	D3DMATRIXZ unused_view_matrix; // 0x5C
-	D3DMATRIXZ unused_projection_matrix; // 0x9C
-	D3DVIEWPORT9 unused_viewport; // 0xDC
+	D3DMATRIXZ unused_view_matrix{}; // 0x5C
+	D3DMATRIXZ unused_projection_matrix{}; // 0x9C
+	D3DVIEWPORT9 unused_viewport{}; // 0xDC
 
-	D3DPRESENT_PARAMETERS present_parameters; // 0xF4
-	unknown_fields(0x70); // 0x12C
-	D3DDISPLAYMODE display_mode; // 0x19C
-	LPDIRECT3DSURFACE9 __surface_1AC; // 0x1AC
-	LPDIRECT3DSURFACE9 __surface_1B0; // 0x1B0
-	LPDIRECT3DSURFACE9 back_buffer; // 0x1B4
-	unknown_fields(0x4); // 0x1B8
-	AnmVM* __arcade_vm_ptr_A; // 0x1BC
-	AnmVM* __arcade_vm_ptr_B; // 0x1C0
-	AnmVM* __arcade_vm_ptr_C; // 0x1C4
-	AnmVM* __arcade_vm_ptr_D; // 0x1C8
-	unknown_fields(0x4); // 0x1CC
-	AnmID __vm_id_1D0; // 0x1D0
-	Config config; // 0x1D4
-	Camera cameras[4]; // 0x25C
-	Camera* current_camera_ptr; // 0x7EC
-	int32_t current_camera_index; // 0x7F0
-	GameMode gamemode_current; // 0x7F4
-	GameMode gamemode_switch; // 0x7F8
-	GameMode gamemode_previous; // 0x7FC
-	int __dword_800; // 0x800
-	BOOL __bool_804; // 0x804
-	BOOL __bool_808; // 0x808
-	unknown_fields(0xC); // 0x80C
-	int __counter_818; // 0x818 unk198 from EoSD decomp
-	unknown_fields(0x4); // 0x81C
-	BOOL disable_vsync; // 0x820
+	D3DPRESENT_PARAMETERS present_parameters{}; // 0xF4
+	unknown_fields(0x70) {}; // 0x12C
+	D3DDISPLAYMODE display_mode{}; // 0x19C
+	LPDIRECT3DSURFACE9 __surface_1AC{}; // 0x1AC
+	LPDIRECT3DSURFACE9 __surface_1B0{}; // 0x1B0
+	LPDIRECT3DSURFACE9 back_buffer{}; // 0x1B4
+	unknown_fields(0x4) {}; // 0x1B8
+	AnmVM* __arcade_vm_ptr_A{}; // 0x1BC
+	AnmVM* __arcade_vm_ptr_B{}; // 0x1C0
+	AnmVM* __arcade_vm_ptr_C{}; // 0x1C4
+	AnmVM* __arcade_vm_ptr_D{}; // 0x1C8
+	unknown_fields(0x4) {}; // 0x1CC
+	AnmID __vm_id_1D0{}; // 0x1D0
+	Config config{0}; // 0x1D4
+	Camera cameras[4]{}; // 0x25C
+	Camera* current_camera_ptr{}; // 0x7EC
+	int32_t current_camera_index{}; // 0x7F0
+	GameMode gamemode_current{}; // 0x7F4
+	GameMode gamemode_switch{}; // 0x7F8
+	GameMode gamemode_previous{}; // 0x7FC
+	int __dword_800{}; // 0x800
+	BOOL __bool_804{}; // 0x804
+	BOOL __bool_808{}; // 0x808
+	unknown_fields(0xC) {}; // 0x80C
+	int __counter_818{}; // 0x818 unk198 from EoSD decomp
+	unknown_fields(0x4) {}; // 0x81C
+	BOOL disable_vsync{}; // 0x820
 
 	// More legacy fields that don't do anything
-	BOOL __lockable_back_buffer; // 0x824
-	int32_t __eosd_last_frame_time; // 0x828
+	BOOL __lockable_back_buffer{}; // 0x824
+	int32_t __eosd_last_frame_time{}; // 0x828
 
-	AnmLoaded* text_anm; // 0x82C
-	unknown_fields(0x4); // 0x830
+	AnmLoaded* text_anm{}; // 0x82C
+	unknown_fields(0x4) {}; // 0x830
 	union {
 		uint32_t flags; // 0x834
 		struct {
-			uint32_t __unknown_flag_su_D : 1; // 1
-			uint32_t __unknown_flag_su_C : 1; // 2
-			uint32_t full_color_mode : 1; // 3
+			uint32_t __unknown_flag_su_D : 1 = false; // 1
+			uint32_t __unknown_flag_su_C : 1 = false; // 2
+			uint32_t full_color_mode : 1 = false; // 3
 			uint32_t : 1; // 4
-			uint32_t __force_pause : 1; // 5
+			uint32_t __force_pause : 1 = false; // 5
 			uint32_t : 1; // 6
-			uint32_t __unknown_flag_su_A : 1; // 7
-			uint32_t quitting : 2; // 8-9 why is this two bits???
-			uint32_t : 2; // 10-11
-			uint32_t __unknown_flag_su_G : 1; // 12
-			uint32_t : 1; // 13
-			uint32_t __unknown_flag_su_B : 1; // 14
+			uint32_t __unknown_flag_su_A : 1 = true; // 7
+			uint32_t quitting : 2 = false; // 8-9 why is this two bits???
+			uint32_t __unknown_flag_su_H : 1 = true; // 10
+			uint32_t : 1; // 11
+			uint32_t __unknown_flag_su_G : 1 = false; // 12
+			uint32_t __unknown_flag_su_I : 1 = true; // 13
+			uint32_t __unknown_flag_su_B : 1 = false; // 14
+			uint32_t __unknown_flag_su_J : 1 = false; // 15
+			uint32_t : 0;
 		};
 	};
-	uint32_t initial_rng_seed; // 0x838
-	unknown_fields(0x4); // 0x83C
-	D3DCAPS9 d3dcaps; // 0x840
-	ScreenshotManager screenshot_manager; // 0x970
-	ZUNThread __thread_A94; // 0xA94
-	ZUNThread __thread_AB0; // 0xAB0
-	int __int_ACC; // 0xACC
-	int32_t __int_AD0; // 0xAD0
-	unknown_fields(0x54); // 0xAD4
-	BOOL fog_enabled; // 0xB28
-	BOOL zwrite_enabled; // 0xB2C
-	int32_t game_exe_checksum; // 0xB30
-	int32_t game_exe_file_size; // 0xB34
-	int32_t ver_file_size; // 0xB38
-	void* ver_file_buffer; // 0xB3C
-	LoadingThread* loading_thread_ptr; // 0xB40
-	unknown_fields(0xC); // 0xB44
-	double __frame_update_time; // 0xB50
-	D3DCOLOR background_color; // 0xB58
-	probably_padding_bytes(0x4); // 0xB5C
+	uint32_t initial_rng_seed{}; // 0x838
+	unknown_fields(0x4) {}; // 0x83C
+	D3DCAPS9 d3dcaps{}; // 0x840
+	ScreenshotManager screenshot_manager{}; // 0x970
+	ZUNThread __thread_A94{}; // 0xA94
+	ZUNThread __thread_AB0{}; // 0xAB0
+	int __int_ACC{}; // 0xACC
+	int32_t __int_AD0{}; // 0xAD0
+	unknown_fields(0x54) {}; // 0xAD4
+	BOOL fog_enabled{}; // 0xB28
+	BOOL zwrite_enabled{}; // 0xB2C
+	int32_t game_exe_checksum{}; // 0xB30
+	int32_t game_exe_file_size{}; // 0xB34
+	int32_t ver_file_size{}; // 0xB38
+	void* ver_file_buffer{}; // 0xB3C
+	LoadingThread* loading_thread_ptr{}; // 0xB40
+	unknown_fields(0xC) {}; // 0xB44
+	double __frame_update_time{}; // 0xB50
+	D3DCOLOR background_color{}; // 0xB58
+	probably_padding_bytes(0x4) {}; // 0xB5C
 	// 0xB60
 
 	// 0x456180
@@ -5185,67 +5190,68 @@ public:
 	// 0x475380
 	dllexport gnu_noinline static ZUNResult __sub_475380() ASR(0x475380);
 };
-#pragma region // Supervisor Validation
-VFO32(0x0, Supervisor, current_instance);
-VFO32(0x4, Supervisor, d3d);
-VFO32(0x8, Supervisor, d3d_device);
-VFO32(0xC, Supervisor, dinput);
-VFO32(0x10, Supervisor, window_rect);
-VFO32(0x20, Supervisor, keyboard_device);
-VFO32(0x24, Supervisor, joypad_devices);
-VFO32(0x2C, Supervisor, joypad_caps);
-VFO32(0x58, Supervisor, main_window_handle);
-VFO32(0x5C, Supervisor, unused_view_matrix);
-VFO32(0x9C, Supervisor, unused_projection_matrix);
-VFO32(0xDC, Supervisor, unused_viewport);
-VFO32(0xF4, Supervisor, present_parameters);
-VFO32(0x19C, Supervisor, display_mode);
-VFO32(0x1AC, Supervisor, __surface_1AC);
-VFO32(0x1B0, Supervisor, __surface_1B0);
-VFO32(0x1B4, Supervisor, back_buffer);
-VFO32(0x1BC, Supervisor, __arcade_vm_ptr_A);
-VFO32(0x1C0, Supervisor, __arcade_vm_ptr_B);
-VFO32(0x1C4, Supervisor, __arcade_vm_ptr_C);
-VFO32(0x1C8, Supervisor, __arcade_vm_ptr_D);
-VFO32(0x1D0, Supervisor, __vm_id_1D0);
-VFO32(0x1D4, Supervisor, config);
-VFO32(0x25C, Supervisor, cameras);
-VFO32(0x7EC, Supervisor, current_camera_ptr);
-VFO32(0x7F0, Supervisor, current_camera_index);
-VFO32(0x7F4, Supervisor, gamemode_current);
-VFO32(0x7F8, Supervisor, gamemode_switch);
-VFO32(0x7FC, Supervisor, gamemode_previous);
-VFO32(0x800, Supervisor, __dword_800);
-VFO32(0x804, Supervisor, __bool_804);
-VFO32(0x808, Supervisor, __bool_808);
-VFO32(0x818, Supervisor, __counter_818);
-VFO32(0x820, Supervisor, disable_vsync);
-VFO32(0x824, Supervisor, __lockable_back_buffer);
-VFO32(0x828, Supervisor, __eosd_last_frame_time);
-VFO32(0x82C, Supervisor, text_anm);
-VFO32(0x834, Supervisor, flags);
-VFO32(0x838, Supervisor, initial_rng_seed);
-VFO32(0x840, Supervisor, d3dcaps);
-VFO32(0x970, Supervisor, screenshot_manager);
-VFO32(0xA94, Supervisor, __thread_A94);
-VFO32(0xAB0, Supervisor, __thread_AB0);
-VFO32(0xACC, Supervisor, __int_ACC);
-VFO32(0xAD0, Supervisor, __int_AD0);
-VFO32(0xB28, Supervisor, fog_enabled);
-VFO32(0xB2C, Supervisor, zwrite_enabled);
-VFO32(0xB30, Supervisor, game_exe_checksum);
-VFO32(0xB34, Supervisor, game_exe_file_size);
-VFO32(0xB38, Supervisor, ver_file_size);
-VFO32(0xB3C, Supervisor, ver_file_buffer);
-VFO32(0xB40, Supervisor, loading_thread_ptr);
-VFO32(0xB50, Supervisor, __frame_update_time);
-VFO32(0xB58, Supervisor, background_color);
-VSS32(0xB60, Supervisor);
-#pragma endregion
+// Supervisor Validation
+#define VTYPE Supervisor
+VFO32(0x0, current_instance);
+VFO32(0x4, d3d);
+VFO32(0x8, d3d_device);
+VFO32(0xC, dinput);
+VFO32(0x10, window_rect);
+VFO32(0x20, keyboard_device);
+VFO32(0x24, joypad_devices);
+VFO32(0x2C, joypad_caps);
+VFO32(0x58, main_window_handle);
+VFO32(0x5C, unused_view_matrix);
+VFO32(0x9C, unused_projection_matrix);
+VFO32(0xDC, unused_viewport);
+VFO32(0xF4, present_parameters);
+VFO32(0x19C, display_mode);
+VFO32(0x1AC, __surface_1AC);
+VFO32(0x1B0, __surface_1B0);
+VFO32(0x1B4, back_buffer);
+VFO32(0x1BC, __arcade_vm_ptr_A);
+VFO32(0x1C0, __arcade_vm_ptr_B);
+VFO32(0x1C4, __arcade_vm_ptr_C);
+VFO32(0x1C8, __arcade_vm_ptr_D);
+VFO32(0x1D0, __vm_id_1D0);
+VFO32(0x1D4, config);
+VFO32(0x25C, cameras);
+VFO32(0x7EC, current_camera_ptr);
+VFO32(0x7F0, current_camera_index);
+VFO32(0x7F4, gamemode_current);
+VFO32(0x7F8, gamemode_switch);
+VFO32(0x7FC, gamemode_previous);
+VFO32(0x800, __dword_800);
+VFO32(0x804, __bool_804);
+VFO32(0x808, __bool_808);
+VFO32(0x818, __counter_818);
+VFO32(0x820, disable_vsync);
+VFO32(0x824, __lockable_back_buffer);
+VFO32(0x828, __eosd_last_frame_time);
+VFO32(0x82C, text_anm);
+VFO32(0x834, flags);
+VFO32(0x838, initial_rng_seed);
+VFO32(0x840, d3dcaps);
+VFO32(0x970, screenshot_manager);
+VFO32(0xA94, __thread_A94);
+VFO32(0xAB0, __thread_AB0);
+VFO32(0xACC, __int_ACC);
+VFO32(0xAD0, __int_AD0);
+VFO32(0xB28, fog_enabled);
+VFO32(0xB2C, zwrite_enabled);
+VFO32(0xB30, game_exe_checksum);
+VFO32(0xB34, game_exe_file_size);
+VFO32(0xB38, ver_file_size);
+VFO32(0xB3C, ver_file_buffer);
+VFO32(0xB40, loading_thread_ptr);
+VFO32(0xB50, __frame_update_time);
+VFO32(0xB58, background_color);
+VSS32(0xB60);
+#undef VTYPE
 
 extern "C" {
-	// 0x4CCDF0
-	externcg Supervisor SUPERVISOR cgasm("_SUPERVISOR");
+// 0x4CCDF0
+externcg ecgconstinit Supervisor SUPERVISOR cgasm("_SUPERVISOR");
 }
 
 inline UpdateFuncRegistry::~UpdateFuncRegistry() NO_EH_TERMINATE {
@@ -5482,15 +5488,16 @@ struct SoundData {
 	int __int_10; // 0x10
 	// 0x14
 };
-#pragma region // SoundData Validation
-VFO32(0x0, SoundData, id);
-VFO32(0x4, SoundData, filename_index);
-VFO32(0x8, SoundData, volume);
-VFO32(0xA, SoundData, __short_A);
-VFO32(0xC, SoundData, play_flags);
-VFO32(0x10, SoundData, __int_10);
-VSS32(0x14, SoundData);
-#pragma endregion
+// SoundData Validation
+#define VTYPE SoundData
+VFO32(0x0, id);
+VFO32(0x4, filename_index);
+VFO32(0x8, volume);
+VFO32(0xA, __short_A);
+VFO32(0xC, play_flags);
+VFO32(0x10, __int_10);
+VSS32(0x14);
+#undef VTYPE
 
 /*
 // size: 0x12
@@ -5505,7 +5512,9 @@ struct WAVEFORMATEX {
 	// 0x12
 } 
 */
-VSS32(0x12, WAVEFORMATEX);
+#define VTYPE WAVEFORMATEX
+VSS(0x12);
+#undef VTYPE
 
 // size: 0x34
 struct ThBgmFormat {
@@ -5518,15 +5527,16 @@ struct ThBgmFormat {
 	padding_bytes(0x2); // 0x32
 	// 0x34
 };
-#pragma region // ThBgmFormat Validation
-VFO32(0x0, ThBgmFormat, filename);
-VFO32(0x10, ThBgmFormat, offset);
-VFO32(0x14, ThBgmFormat, buffer_size);
-VFO32(0x18, ThBgmFormat, pre_loop_length);
-VFO32(0x1C, ThBgmFormat, length);
-VFO32(0x20, ThBgmFormat, wave_format);
-VSS32(0x34, ThBgmFormat);
-#pragma endregion
+// ThBgmFormat Validation
+#define VTYPE ThBgmFormat
+VFO(0x0, filename);
+VFO(0x10, offset);
+VFO(0x14, buffer_size);
+VFO(0x18, pre_loop_length);
+VFO(0x1C, length);
+VFO(0x20, wave_format);
+VSS(0x34);
+#undef VTYPE
 
 struct WavFileHeader {
 	char riff_text[4]; // 0x0
@@ -5583,15 +5593,16 @@ struct SoundEffectData {
 	// 0x4776F0
 	dllexport gnu_noinline ZUNResult thiscall initialize(const char* filename) ASR(0x4776F0);
 };
-#pragma region // SoundEffectData Validation
-VFO32(0x0, SoundEffectData, sound_buffer);
-VFO32(0x4, SoundEffectData, __int_4);
-VFO32(0x8, SoundEffectData, data);
-VFO32(0xC, SoundEffectData, __int_C);
-VFO32(0x10, SoundEffectData, panning);
-VFO32(0x14, SoundEffectData, __playing);
-VSS32(0x18, SoundEffectData);
-#pragma endregion
+// SoundEffectData Validation
+#define VTYPE SoundEffectData
+VFO32(0x0, sound_buffer);
+VFO32(0x4, __int_4);
+VFO32(0x8, data);
+VFO32(0xC, __int_C);
+VFO32(0x10, panning);
+VFO32(0x14, __playing);
+VSS32(0x18);
+#undef VTYPE
 
 enum SoundCommandType : int32_t {
 	SndCmdEmpty = 0,
@@ -5614,13 +5625,14 @@ struct SoundCommand {
 	char text_buffer[0x100]; // 0xC
 	// 0x10C
 };
-#pragma region // SoundCommand Validation
-VFO32(0x0, SoundCommand, type);
-VFO32(0x4, SoundCommand, arg);
-VFO32(0x8, SoundCommand, iter);
-VFO32(0xC, SoundCommand, text_buffer);
-VSS32(0x10C, SoundCommand);
-#pragma endregion
+// SoundCommand Validation
+#define VTYPE SoundCommand
+VFO32(0x0, type);
+VFO32(0x4, arg);
+VFO32(0x8, iter);
+VFO32(0xC, text_buffer);
+VSS32(0x10C);
+#undef VTYPE
 
 #define SAMPLE_BYTES(bits) ((bits) / CHAR_BIT)
 #define SAMPLE_BLOCK_ALIGN(bits, channels) (SAMPLE_BYTES(bits) * (channels))
@@ -5720,10 +5732,11 @@ struct CSoundManager {
 		HANDLE hNotifyEvent
 	) ASR(0x4898F0);
 };
-#pragma region // CSoundManager Validation
-VFO32(0x0, CSoundManager, dsound);
-VSS32(0x4, CSoundManager);
-#pragma endregion
+// CSoundManager Validation
+#define VTYPE CSoundManager
+VFO32(0x0, dsound);
+VSS32(0x4);
+#undef VTYPE
 
 // size: 0xA0
 struct CWaveFile {
@@ -5891,23 +5904,24 @@ struct CWaveFile {
 	// 0x48ACC0
 	dllexport inline HRESULT ResetFile(bool loop, uint32_t arg2) ASR(0x48ACC0);
 };
-#pragma region // CWaveFile Validation
-VFO32(0x0, CWaveFile, m_hmmio);
-VFO32(0x4, CWaveFile, m_ck);
-VFO32(0x18, CWaveFile, m_ckRiff);
-VFO32(0x2C, CWaveFile, m_dwSize);
-VFO32(0x78, CWaveFile, __wave_handle_valid);
-VFO32(0x7C, CWaveFile, m_bIsReadingFromMemory);
-VFO32(0x80, CWaveFile, m_pbData);
-VFO32(0x84, CWaveFile, m_pbDataCur);
-VFO32(0x88, CWaveFile, m_ulDataSize);
-VFO32(0x8C, CWaveFile, wave_file_handle);
-VFO32(0x90, CWaveFile, bgm_format);
-VFO32(0x94, CWaveFile, wave_filename);
-VFO32(0x98, CWaveFile, __int_98);
-VFO32(0x9C, CWaveFile, __loop);
-VSS32(0xA0, CWaveFile);
-#pragma endregion
+// CWaveFile Validation
+#define VTYPE CWaveFile
+VFO32(0x0, m_hmmio);
+VFO32(0x4, m_ck);
+VFO32(0x18, m_ckRiff);
+VFO32(0x2C, m_dwSize);
+VFO32(0x78, __wave_handle_valid);
+VFO32(0x7C, m_bIsReadingFromMemory);
+VFO32(0x80, m_pbData);
+VFO32(0x84, m_pbDataCur);
+VFO32(0x88, m_ulDataSize);
+VFO32(0x8C, wave_file_handle);
+VFO32(0x90, bgm_format);
+VFO32(0x94, wave_filename);
+VFO32(0x98, __int_98);
+VFO32(0x9C, __loop);
+VSS32(0xA0);
+#undef VTYPE
 
 enum FadeType : int32_t {
 	FadeNone = 0,
@@ -6277,27 +6291,28 @@ struct CSound {
 		return ret;
 	}
 };
-#pragma region // CSound Validation
-VVFO32(0x8, CSound, sound_buffer_array);
-VVFO32(0xC, CSound, __dsound_buffer_size);
-VVFO32(0x10, CSound, cwave_ptr);
-VVFO32(0x14, CSound, sound_buffer_count);
-VVFO32(0x18, CSound, __fade_progress);
-VVFO32(0x1C, CSound, __fade_length);
-VVFO32(0x20, CSound, __fade_type);
-VVFO32(0x24, CSound, priority);
-VVFO32(0x28, CSound, play_flags);
-VVFO32(0x30, CSound, __dword_30);
-VVFO32(0x38, CSound, __double_38);
-VVFO32(0x40, CSound, __double_40);
-VVFO32(0x48, CSound, __double_48);
-VVFO32(0x50, CSound, __double_50);
-VVFO32(0x58, CSound, __playing);
-VVFO32(0x5C, CSound, __paused);
-VVFO32(0x60, CSound, buffer_description);
-VVFO32(0x84, CSound, csound_manager_ptr);
-VSS32(0x88, CSound);
-#pragma endregion
+// CSound Validation
+#define VTYPE CSound
+VVFO32(0x8, sound_buffer_array);
+VVFO32(0xC, __dsound_buffer_size);
+VVFO32(0x10, cwave_ptr);
+VVFO32(0x14, sound_buffer_count);
+VVFO32(0x18, __fade_progress);
+VVFO32(0x1C, __fade_length);
+VVFO32(0x20, __fade_type);
+VVFO32(0x24, priority);
+VVFO32(0x28, play_flags);
+VVFO32(0x30, __dword_30);
+VVFO32(0x38, __double_38);
+VVFO32(0x40, __double_40);
+VVFO32(0x48, __double_48);
+VVFO32(0x50, __double_50);
+VVFO32(0x58, __playing);
+VVFO32(0x5C, __paused);
+VVFO32(0x60, buffer_description);
+VVFO32(0x84, csound_manager_ptr);
+VSS32(0x88);
+#undef VTYPE
 
 // size: 0xA8
 struct CStreamingSound : CSound {
@@ -6569,17 +6584,18 @@ public:
 		return S_OK;
 	}
 };
-#pragma region // CStreamingSound Validation
-VVFO32(0x88, CStreamingSound, m_dwLastPlayPos);
-VVFO32(0x8C, CStreamingSound, m_dwPlayProgress);
-VVFO32(0x90, CStreamingSound, m_dwNextWriteOffset);
-VVFO32(0x94, CStreamingSound, __dword_94);
-VVFO32(0x98, CStreamingSound, m_bFillNextNotificationWithSilence);
-VVFO32(0x9C, CStreamingSound, m_dwNotifySize);
-VVFO32(0xA0, CStreamingSound, m_hNotifyEvent);
-VVFO32(0xA4, CStreamingSound, __locked);
-VSS32(0xA8, CStreamingSound);
-#pragma endregion
+// CStreamingSound Validation
+#define VTYPE CStreamingSound
+VVFO32(0x88, m_dwLastPlayPos);
+VVFO32(0x8C, m_dwPlayProgress);
+VVFO32(0x90, m_dwNextWriteOffset);
+VVFO32(0x94, __dword_94);
+VVFO32(0x98, m_bFillNextNotificationWithSilence);
+VVFO32(0x9C, m_dwNotifySize);
+VVFO32(0xA0, m_hNotifyEvent);
+VVFO32(0xA4, __locked);
+VSS32(0xA8);
+#undef VTYPE
 
 // size: 0x200
 struct SoundEffectPanningData {
@@ -6587,14 +6603,15 @@ struct SoundEffectPanningData {
 	unknown_fields(0x110); // 0xF0
 	// 0x200
 };
-#pragma region // SoundEffectPanningData Validation
-VFO32(0x0, SoundEffectPanningData, data);
-VSS32(0x200, SoundEffectPanningData);
-#pragma endregion
+// SoundEffectPanningData Validation
+#define VTYPE SoundEffectPanningData
+VFO32(0x0, data);
+VSS32(0x200);
+#undef VTYPE
 
 extern "C" {
-	// 0x4C9B80
-	//externcg SoundData SOUND_DATA[SOUND_EFFECT_COUNT] cgasm("_SOUND_DATA");
+// 0x4C9B80
+//externcg SoundData SOUND_DATA[SOUND_EFFECT_COUNT] cgasm("_SOUND_DATA");
 }
 
 // WHY ISN'T THIS CONST
@@ -7018,45 +7035,47 @@ public:
 		}
 	}
 };
-#pragma region // SoundManager Validation
-VFO32(0x0, SoundManager, dsound);
-VFO32(0x4, SoundManager, sound_buffer_ptr);
-VFO32(0x8, SoundManager, timer_hwnd);
-VFO32(0xC, SoundManager, csound_manager_ptr);
-VFO32(0x10, SoundManager, sound_thread_id);
-VFO32(0x14, SoundManager, sound_thread_handle);
-VFO32(0x1C, SoundManager, active_sound_ids);
-VFO32(0x4C, SoundManager, active_sound_id_counts);
-VFO32(0x7C, SoundManager, __sound_panning);
-VFO32(0x187C, SoundManager, loaded_bgm_formats);
-VFO32(0x18BC, SoundManager, __loaded_bgm_buffers_A);
-VFO32(0x18FC, SoundManager, __loaded_bgm_buffers_B);
-VFO32(0x193C, SoundManager, loaded_bgm_buffer_sizes);
-VFO32(0x197C, SoundManager, __bgm_index_197C);
-VFO32(0x1980, SoundManager, bgm_format_file);
-VFO32(0x1A84, SoundManager, __sound_effects);
-VFO32(0x2264, SoundManager, sound_effect_files);
-VFO32(0x2384, SoundManager, __text_buffer_2384);
-VFO32(0x2484, SoundManager, sound_command_queue);
-VFO32(0x5604, SoundManager, thbgm_filename);
-VFO32(0x5704, SoundManager, cstreaming_sound_ptr);
-VFO32(0x570C, SoundManager, __notify_event);
-VFO32(0x5714, SoundManager, file_pointer_offset);
-VFO32(0x5718, SoundManager, initialization_thread);
-VFO32(0x571C, SoundManager, sfx_loading_thread);
-VFO32(0x5720, SoundManager, initialization_thread_id);
-VFO32(0x5724, SoundManager, __int_5724);
-VFO32(0x5728, SoundManager, main_window_hwnd);
-VFO32(0x572C, SoundManager, __initialized);
-VFO32(0x5730, SoundManager, bgm_volume);
-VFO32(0x5734, SoundManager, sound_volume);
-VFO32(0x5738, SoundManager, __csound_volume);
-VSS32(0x573C, SoundManager);
-#pragma endregion
+// SoundManager Validation
+#define VTYPE SoundManager
+VFO32(0x0, dsound);
+VFO32(0x4, sound_buffer_ptr);
+VFO32(0x8, timer_hwnd);
+VFO32(0xC, csound_manager_ptr);
+VFO32(0x10, sound_thread_id);
+VFO32(0x14, sound_thread_handle);
+VFO32(0x1C, active_sound_ids);
+VFO32(0x4C, active_sound_id_counts);
+VFO32(0x7C, __sound_panning);
+VFO32(0x187C, loaded_bgm_formats);
+VFO32(0x18BC, __loaded_bgm_buffers_A);
+VFO32(0x18FC, __loaded_bgm_buffers_B);
+VFO32(0x193C, loaded_bgm_buffer_sizes);
+VFO32(0x197C, __bgm_index_197C);
+VFO32(0x1980, bgm_format_file);
+VFO32(0x1A84, __sound_effects);
+VFO32(0x2264, sound_effect_files);
+VFO32(0x2384, __text_buffer_2384);
+VFO32(0x2484, sound_command_queue);
+VFO32(0x5604, thbgm_filename);
+VFO32(0x5704, cstreaming_sound_ptr);
+VFO32(0x570C, __notify_event);
+VFO32(0x5714, file_pointer_offset);
+VFO32(0x5718, initialization_thread);
+VFO32(0x571C, sfx_loading_thread);
+VFO32(0x5720, initialization_thread_id);
+VFO32(0x5724, __int_5724);
+VFO32(0x5728, main_window_hwnd);
+VFO32(0x572C, __initialized);
+VFO32(0x5730, bgm_volume);
+VFO32(0x5734, sound_volume);
+VFO32(0x5738, __csound_volume);
+VSS32(0x573C);
+#undef VTYPE
 
 extern "C" {
-	// 0x56AD80
-	externcg SoundManager SOUND_MANAGER cgasm("_SOUND_MANAGER");
+// NOT constinit
+// 0x56AD80
+externcg SoundManager SOUND_MANAGER cgasm("_SOUND_MANAGER");
 }
 
 // 0x48ACC0
@@ -7734,62 +7753,62 @@ static inline constexpr int32_t DEFAULT_BOMB_STOCKS = 3;
 
 // size: 0xFC
 struct Globals {
-	int32_t current_stage; // 0x0
-	int32_t __starting_stage; // 0x4
-	int32_t chapter; // 0x8
-	int32_t __counter_C; // 0xC (Sound related?)
-	int32_t __counter_10; // 0x10 (Sound related?)
-	int32_t __counter_14; // 0x14 (Sound related?)
-	int32_t character; // 0x18
-	int32_t shottype; // 0x1C
-	int32_t score; // 0x20
-	int32_t difficulty; // 0x24
-	int32_t continues; // 0x28
-	int32_t rank; // 0x2C
-	int32_t graze_in_stage; // 0x30
-	int32_t graze; // 0x34
-	int32_t spell_practice_id; // 0x38
-	int32_t miss_count_in_game; // 0x3C
-	int __dword_40; // 0x40 (Maybe point_items_collected_in_stage?)
-	int32_t point_items_collected_in_game; // 0x44
-	int32_t point_item_value; // 0x48
-	int32_t min_point_item_value; // 0x4C
-	int32_t max_point_item_value; // 0x50
-	int32_t money_collected_in_game; // 0x54
-	int32_t current_money; // 0x58
-	int32_t current_power; // 0x5C
-	int32_t max_power; // 0x60
-	int32_t power_per_level; // 0x64
-	int __dword_68; // 0x68
-	int32_t life_stocks; // 0x6C
-	int32_t life_fragments; // 0x70
-	int32_t lives_added; // 0x74
-	int32_t life_stock_max; // 0x78
-	int32_t bomb_stocks; // 0x7C
-	int32_t bomb_fragments; // 0x80
-	int32_t bomb_stocks_for_new_life; // 0x84
-	int32_t bomb_stock_max; // 0x88
-	int32_t __int_8C; // 0x8C
-	int32_t __int_90; // 0x90
-	int __dword_94; // 0x94
-	int __dword_98; // 0x98
-	int __dword_9C; // 0x9C
-	int __dword_A0; // 0xA0
-	int __dword_A4; // 0xA4
-	int __dword_A8; // 0xA8
-	int __dword_AC; // 0xAC
-	int __dword_B0; // 0xB0
-	int __dword_B4; // 0xB4
-	int __dword_B8; // 0xB8
-	int __dword_BC; // 0xBC
-	int __dword_C0; // 0xC0
-	Timer __timer_C4; // 0xC4
-	Timer __timer_D8; // 0xD8
-	int __dword_EC; // 0xEC
-	int __dword_F0; // 0xF0
-	int __dword_F4; // 0xF4
+	int32_t current_stage{}; // 0x0
+	int32_t __starting_stage{}; // 0x4
+	int32_t chapter{}; // 0x8
+	int32_t __counter_C{}; // 0xC (Sound related?)
+	int32_t __counter_10{}; // 0x10 (Sound related?)
+	int32_t __counter_14{}; // 0x14 (Sound related?)
+	int32_t character{}; // 0x18
+	int32_t shottype{}; // 0x1C
+	int32_t score{}; // 0x20
+	int32_t difficulty = NORMAL; // 0x24
+	int32_t continues{}; // 0x28
+	int32_t rank{}; // 0x2C
+	int32_t graze_in_stage{}; // 0x30
+	int32_t graze{}; // 0x34
+	int32_t spell_practice_id{}; // 0x38
+	int32_t miss_count_in_game{}; // 0x3C
+	int __dword_40{}; // 0x40 (Maybe point_items_collected_in_stage?)
+	int32_t point_items_collected_in_game{}; // 0x44
+	int32_t point_item_value{}; // 0x48
+	int32_t min_point_item_value{}; // 0x4C
+	int32_t max_point_item_value{}; // 0x50
+	int32_t money_collected_in_game{}; // 0x54
+	int32_t current_money{}; // 0x58
+	int32_t current_power{}; // 0x5C
+	int32_t max_power{}; // 0x60
+	int32_t power_per_level{}; // 0x64
+	int __dword_68{}; // 0x68
+	int32_t life_stocks{}; // 0x6C
+	int32_t life_fragments{}; // 0x70
+	int32_t lives_added{}; // 0x74
+	int32_t life_stock_max{}; // 0x78
+	int32_t bomb_stocks{}; // 0x7C
+	int32_t bomb_fragments{}; // 0x80
+	int32_t bomb_stocks_for_new_life{}; // 0x84
+	int32_t bomb_stock_max{}; // 0x88
+	int32_t __int_8C{}; // 0x8C
+	int32_t __int_90{}; // 0x90
+	int __dword_94{}; // 0x94
+	int __dword_98{}; // 0x98
+	int __dword_9C{}; // 0x9C
+	int __dword_A0{}; // 0xA0
+	int __dword_A4{}; // 0xA4
+	int __dword_A8{}; // 0xA8
+	int __dword_AC{}; // 0xAC
+	int __dword_B0{}; // 0xB0
+	int __dword_B4{}; // 0xB4
+	int __dword_B8{}; // 0xB8
+	int __dword_BC{}; // 0xBC
+	int __dword_C0{}; // 0xC0
+	Timer __timer_C4{nullptr}; // 0xC4
+	Timer __timer_D8{nullptr}; // 0xD8
+	int __dword_EC{}; // 0xEC
+	int __dword_F0{}; // 0xF0
+	int __dword_F4{}; // 0xF4
 	union {
-		uint32_t flags; // 0xF8
+		uint32_t flags{}; // 0xF8
 		struct {
 			uint32_t : 4; // 1-4
 			uint32_t __unknown_field_gl_A : 2; // 5-6
@@ -8070,10 +8089,10 @@ enum GameType {
 
 // 0x130
 struct GameManager {
-	int32_t __high_score; // 0x0
-	int32_t __high_score_continues; // 0x4
+	int32_t __high_score{}; // 0x0
+	int32_t __high_score_continues{}; // 0x4
 	union {
-		uint32_t flags; // 0x8
+		uint32_t flags{}; // 0x8
 		struct {
 			uint32_t __stage_restart : 1; // 1
 			uint32_t __stage_transition : 1; // 2
@@ -8084,16 +8103,16 @@ struct GameManager {
 			uint32_t __unknown_flag_gm_F : 1; // 8
 		};
 	};
-	int32_t practice_mode_life_override; // 0xC
-	int32_t continue_credits; // 0x10
-	int32_t __demo_timer; // 0x14
-	int32_t __demo_index; // 0x18
-	Globals globals; // 0x1C
-	int32_t __saved_difficulty; // 0x118
-	probably_padding_bytes(0x4); // 0x11C
-	double game_time_double; // 0x120
-	int __ending_type; // 0x128
-	probably_padding_bytes(0x4); // 0x12C
+	int32_t practice_mode_life_override{}; // 0xC
+	int32_t continue_credits{}; // 0x10
+	int32_t __demo_timer{}; // 0x14
+	int32_t __demo_index{}; // 0x18
+	Globals globals{}; // 0x1C
+	int32_t __saved_difficulty{}; // 0x118
+	probably_padding_bytes(0x4) {}; // 0x11C
+	double game_time_double{}; // 0x120
+	int __ending_type{}; // 0x128
+	probably_padding_bytes(0x4) {}; // 0x12C
 	// 0x130
 
 	// 0x406AA0
@@ -8137,8 +8156,8 @@ struct GameManager {
 };
 
 extern "C" {
-	// 0x4CCCC0
-	externcg GameManager GAME_MANAGER cgasm("_GAME_MANAGER");
+// 0x4CCCC0
+externcg ecgconstinit GameManager GAME_MANAGER cgasm("_GAME_MANAGER");
 }
 
 static inline constexpr float SCREEN_LEFT_BORDER = 32.0f;
@@ -8287,56 +8306,57 @@ struct WindowData {
 	// 0x4731B0
 	dllexport gnu_noinline void thiscall __present_setup() ASR(0x4731B0);
 };
-#pragma region // WindowData Verification
-VFO32(0x0, WindowData, window);
-VFO32(0x4, WindowData, resolution_dialogue);
-VFO32(0x8, WindowData, __unused_closing);
-VFO32(0xC, WindowData, current_instance);
-VFO32(0x10, WindowData, window_active);
-VFO32(0x14, WindowData, __show_cursor);
-VFO32(0x18, WindowData, __int_18);
-VFO32(0x1C, WindowData, __frame_counter_for_skip);
-VFO32(0x20, WindowData, performance_counter_frequency);
-VFO32(0x28, WindowData, startup_qpc_value);
-VFO32(0x30, WindowData, __bool_30);
-VFO32(0x31, WindowData, appdata_path);
-VFO32(0x1031, WindowData, exe_path);
-VFO32(0x2034, WindowData, screen_saver_active);
-VFO32(0x2038, WindowData, screen_saver_low_power_active);
-VFO32(0x203C, WindowData, screen_saver_power_off_active);
-VFO32(0x2040, WindowData, flags);
-VFO32(0x2044, WindowData, __counter_2044);
+// WindowData Verification
+#define VTYPE WindowData
+VFO32(0x0, window);
+VFO32(0x4, resolution_dialogue);
+VFO32(0x8, __unused_closing);
+VFO32(0xC, current_instance);
+VFO32(0x10, window_active);
+VFO32(0x14, __show_cursor);
+VFO32(0x18, __int_18);
+VFO32(0x1C, __frame_counter_for_skip);
+VFO32(0x20, performance_counter_frequency);
+VFO32(0x28, startup_qpc_value);
+VFO32(0x30, __bool_30);
+VFO32(0x31, appdata_path);
+VFO32(0x1031, exe_path);
+VFO32(0x2034, screen_saver_active);
+VFO32(0x2038, screen_saver_low_power_active);
+VFO32(0x203C, screen_saver_power_off_active);
+VFO32(0x2040, flags);
+VFO32(0x2044, __counter_2044);
 
-VFO32(0x2050, WindowData, scaled_window_width);
-VFO32(0x2054, WindowData, scaled_window_height);
-VFO32(0x2058, WindowData, window_width);
-VFO32(0x205C, WindowData, window_height);
-VFO32(0x2060, WindowData, display_width);
-VFO32(0x2064, WindowData, display_height);
-VFO32(0x2068, WindowData, backbuffer_width);
-VFO32(0x206C, WindowData, backbuffer_height);
-VFO32(0x2070, WindowData, game_scale);
-VFO32(0x2074, WindowData, __screen_start_x);
-VFO32(0x2078, WindowData, __screen_start_y);
-VFO32(0x207C, WindowData, __screen_height_current);
-VFO32(0x2080, WindowData, __screen_width_current);
-VFO32(0x2084, WindowData, screen_origin_full_res);
-VFO32(0x208C, WindowData, screen_origin_fixed_res);
-VFO32(0x2098, WindowData, __cur_frame_start);
-VFO32(0x20A0, WindowData, __prev_frame_start);
-VFO32(0x20A8, WindowData, __double_20A8);
-VFO32(0x20B0, WindowData, __prev_runtime);
-VFO32(0x20B8, WindowData, __prev_present_alt_end);
-VFO32(0x20C0, WindowData, __cur_present_alt_start);
+VFO32(0x2050, scaled_window_width);
+VFO32(0x2054, scaled_window_height);
+VFO32(0x2058, window_width);
+VFO32(0x205C, window_height);
+VFO32(0x2060, display_width);
+VFO32(0x2064, display_height);
+VFO32(0x2068, backbuffer_width);
+VFO32(0x206C, backbuffer_height);
+VFO32(0x2070, game_scale);
+VFO32(0x2074, __screen_start_x);
+VFO32(0x2078, __screen_start_y);
+VFO32(0x207C, __screen_height_current);
+VFO32(0x2080, __screen_width_current);
+VFO32(0x2084, screen_origin_full_res);
+VFO32(0x208C, screen_origin_fixed_res);
+VFO32(0x2098, __cur_frame_start);
+VFO32(0x20A0, __prev_frame_start);
+VFO32(0x20A8, __double_20A8);
+VFO32(0x20B0, __prev_runtime);
+VFO32(0x20B8, __prev_present_alt_end);
+VFO32(0x20C0, __cur_present_alt_start);
 
-VFO32(0x20CC, WindowData, __int_20CC);
-VFO32(0x20D0, WindowData, __int_20D0);
-VFO32(0x20D4, WindowData, __int3_array_20D4);
-#pragma endregion
+VFO32(0x20CC, __int_20CC);
+VFO32(0x20D0, __int_20D0);
+VFO32(0x20D4, __int3_array_20D4);
+#undef VTYPE
 
 extern "C" {
-	// 0x568C30
-	externcg WindowData WINDOW_DATA cgasm("_WINDOW_DATA");
+// 0x568C30
+externcg WindowData WINDOW_DATA cgasm("_WINDOW_DATA");
 }
 
 struct DInputKeyboard {
@@ -8368,20 +8388,20 @@ struct DInputKeyboard {
 };
 
 extern "C" {
-	// 0x570B98
-	externcg DInputKeyboard DINPUT_KEYS_A cgasm("_DINPUT_KEYS_A");
-	// 0x5711B0
-	externcg DInputKeyboard DINPUT_KEYS_B cgasm("_DINPUT_KEYS_B");
-	// 0x5712B0
-	externcg DInputKeyboard DINPUT_KEYS_C cgasm("_DINPUT_KEYS_C");
-	// 0x570980
-	externcg DInputKeyboard DINPUT_KEYS_D cgasm("_DINPUT_KEYS_D");
-	// 0x570FB0
-	externcg DInputKeyboard DINPUT_KEYS_E cgasm("_DINPUT_KEYS_E");
-	// 0x5710B0
-	externcg DInputKeyboard DINPUT_KEYS_F cgasm("_DINPUT_KEYS_F");
-	// 0x570A90
-	externcg DInputKeyboard DINPUT_KEYS_G cgasm("_DINPUT_KEYS_G");
+// 0x570B98
+externcg DInputKeyboard DINPUT_KEYS_A cgasm("_DINPUT_KEYS_A");
+// 0x5711B0
+externcg DInputKeyboard DINPUT_KEYS_B cgasm("_DINPUT_KEYS_B");
+// 0x5712B0
+externcg DInputKeyboard DINPUT_KEYS_C cgasm("_DINPUT_KEYS_C");
+// 0x570980
+externcg DInputKeyboard DINPUT_KEYS_D cgasm("_DINPUT_KEYS_D");
+// 0x570FB0
+externcg DInputKeyboard DINPUT_KEYS_E cgasm("_DINPUT_KEYS_E");
+// 0x5710B0
+externcg DInputKeyboard DINPUT_KEYS_F cgasm("_DINPUT_KEYS_F");
+// 0x570A90
+externcg DInputKeyboard DINPUT_KEYS_G cgasm("_DINPUT_KEYS_G");
 }
 
 typedef struct CardBlank CardBlank;
@@ -8629,26 +8649,27 @@ struct CardData {
 	// 0x416E10
 	dllexport gnu_noinline CardAvailabilityResult thiscall check_availability() const ASR(0x416E10);
 };
-#pragma region // CardData Validation
-VFO32(0x0, CardData, name);
-VFO32(0x4, CardData, id);
-VFO32(0x8, CardData, __int_8);
-VFO32(0xC, CardData, __card_type);
-VFO32(0x10, CardData, price_tier);
-VFO32(0x14, CardData, shop_weight);
-VFO32(0x18, CardData, availability);
-VFO32(0x1C, CardData, allow_duplicates);
-VFO32(0x20, CardData, __can_starting_equip);
-VFO32(0x24, CardData, __default_unlock);
-VFO32(0x28, CardData, __render_passive_in_hud);
-VFO32(0x2C, CardData, sprite_large);
-VFO32(0x30, CardData, sprite_small);
-VSS32(0x34, CardData);
-#pragma endregion
+// CardData Validation
+#define VTYPE CardData
+VFO32(0x0, name);
+VFO32(0x4, id);
+VFO32(0x8, __int_8);
+VFO32(0xC, __card_type);
+VFO32(0x10, price_tier);
+VFO32(0x14, shop_weight);
+VFO32(0x18, availability);
+VFO32(0x1C, allow_duplicates);
+VFO32(0x20, __can_starting_equip);
+VFO32(0x24, __default_unlock);
+VFO32(0x28, __render_passive_in_hud);
+VFO32(0x2C, sprite_large);
+VFO32(0x30, sprite_small);
+VSS32(0x34);
+#undef VTYPE
 
 extern "C" {
-	// 0x4C53C0
-	//externcg CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] cgasm("_CARD_DATA_TABLE");
+// 0x4C53C0
+//externcg CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] cgasm("_CARD_DATA_TABLE");
 }
 
 // 0x4C53C0
@@ -8805,15 +8826,16 @@ struct ScorefileHeader {
 		zero_this_inline();
 	}
 };
-#pragma region // ScorefileHeader Validation
-VFO(0x0, ScorefileHeader, magic);
-VFO(0x4, ScorefileHeader, file_size);
-VFO(0x8, ScorefileHeader, version_number);
-VFO(0xC, ScorefileHeader, __int_C);
-VFO(0x10, ScorefileHeader, compressed_size);
-VFO(0x14, ScorefileHeader, decompressed_size);
-VSS(0x18, ScorefileHeader);
-#pragma endregion
+// ScorefileHeader Validation
+#define VTYPE ScorefileHeader
+VFO(0x0, magic);
+VFO(0x4, file_size);
+VFO(0x8, version_number);
+VFO(0xC, __int_C);
+VFO(0x10, compressed_size);
+VFO(0x14, decompressed_size);
+VSS(0x18);
+#undef VTYPE
 
 static inline constexpr int32_t MAX_RECORD_NAME_LENGTH = 8;
 
@@ -8831,15 +8853,16 @@ struct ScorefileRecord {
 	unknown_fields(0x4); // 0x1C
 	// 0x20
 };
-#pragma region // ScorefileRecord Validation
-VFO(0x0, ScorefileRecord, score);
-VFO(0x4, ScorefileRecord, __stage_reached);
-VFO(0x5, ScorefileRecord, continues);
-VFO(0x6, ScorefileRecord, name);
-VFO(0x10, ScorefileRecord, time);
-VFO(0x18, ScorefileRecord, slowdown_rate);
-VSS(0x20, ScorefileRecord);
-#pragma endregion
+// ScorefileRecord Validation
+#define VTYPE ScorefileRecord
+VFO(0x0, score);
+VFO(0x4, __stage_reached);
+VFO(0x5, continues);
+VFO(0x6, name);
+VFO(0x10, time);
+VFO(0x18, slowdown_rate);
+VSS(0x20);
+#undef VTYPE
 
 static inline constexpr int32_t MAX_SPELL_CAPTURES = 99999;
 static inline constexpr int32_t MAX_SPELL_ATTEMPTS = 99999;
@@ -8883,10 +8906,11 @@ struct ScorefileSpellcard {
 		}
 	}
 };
-#pragma region // ScorefileSpellcard
-VFO(0x0, ScorefileSpellcard, name);
-VSS(0xDC, ScorefileSpellcard);
-#pragma endregion
+// ScorefileSpellcard
+#define VTYPE ScorefileSpellcard
+VFO(0x0, name);
+VSS(0xDC);
+#undef VTYPE
 
 // size: 0x8
 struct ScorefileStagePractice {
@@ -8902,12 +8926,13 @@ struct ScorefileStagePractice {
 		}
 	}
 };
-#pragma region // ScorefileStagePractice Validation
-VFO(0x0, ScorefileStagePractice, score);
-VFO(0x4, ScorefileStagePractice, cleared);
-VFO(0x5, ScorefileStagePractice, unlocked);
-VSS(0x8, ScorefileStagePractice);
-#pragma endregion
+// ScorefileStagePractice Validation
+#define VTYPE ScorefileStagePractice
+VFO(0x0, score);
+VFO(0x4, cleared);
+VFO(0x5, unlocked);
+VSS(0x8);
+#undef VTYPE
 
 // size: 0xC
 struct ScorefileSectionHeader {
@@ -8917,14 +8942,14 @@ struct ScorefileSectionHeader {
 	uint32_t size; // 0x8
 	// 0xC
 };
-#pragma region // ScorefileSectionHeader Validation
-VFO(0x0, ScorefileSectionHeader, magic);
-VFO(0x2, ScorefileSectionHeader, __version_number);
-VFO(0x4, ScorefileSectionHeader, checksum);
-VFO(0x8, ScorefileSectionHeader, size);
-VSS(0xC, ScorefileSectionHeader);
-#pragma endregion
-
+// ScorefileSectionHeader Validation
+#define VTYPE ScorefileSectionHeader
+VFO(0x0, magic);
+VFO(0x2, __version_number);
+VFO(0x4, checksum);
+VFO(0x8, size);
+VSS(0xC);
+#undef VTYPE
 
 struct ScorefileSection : ScorefileSectionHeader {
 	uint8_t data[]; // 0xC
@@ -9075,21 +9100,22 @@ struct ScorefileShottypeSection : ScorefileSectionHeader {
 		return this->spells_captured() >= SPELL_COUNT;
 	}
 };
-#pragma region // ScorefileShottypeSection Validation
-VFO(0x0, ScorefileShottypeSection, magic);
-VFO(0x2, ScorefileShottypeSection, __version_number);
-VFO(0x4, ScorefileShottypeSection, checksum);
-VFO(0x8, ScorefileShottypeSection, size);
-VFO(0xC, ScorefileShottypeSection, index);
-VFO(0x10, ScorefileShottypeSection, records);
-VFO(0x8D0, ScorefileShottypeSection, spells);
-VFO(0x64C4, ScorefileShottypeSection, __play_count);
-VFO(0x64C8, ScorefileShottypeSection, total_game_time);
-VFO(0x64D0, ScorefileShottypeSection, __total_clears);
-VFO(0x64EC, ScorefileShottypeSection, __1cc_clears);
-VFO(0x12EF0, ScorefileShottypeSection, practice);
-VSS(0x130F0, ScorefileShottypeSection);
-#pragma endregion
+// ScorefileShottypeSection Validation
+#define VTYPE ScorefileShottypeSection
+VFO(0x0, magic);
+VFO(0x2, __version_number);
+VFO(0x4, checksum);
+VFO(0x8, size);
+VFO(0xC, index);
+VFO(0x10, records);
+VFO(0x8D0, spells);
+VFO(0x64C4, __play_count);
+VFO(0x64C8, total_game_time);
+VFO(0x64D0, __total_clears);
+VFO(0x64EC, __1cc_clears);
+VFO(0x12EF0, practice);
+VSS(0x130F0);
+#undef VTYPE
 
 static inline constexpr uint16_t SCOREFILE_COMMON_SECTION_MAGIC = PackUInt16('S', 'T');
 static inline constexpr uint16_t SCOREFILE_COMMON_SECTION_VERSION_NUMBER = 6;
@@ -9159,23 +9185,24 @@ struct ScorefileCommonSection : ScorefileSectionHeader {
 		}
 	}
 };
-#pragma region // ScorefileInnerA Validation
-VFO(0x0, ScorefileCommonSection, magic);
-VFO(0x2, ScorefileCommonSection, __version_number);
-VFO(0x4, ScorefileCommonSection, checksum);
-VFO(0x8, ScorefileCommonSection, size);
-VFO(0xC, ScorefileCommonSection, __recent_name);
-VFO(0x16, ScorefileCommonSection, __endings_seen);
-VFO(0x22, ScorefileCommonSection, __bool_22);
-VFO(0x26, ScorefileCommonSection, unlocked_music);
-VFO(0x48, ScorefileCommonSection, total_game_time);
-VFO(0x50, ScorefileCommonSection, trophies);
-VFO(0xD0, ScorefileCommonSection, unlocked_cards);
-VFO(0x150, ScorefileCommonSection, __card_ids_150);
-VFO(0x1C0, ScorefileCommonSection, __int_array_1C0);
-VFO(0x1D0, ScorefileCommonSection, __short_array_1D0);
-VSS(0x3D0, ScorefileCommonSection);
-#pragma endregion
+// ScorefileInnerA Validation
+#define VTYPE ScorefileCommonSection
+VFO(0x0, magic);
+VFO(0x2, __version_number);
+VFO(0x4, checksum);
+VFO(0x8, size);
+VFO(0xC, __recent_name);
+VFO(0x16, __endings_seen);
+VFO(0x22, __bool_22);
+VFO(0x26, unlocked_music);
+VFO(0x48, total_game_time);
+VFO(0x50, trophies);
+VFO(0xD0, unlocked_cards);
+VFO(0x150, __card_ids_150);
+VFO(0x1C0, __int_array_1C0);
+VFO(0x1D0, __short_array_1D0);
+VSS(0x3D0);
+#undef VTYPE
 
 struct ScorefileBuffer {
 	ScorefileHeader header; // 0x0
@@ -9390,19 +9417,20 @@ public:
 		}
 	}
 };
-#pragma region // Scorefile Validation
-VFO(0x0, Scorefile, buffer);
-VFO(0x4, Scorefile, decompressed_buffer);
-VFO(0x8, Scorefile, shottypes);
-VFO(0x5F4B8, Scorefile, common);
-VSS(0x5F888, Scorefile);
-#pragma endregion
+// Scorefile Validation
+#define VTYPE Scorefile
+VFO(0x0, buffer);
+VFO(0x4, decompressed_buffer);
+VFO(0x8, shottypes);
+VFO(0x5F4B8, common);
+VSS(0x5F888);
+#undef VTYPE
 
 typedef struct ScorefileManager ScorefileManager;
 
 extern "C" {
-	// 0x4CF41C
-	externcg ScorefileManager* SCOREFILE_MANAGER_PTR cgasm("_SCOREFILE_MANAGER_PTR");
+// 0x4CF41C
+externcg ScorefileManager* SCOREFILE_MANAGER_PTR cgasm("_SCOREFILE_MANAGER_PTR");
 }
 
 // 0x4B7A48
@@ -9411,14 +9439,14 @@ static inline constexpr auto UNLOCK_CODE_A = ASCII_TO_DIK_ARRAY("mastersdream");
 static inline constexpr auto UNLOCK_CODE_B = ASCII_TO_DIK_ARRAY("classiclager");
 
 extern "C" {
-	// 0x570A80
-	externcg int32_t UNLOCK_CODE_A_TIMER cgasm("_UNLOCK_CODE_A_TIMER");
-	// 0x570A84
-	externcg uint32_t UNLOCK_CODE_A_CHARS_ENTERED cgasm("_UNLOCK_CODE_A_CHARS_ENTERED");
-	// 0x570B90
-	externcg int32_t UNLOCK_CODE_B_TIMER cgasm("_UNLOCK_CODE_B_TIMER");
-	// 0x570B94
-	externcg uint32_t UNLOCK_CODE_B_CHARS_ENTERED cgasm("_UNLOCK_CODE_B_CHARS_ENTERED");
+// 0x570A80
+externcg int32_t UNLOCK_CODE_A_TIMER cgasm("_UNLOCK_CODE_A_TIMER");
+// 0x570A84
+externcg uint32_t UNLOCK_CODE_A_CHARS_ENTERED cgasm("_UNLOCK_CODE_A_CHARS_ENTERED");
+// 0x570B90
+externcg int32_t UNLOCK_CODE_B_TIMER cgasm("_UNLOCK_CODE_B_TIMER");
+// 0x570B94
+externcg uint32_t UNLOCK_CODE_B_CHARS_ENTERED cgasm("_UNLOCK_CODE_B_CHARS_ENTERED");
 }
 
 // size: 0xBF158
@@ -9555,13 +9583,14 @@ struct ScorefileManager {
 		return SCOREFILE_MANAGER_PTR->primary_file.shottypes[shottype].spells[id].attempts[is_spell_practice];
 	}
 };
-#pragma region // ScorefileManager Validation
-VFO32(0x0, ScorefileManager, primary_file);
-VFO32(0x5F888, ScorefileManager, backup_file);
-VFO32(0xBF110, ScorefileManager, __int_BF110);
-VFO32(0xBF114, ScorefileManager, __int_array_BF114);
-VSS32(0xBF158, ScorefileManager);
-#pragma endregion
+// ScorefileManager Validation
+#define VTYPE ScorefileManager
+VFO32(0x0, primary_file);
+VFO32(0x5F888, backup_file);
+VFO32(0xBF110, __int_BF110);
+VFO32(0xBF114, __int_array_BF114);
+VSS32(0xBF158);
+#undef VTYPE
 
 // 0x4546A0
 dllexport gnu_noinline ZUNResult stdcall SoundManager::__play_music_with_unlock(int32_t slot, int32_t music_room_index) {
@@ -9985,20 +10014,21 @@ struct MotionData {
 		return this->base_position;
 	}
 };
-#pragma region // MotionData Validation
-VFO32(0x0, MotionData, position);
-VFO32(0xC, MotionData, base_position);
-VFO32(0x18, MotionData, speed);
-VFO32(0x1C, MotionData, angle);
-VFO32(0x20, MotionData, radius);
-VFO32(0x24, MotionData, radius_delta);
-VFO32(0x28, MotionData, ellipse_angle);
-VFO32(0x2C, MotionData, ellipse_ratio);
-VFO32(0x30, MotionData, phase_angle);
-VFO32(0x34, MotionData, misc_float3);
-VFO32(0x40, MotionData, flags);
-VSS32(0x44, MotionData);
-#pragma endregion
+// MotionData Validation
+#define VTYPE MotionData
+VFO32(0x0, position);
+VFO32(0xC, base_position);
+VFO32(0x18, speed);
+VFO32(0x1C, angle);
+VFO32(0x20, radius);
+VFO32(0x24, radius_delta);
+VFO32(0x28, ellipse_angle);
+VFO32(0x2C, ellipse_ratio);
+VFO32(0x30, phase_angle);
+VFO32(0x34, misc_float3);
+VFO32(0x40, flags);
+VSS32(0x44);
+#undef VTYPE
 
 template <typename T>
 struct ZUNAbsRel {
@@ -10358,35 +10388,40 @@ TimeEnd:
 		this->reset_timer();
 	}
 };
-#pragma region // ZUNInterp Validation
-VFO32(0x0, ZUNInterp<float>, initial_value);
-VFO32(0x4, ZUNInterp<float>, final_value);
-VFO32(0x8, ZUNInterp<float>, bezier1);
-VFO32(0xC, ZUNInterp<float>, bezier2);
-VFO32(0x10, ZUNInterp<float>, current);
-VFO32(0x14, ZUNInterp<float>, time);
-VFO32(0x28, ZUNInterp<float>, end_time);
-VFO32(0x2C, ZUNInterp<float>, mode);
-VSS32(0x30, ZUNInterp<float>);
-VFO32(0x0, ZUNInterp<Float2>, initial_value);
-VFO32(0x8, ZUNInterp<Float2>, final_value);
-VFO32(0x10, ZUNInterp<Float2>, bezier1);
-VFO32(0x18, ZUNInterp<Float2>, bezier2);
-VFO32(0x20, ZUNInterp<Float2>, current);
-VFO32(0x28, ZUNInterp<Float2>, time);
-VFO32(0x3C, ZUNInterp<Float2>, end_time);
-VFO32(0x40, ZUNInterp<Float2>, mode);
-VSS32(0x44, ZUNInterp<Float2>);
-VFO32(0x0, ZUNInterp<Float3>, initial_value);
-VFO32(0xC, ZUNInterp<Float3>, final_value);
-VFO32(0x18, ZUNInterp<Float3>, bezier1);
-VFO32(0x24, ZUNInterp<Float3>, bezier2);
-VFO32(0x30, ZUNInterp<Float3>, current);
-VFO32(0x3C, ZUNInterp<Float3>, time);
-VFO32(0x50, ZUNInterp<Float3>, end_time);
-VFO32(0x54, ZUNInterp<Float3>, mode);
-VSS32(0x58, ZUNInterp<Float3>);
-#pragma endregion
+// ZUNInterp Validation
+#define VTYPE ZUNInterp<float>
+VFO32(0x0, initial_value);
+VFO32(0x4, final_value);
+VFO32(0x8, bezier1);
+VFO32(0xC, bezier2);
+VFO32(0x10, current);
+VFO32(0x14, time);
+VFO32(0x28, end_time);
+VFO32(0x2C, mode);
+VSS32(0x30);
+#undef VTYPE
+#define VTYPE ZUNInterp<Float2>
+VFO32(0x0, initial_value);
+VFO32(0x8, final_value);
+VFO32(0x10, bezier1);
+VFO32(0x18, bezier2);
+VFO32(0x20, current);
+VFO32(0x28, time);
+VFO32(0x3C, end_time);
+VFO32(0x40, mode);
+VSS32(0x44);
+#undef VTYPE
+#define VTYPE ZUNInterp<Float3>
+VFO32(0x0, initial_value);
+VFO32(0xC, final_value);
+VFO32(0x18, bezier1);
+VFO32(0x24, bezier2);
+VFO32(0x30, current);
+VFO32(0x3C, time);
+VFO32(0x50, end_time);
+VFO32(0x54, mode);
+VSS32(0x58);
+#undef VTYPE
 
 template <typename T, typename E>
 struct ZUNInterpExImpl { //                 0x68    0x50
@@ -10585,30 +10620,33 @@ template <> struct ZUNInterpEx<Float2> : ZUNInterpExImpl<Float2, float> {};
 template <> struct ZUNInterpEx<Float3> : ZUNInterpExImpl<Float3, float> {};
 template <> struct ZUNInterpEx<Int2> : ZUNInterpExImpl<Int2, int32_t> {};
 template <> struct ZUNInterpEx<Int3> : ZUNInterpExImpl<Int3, int32_t> {};
-#pragma region // ZUNInterpEx Validation
-VFO32(0x0, ZUNInterpEx<Float2>, current);
-VFO32(0x8, ZUNInterpEx<Float2>, initial_value);
-VFO32(0x10, ZUNInterpEx<Float2>, final_value);
-VFO32(0x18, ZUNInterpEx<Float2>, bezier1);
-VFO32(0x20, ZUNInterpEx<Float2>, bezier2);
-VFO32(0x28, ZUNInterpEx<Float2>, time);
-VFO32(0x3C, ZUNInterpEx<Float2>, end_time);
-VFO32(0x40, ZUNInterpEx<Float2>, axis_modes);
-VFO32(0x48, ZUNInterpEx<Float2>, combined_mode);
-VFO32(0x4C, ZUNInterpEx<Float2>, flags);
-VSS32(0x50, ZUNInterpEx<Float2>);
-VFO32(0x0, ZUNInterpEx<Float3>, current);
-VFO32(0xC, ZUNInterpEx<Float3>, initial_value);
-VFO32(0x18, ZUNInterpEx<Float3>, final_value);
-VFO32(0x24, ZUNInterpEx<Float3>, bezier1);
-VFO32(0x30, ZUNInterpEx<Float3>, bezier2);
-VFO32(0x3C, ZUNInterpEx<Float3>, time);
-VFO32(0x50, ZUNInterpEx<Float3>, end_time);
-VFO32(0x54, ZUNInterpEx<Float3>, axis_modes);
-VFO32(0x60, ZUNInterpEx<Float3>, combined_mode);
-VFO32(0x64, ZUNInterpEx<Float3>, flags);
-VSS32(0x68, ZUNInterpEx<Float3>);
-#pragma endregion
+// ZUNInterpEx Validation
+#define VTYPE ZUNInterpEx<Float2>
+VFO32(0x0, current);
+VFO32(0x8, initial_value);
+VFO32(0x10, final_value);
+VFO32(0x18, bezier1);
+VFO32(0x20, bezier2);
+VFO32(0x28, time);
+VFO32(0x3C, end_time);
+VFO32(0x40, axis_modes);
+VFO32(0x48, combined_mode);
+VFO32(0x4C, flags);
+VSS32(0x50);
+#undef VTYPE
+#define VTYPE ZUNInterpEx<Float3>
+VFO32(0x0, current);
+VFO32(0xC, initial_value);
+VFO32(0x18, final_value);
+VFO32(0x24, bezier1);
+VFO32(0x30, bezier2);
+VFO32(0x3C, time);
+VFO32(0x50, end_time);
+VFO32(0x54, axis_modes);
+VFO32(0x60, combined_mode);
+VFO32(0x64, flags);
+VSS32(0x68);
+#undef VTYPE
 
 #define SetInstr(value) \
 current_instruction = (decltype(current_instruction))(value)
@@ -10714,18 +10752,19 @@ struct EnemyInitData {
 	int32_t parent_id; // 0x50
 	// 0x54
 };
-#pragma region // EnemyInitData Validation
-VFO32(0x0, EnemyInitData, position);
-VFO32(0xC, EnemyInitData, score);
-VFO32(0x10, EnemyInitData, item_drop);
-VFO32(0x14, EnemyInitData, life);
-VFO32(0x18, EnemyInitData, mirrored);
-VFO32(0x1C, EnemyInitData, __basic_anm_update);
-VFO32(0x20, EnemyInitData, int_vars);
-VFO32(0x30, EnemyInitData, float_vars);
-VFO32(0x50, EnemyInitData, parent_id);
-VSS32(0x54, EnemyInitData);
-#pragma endregion
+// EnemyInitData Validation
+#define VTYPE EnemyInitData
+VFO32(0x0, position);
+VFO32(0xC, score);
+VFO32(0x10, item_drop);
+VFO32(0x14, life);
+VFO32(0x18, mirrored);
+VFO32(0x1C, __basic_anm_update);
+VFO32(0x20, int_vars);
+VFO32(0x30, float_vars);
+VFO32(0x50, parent_id);
+VSS32(0x54);
+#undef VTYPE
 
 // size: 0x10
 struct EclInstruction {
@@ -10739,17 +10778,18 @@ struct EclInstruction {
 	padding_bytes(0x3); // 0xD
 	unsigned char args[]; // 0x10
 };
-#pragma region // EclInstruction Validation
-VFO32(0x0, EclInstruction, time);
-VFO32(0x4, EclInstruction, opcode);
-VFO32(0x6, EclInstruction, offset_to_next);
-VFO32(0x8, EclInstruction, param_mask);
-VFO32(0xA, EclInstruction, difficulty_mask);
-VFO32(0xB, EclInstruction, param_count);
-VFO32(0xC, EclInstruction, stack_adjust);
-VFO32(0x10, EclInstruction, args);
-VSS32(0x10, EclInstruction);
-#pragma endregion
+// EclInstruction Validation
+#define VTYPE EclInstruction
+VFO(0x0, time);
+VFO(0x4, opcode);
+VFO(0x6, offset_to_next);
+VFO(0x8, param_mask);
+VFO(0xA, difficulty_mask);
+VFO(0xB, param_count);
+VFO(0xC, stack_adjust);
+VFO(0x10, args);
+VSS(0x10);
+#undef VTYPE
 
 #define EclStackCount 0x400
 #define EclStackSize sizeof(EclStackItem[EclStackCount])
@@ -10764,11 +10804,12 @@ struct EclLocation {
 		this->sub_index = -1;
 	}
 };
-#pragma region // EclLocation Validation
-VFO32(0x0, EclLocation, sub_index);
-VFO32(0x4, EclLocation, instruction_offset);
-VSS32(0x8, EclLocation);
-#pragma endregion
+// EclLocation Validation
+#define VTYPE EclLocation
+VFO32(0x0, sub_index);
+VFO32(0x4, instruction_offset);
+VSS32(0x8);
+#undef VTYPE
 
 typedef char EclSubName[64];
 
@@ -11054,12 +11095,13 @@ struct EclStack {
 		this->zero_contents();
 	}
 };
-#pragma region // EclStack Validation
-VFO32(0x0, EclStack, data);
-VFO32(0x1000, EclStack, pointer);
-VFO32(0x1004, EclStack, base);
-VSS32(0x1008, EclStack);
-#pragma endregion
+// EclStack Validation
+#define VTYPE EclStack
+VFO32(0x0, data);
+VFO32(0x1000, pointer);
+VFO32(0x1004, base);
+VSS32(0x1008);
+#undef VTYPE
 
 // size: 0x1208
 struct EclContext {
@@ -11182,19 +11224,20 @@ public:
 	inline void basic_call(EclContext* new_context, const char* sub_name);
 #endif
 };
-#pragma region // EclContext Validation
-VFO32(0x0, EclContext, time);
-VFO32(0x4, EclContext, location);
-VFO32(0xC, EclContext, stack);
-VFO32(0x1014, EclContext, async_id);
-VFO32(0x1018, EclContext, vm);
-VFO32(0x101C, EclContext, __int_101C);
-VFO32(0x1024, EclContext, float_interps);
-VFO32(0x11A4, EclContext, float_interp_stack_offsets);
-VFO32(0x11C4, EclContext, float_interp_locations);
-VFO32(0x1204, EclContext, flags);
-VSS32(0x1208, EclContext);
-#pragma endregion
+// EclContext Validation
+#define VTYPE EclContext
+VFO32(0x0, time);
+VFO32(0x4, location);
+VFO32(0xC, stack);
+VFO32(0x1014, async_id);
+VFO32(0x1018, vm);
+VFO32(0x101C, __int_101C);
+VFO32(0x1024, float_interps);
+VFO32(0x11A4, float_interp_stack_offsets);
+VFO32(0x11C4, float_interp_locations);
+VFO32(0x1204, flags);
+VSS32(0x1208);
+#undef VTYPE
 
 using BulletEffectType = enum BulletEffectType : uint32_t;
 
@@ -11207,14 +11250,15 @@ struct BulletEffectArgs {
 	const char* string; // 0x28
 	// 0x2C
 };
-#pragma region // BulletEffectArgs Validation
-VFO32(0x0, BulletEffectArgs, float_values);
-VFO32(0x10, BulletEffectArgs, int_values);
-VFO32(0x20, BulletEffectArgs, type);
-VFO32(0x24, BulletEffectArgs, async);
-VFO32(0x28, BulletEffectArgs, string);
-VSS32(0x2C, BulletEffectArgs);
-#pragma endregion
+// BulletEffectArgs Validation
+#define VTYPE BulletEffectArgs
+VFO32(0x0, float_values);
+VFO32(0x10, int_values);
+VFO32(0x20, type);
+VFO32(0x24, async);
+VFO32(0x28, string);
+VSS32(0x2C);
+#undef VTYPE
 
 static inline constexpr int32_t BULLET_EFFECT_MAX = 24;
 
@@ -11264,32 +11308,33 @@ struct ShooterData {
 
 	inline ShooterData(int) {}
 };
-#pragma region // ShooterData Validation
-VFO32(0x0, ShooterData, type);
-VFO32(0x4, ShooterData, color);
-VFO32(0x8, ShooterData, position);
-VFO32(0x14, ShooterData, angle1);
-VFO32(0x18, ShooterData, angle2);
-VFO32(0x1C, ShooterData, speed1);
-VFO32(0x20, ShooterData, speed2);
-VFO32(0x24, ShooterData, distance);
-VFO32(0x28, ShooterData, effects);
-VFO32(0x448, ShooterData, width);
-VFO32(0x458, ShooterData, start_time);
-VFO32(0x45C, ShooterData, expand_time);
-VFO32(0x460, ShooterData, duration);
-VFO32(0x464, ShooterData, stop_time);
-VFO32(0x468, ShooterData, __laser_flags);
-VFO32(0x46C, ShooterData, count1);
-VFO32(0x46E, ShooterData, count2);
-VFO32(0x470, ShooterData, aim_mode);
-VFO32(0x474, ShooterData, flags);
-VFO32(0x478, ShooterData, shoot_sound);
-VFO32(0x47C, ShooterData, transform_sound);
-VFO32(0x480, ShooterData, start_transform);
-VFO32(0x484, ShooterData, __dword_484);
-VSS32(0x488, ShooterData);
-#pragma endregion
+// ShooterData Validation
+#define VTYPE ShooterData
+VFO32(0x0, type);
+VFO32(0x4, color);
+VFO32(0x8, position);
+VFO32(0x14, angle1);
+VFO32(0x18, angle2);
+VFO32(0x1C, speed1);
+VFO32(0x20, speed2);
+VFO32(0x24, distance);
+VFO32(0x28, effects);
+VFO32(0x448, width);
+VFO32(0x458, start_time);
+VFO32(0x45C, expand_time);
+VFO32(0x460, duration);
+VFO32(0x464, stop_time);
+VFO32(0x468, __laser_flags);
+VFO32(0x46C, count1);
+VFO32(0x46E, count2);
+VFO32(0x470, aim_mode);
+VFO32(0x474, flags);
+VFO32(0x478, shoot_sound);
+VFO32(0x47C, transform_sound);
+VFO32(0x480, start_transform);
+VFO32(0x484, __dword_484);
+VSS32(0x488);
+#undef VTYPE
 
 union EnemyID {
 	uint32_t raw;
@@ -11373,8 +11418,8 @@ struct EnemyCallback {
 
 typedef struct AbilityShop AbilityShop;
 extern "C" {
-	// 0x4CF2A4
-	externcg AbilityShop* ABILITY_SHOP_PTR cgasm("_ABILITY_SHOP_PTR");
+// 0x4CF2A4
+externcg AbilityShop* ABILITY_SHOP_PTR cgasm("_ABILITY_SHOP_PTR");
 }
 
 typedef struct ScreenEffect ScreenEffect;
@@ -11431,10 +11476,10 @@ static inline bool __spell_past_grace_period();
 typedef struct BombBase BombBase;
 typedef struct Spellcard Spellcard;
 extern "C" {
-	// 0x4CF2B8
-	externcg BombBase* BOMB_PTR cgasm("_BOMB_PTR");
-	// 0x4CF2C0
-	externcg Spellcard* SPELLCARD_PTR cgasm("_SPELLCARD_PTR");
+// 0x4CF2B8
+externcg BombBase* BOMB_PTR cgasm("_BOMB_PTR");
+// 0x4CF2C0
+externcg Spellcard* SPELLCARD_PTR cgasm("_SPELLCARD_PTR");
 }
 
 // size: 0xA8
@@ -11596,28 +11641,29 @@ struct BombBase : ZUNTask {
 		return ((BombBase*)ptr)->on_draw();
 	}
 };
-#pragma region // BombBase Validation
-VVFO32(0x4, BombBase, task_flags);
-VVFO32(0x8, BombBase, on_tick_func);
-VVFO32(0xC, BombBase, on_draw_func);
-VVFO32(0x14, BombBase, position);
-VVFO32(0x24, BombBase, rotation);
-VVFO32(0x30, BombBase, active);
-VVFO32(0x34, BombBase, __timer_34);
-VVFO32(0x5C, BombBase, __vm_id_5C);
-VVFO32(0x60, BombBase, __vm_id_60);
-VVFO32(0x64, BombBase, __vm_id_64);
-VVFO32(0x68, BombBase, __caused_spell_fail);
-VVFO32(0x70, BombBase, __ptr_70);
-VVFO32(0x74, BombBase, __float_74);
-VVFO32(0x78, BombBase, __float_78);
-VVFO32(0x7C, BombBase, __timer_7C);
-VVFO32(0x90, BombBase, __int_90);
-VVFO32(0x94, BombBase, __float3_94);
-VVFO32(0xA0, BombBase, __disable_bombing);
-VVFO32(0xA4, BombBase, stronger_effects);
-VSS32(0xA8, BombBase);
-#pragma endregion
+// BombBase Validation
+#define VTYPE BombBase
+VVFO32(0x4, task_flags);
+VVFO32(0x8, on_tick_func);
+VVFO32(0xC, on_draw_func);
+VVFO32(0x14, position);
+VVFO32(0x24, rotation);
+VVFO32(0x30, active);
+VVFO32(0x34, __timer_34);
+VVFO32(0x5C, __vm_id_5C);
+VVFO32(0x60, __vm_id_60);
+VVFO32(0x64, __vm_id_64);
+VVFO32(0x68, __caused_spell_fail);
+VVFO32(0x70, __ptr_70);
+VVFO32(0x74, __float_74);
+VVFO32(0x78, __float_78);
+VVFO32(0x7C, __timer_7C);
+VVFO32(0x90, __int_90);
+VVFO32(0x94, __float3_94);
+VVFO32(0xA0, __disable_bombing);
+VVFO32(0xA4, stronger_effects);
+VSS32(0xA8);
+#undef VTYPE
 
 enum ItemID : int32_t {
 	InvalidItem = 0,
@@ -11835,15 +11881,16 @@ struct EnemyFogImpl {
 		SAFE_FREE(this->__ptr_10);
 	}
 };
-#pragma region // EnemyFogImpl Field Validation
-VFO32(0x0, EnemyFogImpl, __int_0);
-VFO32(0x8, EnemyFogImpl, __anm_id_8);
-VFO32(0xC, EnemyFogImpl, __anm_id_array_C);
-VFO32(0x10, EnemyFogImpl, __ptr_10);
-VFO32(0x14, EnemyFogImpl, __ptr_14);
-VFO32(0x18, EnemyFogImpl, __ptr_18);
-VSS32(0x1C, EnemyFogImpl);
-#pragma endregion
+// EnemyFogImpl Field Validation
+#define VTYPE EnemyFogImpl
+VFO32(0x0, __int_0);
+VFO32(0x8, __anm_id_8);
+VFO32(0xC, __anm_id_array_C);
+VFO32(0x10, __ptr_10);
+VFO32(0x14, __ptr_14);
+VFO32(0x18, __ptr_18);
+VSS32(0x1C);
+#undef VTYPE
 
 // size: 0x1C
 struct EnemyFog {
@@ -12255,72 +12302,73 @@ public:
 	// 0x439320
 	dllexport gnu_noinline static ZUNResult fastcall __func_set_4_ex(EnemyData* enemy_data) ASR(0x439320);
 };
-#pragma region // EnemyData Field Validation
-VFO32(0x0, EnemyData, previous_motion);
-VFO32(0x44, EnemyData, current_motion);
-VFO32(0x88, EnemyData, motion);
-VFO32(0x110, EnemyData, hitbox_size);
-VFO32(0x118, EnemyData, collision_size);
-VFO32(0x120, EnemyData, hitbox_rotation);
-VFO32(0x124, EnemyData, anm_vms);
-VFO32(0x164, EnemyData, anm_positions);
-VFO32(0x224, EnemyData, anm_vm_anchor_indices);
-VFO32(0x264, EnemyData, anm_source_index);
-VFO32(0x268, EnemyData, anm_slot_0_source_index);
-VFO32(0x26C, EnemyData, anm_slot_0_script);
-VFO32(0x270, EnemyData, current_anm_script);
-VFO32(0x274, EnemyData, current_anm_pose);
-VFO32(0x278, EnemyData, kill_id);
-VFO32(0x27C, EnemyData, anm_base_layer);
-VFO32(0x280, EnemyData, position_of_last_damage_source_to_hit);
-VFO32(0x28C, EnemyData, int_vars);
-VFO32(0x29C, EnemyData, float_vars);
-VFO32(0x2BC, EnemyData, phase_timer);
-VFO32(0x2D0, EnemyData, __time_existed);
-VFO32(0x2E4, EnemyData, slowdown);
-VFO32(0x2E8, EnemyData, global_list_node);
-VFO32(0x2F8, EnemyData, position_interp);
-VFO32(0x3C8, EnemyData, angle_interp_absolute);
-VFO32(0x3F8, EnemyData, speed_interp_absolute);
-VFO32(0x428, EnemyData, angle_interp_relative);
-VFO32(0x458, EnemyData, speed_interp_relative);
-VFO32(0x488, EnemyData, orbit_radius_interp);
-VFO32(0x510, EnemyData, ellipse_interp);
-VFO32(0x598, EnemyData, shooters);
-VFO32(0x4E18, EnemyData, bullet_effect_indices);
-VFO32(0x4E58, EnemyData, shooter_offsets);
-VFO32(0x4F18, EnemyData, shooter_origins);
-VFO32(0x4FD8, EnemyData, final_sprite_size);
-VFO32(0x4FE0, EnemyData, move_bounds_center);
-VFO32(0x4FE8, EnemyData, move_bounds_size);
-VFO32(0x4FF0, EnemyData, score);
-VFO32(0x4FF4, EnemyData, life);
-VFO32(0x5010, EnemyData, drops);
-VFO32(0x50D4, EnemyData, __delayed_damage);
-VFO32(0x50E8, EnemyData, __dword_50E8);
-VFO32(0x50EC, EnemyData, hit_sound);
-VFO32(0x50F0, EnemyData, invulnerable_timer);
-VFO32(0x5104, EnemyData, no_collision_timer);
-VFO32(0x5118, EnemyData, __recent_hit_timer);
-VFO32(0x512C, EnemyData, bomb_damage_multiplier);
-VFO32(0x5130, EnemyData, flags_low);
-VFO32(0x5134, EnemyData, flags_high);
-VFO32(0x5138, EnemyData, bombshield_on_anm);
-VFO32(0x513C, EnemyData, bombshield_off_anm);
-VFO32(0x5140, EnemyData, boss_id);
-VFO32(0x5144, EnemyData, player_protect_radius_squared);
-VFO32(0x5148, EnemyData, callbacks);
-VFO32(0x5588, EnemyData, vm);
-VFO32(0x558C, EnemyData, fog);
-VFO32(0x55A8, EnemyData, death_callback_sub);
-VFO32(0x55E8, EnemyData, func_set_func);
-VFO32(0x55EC, EnemyData, __is_func_set_2);
-VFO32(0x55F0, EnemyData, extra_damage_func);
-VFO32(0x55F4, EnemyData, extra_hitbox_func);
-VFO32(0x55F8, EnemyData, chapter);
-VFO32(0x55FC, EnemyData, chapter_spawn_weight);
-VSS32(0x5600, EnemyData);
-#pragma endregion
+// EnemyData Validation
+#define VTYPE EnemyData
+VFO32(0x0, previous_motion);
+VFO32(0x44, current_motion);
+VFO32(0x88, motion);
+VFO32(0x110, hitbox_size);
+VFO32(0x118, collision_size);
+VFO32(0x120, hitbox_rotation);
+VFO32(0x124, anm_vms);
+VFO32(0x164, anm_positions);
+VFO32(0x224, anm_vm_anchor_indices);
+VFO32(0x264, anm_source_index);
+VFO32(0x268, anm_slot_0_source_index);
+VFO32(0x26C, anm_slot_0_script);
+VFO32(0x270, current_anm_script);
+VFO32(0x274, current_anm_pose);
+VFO32(0x278, kill_id);
+VFO32(0x27C, anm_base_layer);
+VFO32(0x280, position_of_last_damage_source_to_hit);
+VFO32(0x28C, int_vars);
+VFO32(0x29C, float_vars);
+VFO32(0x2BC, phase_timer);
+VFO32(0x2D0, __time_existed);
+VFO32(0x2E4, slowdown);
+VFO32(0x2E8, global_list_node);
+VFO32(0x2F8, position_interp);
+VFO32(0x3C8, angle_interp_absolute);
+VFO32(0x3F8, speed_interp_absolute);
+VFO32(0x428, angle_interp_relative);
+VFO32(0x458, speed_interp_relative);
+VFO32(0x488, orbit_radius_interp);
+VFO32(0x510, ellipse_interp);
+VFO32(0x598, shooters);
+VFO32(0x4E18, bullet_effect_indices);
+VFO32(0x4E58, shooter_offsets);
+VFO32(0x4F18, shooter_origins);
+VFO32(0x4FD8, final_sprite_size);
+VFO32(0x4FE0, move_bounds_center);
+VFO32(0x4FE8, move_bounds_size);
+VFO32(0x4FF0, score);
+VFO32(0x4FF4, life);
+VFO32(0x5010, drops);
+VFO32(0x50D4, __delayed_damage);
+VFO32(0x50E8, __dword_50E8);
+VFO32(0x50EC, hit_sound);
+VFO32(0x50F0, invulnerable_timer);
+VFO32(0x5104, no_collision_timer);
+VFO32(0x5118, __recent_hit_timer);
+VFO32(0x512C, bomb_damage_multiplier);
+VFO32(0x5130, flags_low);
+VFO32(0x5134, flags_high);
+VFO32(0x5138, bombshield_on_anm);
+VFO32(0x513C, bombshield_off_anm);
+VFO32(0x5140, boss_id);
+VFO32(0x5144, player_protect_radius_squared);
+VFO32(0x5148, callbacks);
+VFO32(0x5588, vm);
+VFO32(0x558C, fog);
+VFO32(0x55A8, death_callback_sub);
+VFO32(0x55E8, func_set_func);
+VFO32(0x55EC, __is_func_set_2);
+VFO32(0x55F0, extra_damage_func);
+VFO32(0x55F4, extra_hitbox_func);
+VFO32(0x55F8, chapter);
+VFO32(0x55FC, chapter_spawn_weight);
+VSS32(0x5600);
+#undef VTYPE
 
 // 0x4B3FE0
 static constexpr FuncSetFunc *const ECL_FUNC_CALL_TABLE[5] = {
@@ -12339,9 +12387,9 @@ static constexpr ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[] = {
 };
 
 extern "C" {
-	// Table is *not* const
-	// 0x4CF2D8
-	externcg ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[1] cgasm("_EXTRA_HITBOX_FUNC_TABLE");
+// Table is *not* const
+// 0x4CF2D8
+externcg ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[1] cgasm("_EXTRA_HITBOX_FUNC_TABLE");
 }
 
 static inline constexpr uint32_t ECL_FILE_MAGIC = PackUInt('S', 'C', 'P', 'T');
@@ -12362,11 +12410,12 @@ struct EclSubHeader {
 	EclSub* data; // 0x4
 	// 0x8
 };
-#pragma region // EclSubHeader Validation
-VFO32(0x0, EclSubHeader, name);
-VFO32(0x4, EclSubHeader, data);
-VSS32(0x8, EclSubHeader);
-#pragma endregion
+// EclSubHeader Validation
+#define VTYPE EclSubHeader
+VFO(0x0, name);
+VFO(0x4, data);
+VSS(0x8);
+#undef VTYPE
 
 // size: 0x8
 struct EclIncludes {
@@ -12509,14 +12558,15 @@ struct SptResource {
 		return ZUN_SUCCESS;
 	}
 };
-#pragma region // SptResource Validation
-VVFO32(0x4, SptResource, file_count);
-VVFO32(0x8, SptResource, sub_count);
-VVFO32(0xC, SptResource, files);
-VVFO32(0x8C, SptResource, subs);
-VVFO32(0x90, SptResource, __unused_stack);
-VSS32(0x1098, SptResource);
-#pragma endregion
+// SptResource Validation
+#define VTYPE SptResource
+VVFO32(0x4, file_count);
+VVFO32(0x8, sub_count);
+VVFO32(0xC, files);
+VVFO32(0x8C, subs);
+VVFO32(0x90, __unused_stack);
+VSS32(0x1098);
+#undef VTYPE
 
 // size: 0x1098
 struct EclManager : SptResource {
@@ -12541,9 +12591,10 @@ struct EclManager : SptResource {
 	// Method 4
 	dllexport gnu_noinline virtual ZUNResult thiscall load_imports(EclIncludes* includes) ASR(0x42DA90);
 };
-#pragma region // EclManager Validation
-VSS32(0x1098, EclManager);
-#pragma endregion
+// EclManager Validation
+#define VTYPE EclManager
+VSS32(0x1098);
+#undef VTYPE
 
 // size: 0x122C
 struct EclVM {
@@ -12709,15 +12760,16 @@ public:
 		this->set_context_to_sub(sub_name);
 	}
 };
-#pragma region // EclVM Validation
-VVFO32(0x4, EclVM, next_context);
-VVFO32(0x8, EclVM, prev_context);
-VVFO32(0xC, EclVM, current_context);
-VVFO32(0x10, EclVM, context);
-VVFO32(0x1218, EclVM, controller);
-VVFO32(0x121C, EclVM, context_list);
-VSS32(0x122C, EclVM);
-#pragma endregion
+// EclVM Validation
+#define VTYPE EclVM
+VVFO32(0x4, next_context);
+VVFO32(0x8, prev_context);
+VVFO32(0xC, current_context);
+VVFO32(0x10, context);
+VVFO32(0x1218, controller);
+VVFO32(0x121C, context_list);
+VSS32(0x122C);
+#undef VTYPE
 
 inline ZUNResult EnemyData::run_ecl() {
 	return this->vm->run_ecl(this->phase_timer.get_scale_unsafe());
@@ -13576,15 +13628,16 @@ public:
 		}
 	}
 };
-#pragma region // Enemy Validation
-//VFO32(0x0, Enemy, vm);
-VFO32(0x122C, Enemy, data);
-VFO32(0x682C, Enemy, __on_kill_func);
-VFO32(0x6830, Enemy, id);
-VFO32(0x6834, Enemy, parent_id);
-VFO32(0x6838, Enemy, __dword_6838);
-VSS32(0x683C, Enemy);
-#pragma endregion
+// Enemy Validation
+#define VTYPE Enemy
+//VFO32(0x0, vm);
+VFO32(0x122C, data);
+VFO32(0x682C, __on_kill_func);
+VFO32(0x6830, id);
+VFO32(0x6834, parent_id);
+VFO32(0x6838, __dword_6838);
+VSS32(0x683C);
+#undef VTYPE
 
 // size: 0xC
 struct RGB {
@@ -13641,15 +13694,15 @@ typedef struct EnemyManager EnemyManager;
 typedef struct Gui Gui;
 
 extern "C" {
-	// 0x4CF2E0
-	externcg Gui* GUI_PTR cgasm("_GUI_PTR");
-	// 0x570918
-	externcg void* CACHED_MSG_FILE_PTR cgasm("_CACHED_MSG_FILE_PTR");
-	// 0x57091C
-	externcg BOOL FRONT_ANM_IS_LOADED cgasm("_FRONT_ANM_IS_LOADED");
+// 0x4CF2E0
+externcg Gui* GUI_PTR cgasm("_GUI_PTR");
+// 0x570918
+externcg void* CACHED_MSG_FILE_PTR cgasm("_CACHED_MSG_FILE_PTR");
+// 0x57091C
+externcg BOOL FRONT_ANM_IS_LOADED cgasm("_FRONT_ANM_IS_LOADED");
 
-	// 0x4CF2D0
-	externcg EnemyManager* ENEMY_MANAGER_PTR cgasm("_ENEMY_MANAGER_PTR");
+// 0x4CF2D0
+externcg EnemyManager* ENEMY_MANAGER_PTR cgasm("_ENEMY_MANAGER_PTR");
 }
 
 enum ReplayMode : int32_t {
@@ -13662,8 +13715,8 @@ static inline bool is_replay();
 
 typedef struct GameThread GameThread;
 extern "C" {
-	// 0x4CF2E4
-	externcg GameThread* GAME_THREAD_PTR cgasm("_GAME_THREAD_PTR");
+// 0x4CF2E4
+externcg GameThread* GAME_THREAD_PTR cgasm("_GAME_THREAD_PTR");
 }
 
 // size: 0xD8
@@ -14190,18 +14243,19 @@ struct MenuSelect {
 		}
 	}
 };
-#pragma region // MenuSelect Verification
-VFO32(0x0, MenuSelect, current_selection);
-VFO32(0x4, MenuSelect, previous_selection);
-VFO32(0x8, MenuSelect, menu_length);
-VFO32(0xC, MenuSelect, selection_stack);
-VFO32(0x4C, MenuSelect, menu_length_stack);
-VFO32(0x8C, MenuSelect, stack_index);
-VFO32(0x90, MenuSelect, disabled_selections);
-VFO32(0xD0, MenuSelect, enable_wrap);
-VFO32(0xD4, MenuSelect, disabled_selections_count);
-VSS32(0xD8, MenuSelect);
-#pragma endregion
+// MenuSelect Verification
+#define VTYPE MenuSelect
+VFO32(0x0, current_selection);
+VFO32(0x4, previous_selection);
+VFO32(0x8, menu_length);
+VFO32(0xC, selection_stack);
+VFO32(0x4C, menu_length_stack);
+VFO32(0x8C, stack_index);
+VFO32(0x90, disabled_selections);
+VFO32(0xD0, enable_wrap);
+VFO32(0xD4, disabled_selections_count);
+VSS32(0xD8);
+#undef VTYPE
 
 // size: 0x4
 struct MsgInstruction {
@@ -14323,11 +14377,12 @@ struct MsgScriptHeader {
 	};
 	// 0x8
 };
-#pragma region // MsgScriptHeader Validation
-VFO(0x0, MsgScriptHeader, script_offset);
-VFO(0x4, MsgScriptHeader, flags);
-VSS(0x8, MsgScriptHeader);
-#pragma endregion
+// MsgScriptHeader Validation
+#define VTYPE MsgScriptHeader
+VFO(0x0, script_offset);
+VFO(0x4, flags);
+VSS(0x8);
+#undef VTYPE
 
 struct MsgHeader {
 	uint32_t script_count; // 0x0
@@ -14433,43 +14488,43 @@ public:
 		return ZUN_SUCCESS;
 	}
 };
-#pragma region // MsgVM Validation
-VFO32(0x0, MsgVM, script_id);
-VFO32(0x4, MsgVM, __timer_4);
-VFO32(0x18, MsgVM, script_time);
-VFO32(0x2C, MsgVM, pause_timer);
-VFO32(0x40, MsgVM, player_portraits);
-VFO32(0x50, MsgVM, enemy_portraits);
-VFO32(0x60, MsgVM, __anm_id_60);
-VFO32(0x64, MsgVM, dialogue_lines);
-VFO32(0x6C, MsgVM, furigana_lines);
-VFO32(0x74, MsgVM, intro);
-VFO32(0x78, MsgVM, __callout_related);
-VFO32(0x7C, MsgVM, __anm_id_7C);
-VFO32(0x80, MsgVM, menu_time);
-VFO32(0x84, MsgVM, menu_state);
-VFO32(0x88, MsgVM, menu_controller);
-VFO32(0x160, MsgVM, __dword_160);
-VFO32(0x164, MsgVM, current_instr);
-VFO32(0x168, MsgVM, __float3_168);
-VFO32(0x174, MsgVM, __float3_174);
-VFO32(0x180, MsgVM, __float3_180);
-VFO32(0x18C, MsgVM, __float3_18C);
-VFO32(0x198, MsgVM, __enemy_appear_counter);
-VFO32(0x19C, MsgVM, flags);
-VFO32(0x1A0, MsgVM, next_text_line);
-VFO32(0x1A4, MsgVM, __skip_text_clear);
-VFO32(0x1A8, MsgVM, __skip_disable_time);
-VFO32(0x1AC, MsgVM, active_portait);
-VFO32(0x1B0, MsgVM, text_color_array);
-VFO32(0x1C0, MsgVM, callout_position);
-VFO32(0x1CC, MsgVM, __float_1CC);
-VFO32(0x1D0, MsgVM, __dword_1D0);
-VFO32(0x1D4, MsgVM, __int_1D4);
-VSS32(0x1D8, MsgVM);
-#pragma endregion
+// MsgVM Validation
+#define VTYPE MsgVM
+VFO32(0x0, script_id);
+VFO32(0x4, __timer_4);
+VFO32(0x18, script_time);
+VFO32(0x2C, pause_timer);
+VFO32(0x40, player_portraits);
+VFO32(0x50, enemy_portraits);
+VFO32(0x60, __anm_id_60);
+VFO32(0x64, dialogue_lines);
+VFO32(0x6C, furigana_lines);
+VFO32(0x74, intro);
+VFO32(0x78, __callout_related);
+VFO32(0x7C, __anm_id_7C);
+VFO32(0x80, menu_time);
+VFO32(0x84, menu_state);
+VFO32(0x88, menu_controller);
+VFO32(0x160, __dword_160);
+VFO32(0x164, current_instr);
+VFO32(0x168, __float3_168);
+VFO32(0x174, __float3_174);
+VFO32(0x180, __float3_180);
+VFO32(0x18C, __float3_18C);
+VFO32(0x198, __enemy_appear_counter);
+VFO32(0x19C, flags);
+VFO32(0x1A0, next_text_line);
+VFO32(0x1A4, __skip_text_clear);
+VFO32(0x1A8, __skip_disable_time);
+VFO32(0x1AC, active_portait);
+VFO32(0x1B0, text_color_array);
+VFO32(0x1C0, callout_position);
+VFO32(0x1CC, __float_1CC);
+VFO32(0x1D0, __dword_1D0);
+VFO32(0x1D4, __int_1D4);
+VSS32(0x1D8);
+#undef VTYPE
 
-#pragma region IMPORTED_FROM_VD_DATA_NEEDS_VALIDATION
 // size: 0x8
 struct LifebarMarker {
 	float bar_position; // 0x0
@@ -14514,7 +14569,6 @@ struct Lifebar {
 		this->delete_vms();
 	}
 };
-#pragma endregion
 
 enum BigPopupType {
 	PopupGetSpellCardBonus = 0,
@@ -14761,46 +14815,47 @@ struct Gui : ZUNTask {
 	// 0x43B800
 	dllexport gnu_noinline static Gui* allocate() ASR(0x43B800);
 };
-#pragma region // Gui Validation
-VFO32(0x0, Gui, task_flags);
-VFO32(0x4, Gui, on_tick_func);
-VFO32(0x8, Gui, on_draw_func);
-VFO32(0xC, Gui, __player_life_icon_ids);
-VFO32(0x28, Gui, __player_bomb_icon_ids);
-VFO32(0x44, Gui, spell_timer_vm_ids);
-VFO32(0x4C, Gui, player_life_icons);
-VFO32(0x68, Gui, player_bomb_icons);
-VFO32(0x84, Gui, spell_timer_vms);
-VFO32(0x90, Gui, __anm_id_array_90);
-VFO32(0x8C, Gui, boss_indicator);
-VFO32(0xB8, Gui, __big_popupA);
-VFO32(0xBC, Gui, __big_popupB);
-VFO32(0xCC, Gui, boss_life_markers);
-VFO32(0xF4, Gui, __difficulty_indicatorA);
-VFO32(0xF8, Gui, __difficulty_indicatorB);
-VFO32(0xFC, Gui, __shottype_indicator);
-VFO32(0x108, Gui, __stage_clear_bonus_vm);
-VFO32(0x10C, Gui, __anm_id_10C);
-VFO32(0x110, Gui, __spell_clear_time_label);
-VFO32(0x134, Gui, __show_spell_clear_time);
-VFO32(0x138, Gui, __hud_root);
-VFO32(0x13C, Gui, __timer_13C);
-VFO32(0x150, Gui, on_draw_func_B);
-VFO32(0x158, Gui, __score);
-VFO32(0x15C, Gui, __score_diff);
-VFO32(0x170, Gui, boss_life_count);
-VFO32(0x194, Gui, flags);
-VFO32(0x198, Gui, __timer_198);
-VFO32(0x1B0, Gui, msg_vm);
-VFO32(0x1B4, Gui, msg_file_buffer);
-VFO32(0x1B8, Gui, spell_timer_seconds);
-VFO32(0x1BC, Gui, spell_timer_hundredths);
-VFO32(0x1C0, Gui, __prev_spell_timer_seconds);
-VFO32(0x1C4, Gui, lifebars);
-VFO32(0x2C0, Gui, front_anm);
-VFO32(0x2C4, Gui, __clear_bonus);
-VSS32(0x2CC, Gui);
-#pragma endregion
+// Gui Validation
+#define VTYPE Gui
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, __player_life_icon_ids);
+VFO32(0x28, __player_bomb_icon_ids);
+VFO32(0x44, spell_timer_vm_ids);
+VFO32(0x4C, player_life_icons);
+VFO32(0x68, player_bomb_icons);
+VFO32(0x84, spell_timer_vms);
+VFO32(0x90, __anm_id_array_90);
+VFO32(0x8C, boss_indicator);
+VFO32(0xB8, __big_popupA);
+VFO32(0xBC, __big_popupB);
+VFO32(0xCC, boss_life_markers);
+VFO32(0xF4, __difficulty_indicatorA);
+VFO32(0xF8, __difficulty_indicatorB);
+VFO32(0xFC, __shottype_indicator);
+VFO32(0x108, __stage_clear_bonus_vm);
+VFO32(0x10C, __anm_id_10C);
+VFO32(0x110, __spell_clear_time_label);
+VFO32(0x134, __show_spell_clear_time);
+VFO32(0x138, __hud_root);
+VFO32(0x13C, __timer_13C);
+VFO32(0x150, on_draw_func_B);
+VFO32(0x158, __score);
+VFO32(0x15C, __score_diff);
+VFO32(0x170, boss_life_count);
+VFO32(0x194, flags);
+VFO32(0x198, __timer_198);
+VFO32(0x1B0, msg_vm);
+VFO32(0x1B4, msg_file_buffer);
+VFO32(0x1B8, spell_timer_seconds);
+VFO32(0x1BC, spell_timer_hundredths);
+VFO32(0x1C0, __prev_spell_timer_seconds);
+VFO32(0x1C4, lifebars);
+VFO32(0x2C0, front_anm);
+VFO32(0x2C4, __clear_bonus);
+VSS32(0x2CC);
+#undef VTYPE
 
 static inline void __update_life_ui() {
 	if (Gui* gui = GUI_PTR) {
@@ -15193,16 +15248,16 @@ struct ZUN_BITMAPINFO {
 
 // size: 0x124
 struct GdiManager {
-	char junk_buffer[0x100]; // 0x0
-	D3DFORMAT format = (D3DFORMAT)-1; // 0x100
-	int32_t width; // 0x104
-	int32_t height; // 0x108
-	int32_t bitmap_size; // 0x10C
-	int32_t stride; // 0x110
-	HDC device_context; // 0x114
-	HGDIOBJ screen_bitmap_object; // 0x118
-	HBITMAP bitmap_handle; // 0x11C
-	void* bitmap_data; // 0x120
+	char junk_buffer[0x100]{}; // 0x0
+	D3DFORMAT format = bitcast<D3DFORMAT>(-1); // 0x100
+	int32_t width{}; // 0x104
+	int32_t height{}; // 0x108
+	int32_t bitmap_size{}; // 0x10C
+	int32_t stride{}; // 0x110
+	HDC device_context{}; // 0x114
+	HGDIOBJ screen_bitmap_object{}; // 0x118
+	HBITMAP bitmap_handle{}; // 0x11C
+	void* bitmap_data{}; // 0x120
 	// 0x124
 
 	inline ~GdiManager() NO_EH_TERMINATE {
@@ -15255,10 +15310,10 @@ public:
 };
 
 extern "C" {
-	// 0x570928
-	externcg FontBlock FONT_BLOCK cgasm("_FONT_BLOCK");
-	// 0x4CD9B0
-	externcg GdiManager GDI_MANAGER cgasm("_GDI_MANAGER");
+// 0x570928
+externcg FontBlock FONT_BLOCK cgasm("_FONT_BLOCK");
+// 0x4CD9B0
+externcg ecgconstinit GdiManager GDI_MANAGER cgasm("_GDI_MANAGER");
 };
 
 // 0x4C9AD0
@@ -15718,12 +15773,12 @@ extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[]; // 6
 extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[]; // 4
 
 extern "C" {
-	// For some unholy reason these aren't const
+// For some unholy reason these aren't const
 
-	// 0x5217DC
-	externcg Float3 ZERO_FLOAT3 cgasm("_ZERO_FLOAT3");
-	// 0x56AD78
-	externcg Float2 ZERO_FLOAT2 cgasm("_ZERO_FLOAT2");
+// 0x5217DC
+externcg Float3 ZERO_FLOAT3 cgasm("_ZERO_FLOAT3");
+// 0x56AD78
+externcg Float2 ZERO_FLOAT2 cgasm("_ZERO_FLOAT2");
 }
 
 // size: 0x14
@@ -15816,30 +15871,31 @@ struct AnmSprite {
 	float __entry_height_frac; // 0x40
 	// 0x44
 };
-#pragma region // AnmSprite Validation
-VFO32(0x0, AnmSprite, slot);
-VFO32(0x4, AnmSprite, entry_index);
-VFO32(0x8, AnmSprite, __index_8);
-VFO32(0xC, AnmSprite, bounds);
-VFO32(0x1C, AnmSprite, __surface_height);
-VFO32(0x20, AnmSprite, __surface_width);
-VFO32(0x24, AnmSprite, uv_bounds);
-VFO32(0x34, AnmSprite, __size_y);
-VFO32(0x38, AnmSprite, __size_x);
-VFO32(0x3C, AnmSprite, __entry_width_frac);
-VFO32(0x40, AnmSprite, __entry_height_frac);
-VSS32(0x44, AnmSprite);
-#pragma endregion
+// AnmSprite Validation
+#define VTYPE AnmSprite
+VFO32(0x0, slot);
+VFO32(0x4, entry_index);
+VFO32(0x8, __index_8);
+VFO32(0xC, bounds);
+VFO32(0x1C, __surface_height);
+VFO32(0x20, __surface_width);
+VFO32(0x24, uv_bounds);
+VFO32(0x34, __size_y);
+VFO32(0x38, __size_x);
+VFO32(0x3C, __entry_width_frac);
+VFO32(0x40, __entry_height_frac);
+VSS32(0x44);
+#undef VTYPE
 
 extern "C" {
-	// 0x51F65C
-	externcg AnmManager* ANM_MANAGER_PTR cgasm("_ANM_MANAGER_PTR");
-	// 0x5704C0
-	externcg SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] cgasm("_SPRITE_VERTEX_BUFFER_B");
-	// 0x570520
-	externcg SpriteVertex SPRITE_VERTEX_BUFFER_A[4] cgasm("_SPRITE_VERTEX_BUFFER_A");
-	// 0x570590
-	externcg SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] cgasm("_SPRITE_VERTEX_BUFFER_C");
+// 0x51F65C
+externcg AnmManager* ANM_MANAGER_PTR cgasm("_ANM_MANAGER_PTR");
+// 0x5704C0
+externcg SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] cgasm("_SPRITE_VERTEX_BUFFER_B");
+// 0x570520
+externcg SpriteVertex SPRITE_VERTEX_BUFFER_A[4] cgasm("_SPRITE_VERTEX_BUFFER_A");
+// 0x570590
+externcg SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] cgasm("_SPRITE_VERTEX_BUFFER_C");
 }
 
 namespace Anm {
@@ -16521,7 +16577,9 @@ struct AnmVM {
 		float camera_near_clip; // 0x540
 		// 0x544
 	};
-	VSS32(0x544, AnmVMData);
+#define VTYPE AnmVMData
+VSS32(0x544);
+#undef VTYPE
 	struct AnmVMController {
 		AnmID id; // 0x0 (0x544)
 		uint32_t fast_id; // 0x4 (0x548)
@@ -16554,7 +16612,9 @@ struct AnmVM {
 			zero_this();
 		}
 	};
-	VSS32(0xC8, AnmVMController);
+#define VTYPE AnmVMController
+VSS32(0xC8);
+#undef VTYPE
 
 	AnmVMData data; // 0x0
 	AnmVMController controller; // 0x544
@@ -18286,7 +18346,9 @@ public:
 		this->set_sprite_size(value, value);
 	}
 };
-VSS32(0x60C, AnmVM);
+#define VTYPE AnmVM
+VSS32(0x60C);
+#undef VTYPE
 
 using AnmVMOnCreateFunc = decltype(AnmVM::on_create_special_dataA);
 
@@ -18310,16 +18372,17 @@ struct AnmTexture {
 	uint32_t num_bytes; // 0xC
 	unsigned char data[]; // 0x10
 };
-#pragma region // AnmTexture Validation
-VFO(0x0, AnmTexture, magic);
-VFO(0x4, AnmTexture, __zero);
-VFO(0x6, AnmTexture, format);
-VFO(0x8, AnmTexture, width);
-VFO(0xA, AnmTexture, height);
-VFO(0xC, AnmTexture, num_bytes);
-VFO(0x10, AnmTexture, data);
-VSS(0x10, AnmTexture);
-#pragma endregion
+// AnmTexture Validation
+#define VTYPE AnmTexture
+VFO(0x0, magic);
+VFO(0x4, __zero);
+VFO(0x6, format);
+VFO(0x8, width);
+VFO(0xA, height);
+VFO(0xC, num_bytes);
+VFO(0x10, data);
+VSS(0x10);
+#undef VTYPE
 
 // size: 0x40+
 struct AnmEntry {
@@ -18343,25 +18406,26 @@ struct AnmEntry {
 	padding_bytes(0x18); // 0x28
 	unsigned char data[]; // 0x40
 };
-#pragma region // AnmEntry Validation
-VFO(0x0, AnmEntry, version);
-VFO(0x4, AnmEntry, sprite_count);
-VFO(0x6, AnmEntry, script_count);
-VFO(0x8, AnmEntry, __word_8);
-VFO(0xA, AnmEntry, width);
-VFO(0xC, AnmEntry, height);
-VFO(0xE, AnmEntry, format);
-VFO(0x10, AnmEntry, image_path_offset);
-VFO(0x14, AnmEntry, offset_x);
-VFO(0x16, AnmEntry, offset_y);
-VFO(0x18, AnmEntry, memory_priority);
-VFO(0x1C, AnmEntry, texture_data_offset);
-VFO(0x20, AnmEntry, has_data);
-VFO(0x22, AnmEntry, low_res_scale);
-VFO(0x24, AnmEntry, offset_to_next);
-VFO(0x40, AnmEntry, data);
-VSS(0x40, AnmEntry);
-#pragma endregion
+// AnmEntry Validation
+#define VTYPE AnmEntry
+VFO(0x0, version);
+VFO(0x4, sprite_count);
+VFO(0x6, script_count);
+VFO(0x8, __word_8);
+VFO(0xA, width);
+VFO(0xC, height);
+VFO(0xE, format);
+VFO(0x10, image_path_offset);
+VFO(0x14, offset_x);
+VFO(0x16, offset_y);
+VFO(0x18, memory_priority);
+VFO(0x1C, texture_data_offset);
+VFO(0x20, has_data);
+VFO(0x22, low_res_scale);
+VFO(0x24, offset_to_next);
+VFO(0x40, data);
+VSS(0x40);
+#undef VTYPE
 
 typedef struct AnmImage AnmImage;
 
@@ -18407,15 +18471,16 @@ struct AnmImage {
 		SAFE_RELEASE(surface);
 	}
 };
-#pragma region // AnmImage Validation
-VFO32(0x0, AnmImage, d3d_texture);
-VFO32(0x4, AnmImage, file);
-VFO32(0x8, AnmImage, file_size);
-VFO32(0xC, AnmImage, bytes_per_pixel);
-VFO32(0x10, AnmImage, entry);
-VFO32(0x14, AnmImage, flags);
-VSS32(0x18, AnmImage);
-#pragma endregion
+// AnmImage Validation
+#define VTYPE AnmImage
+VFO32(0x0, d3d_texture);
+VFO32(0x4, file);
+VFO32(0x8, file_size);
+VFO32(0xC, bytes_per_pixel);
+VFO32(0x10, entry);
+VFO32(0x14, flags);
+VSS32(0x18);
+#undef VTYPE
 
 // size: 0x14
 struct AnmSpriteData {
@@ -18424,12 +18489,13 @@ struct AnmSpriteData {
 	Float2 size; // 0xC
 	// 0x14
 };
-#pragma region // AnmSpriteData Validation
-VFO(0x0, AnmSpriteData, id);
-VFO(0x4, AnmSpriteData, position);
-VFO(0xC, AnmSpriteData, size);
-VSS(0x14, AnmSpriteData);
-#pragma endregion
+// AnmSpriteData Validation
+#define VTYPE AnmSpriteData
+VFO(0x0, id);
+VFO(0x4, position);
+VFO(0xC, size);
+VSS(0x14);
+#undef VTYPE
 
 // size: 0x8
 struct AnmScriptHeader {
@@ -18437,12 +18503,12 @@ struct AnmScriptHeader {
 	uint32_t script_offset; // 0x4
 	// 0x8
 };
-#pragma region // AnmScriptHeader Validation
-VFO(0x0, AnmScriptHeader, script_id);
-VFO(0x4, AnmScriptHeader, script_offset);
-VSS(0x8, AnmScriptHeader);
-#pragma endregion
-
+// AnmScriptHeader Validation
+#define VTYPE AnmScriptHeader
+VFO(0x0, script_id);
+VFO(0x4, script_offset);
+VSS(0x8);
+#undef VTYPE
 
 inline AnmOnFunc ANM_ON_WAIT_FUNCS[] = {
 	NULL
@@ -18870,24 +18936,25 @@ public:
 		return ZUN_SUCCESS;
 	}
 };
-#pragma region // AnmLoaded Validation
-VFO32(0x0, AnmLoaded, slot_index);
-VFO32(0x4, AnmLoaded, anm_path);
-VFO32(0x108, AnmLoaded, anm_file);
-VFO32(0x10C, AnmLoaded, __vm_array);
-VFO32(0x110, AnmLoaded, entry_count);
-VFO32(0x114, AnmLoaded, script_count);
-VFO32(0x118, AnmLoaded, sprite_count);
-VFO32(0x11C, AnmLoaded, sprites);
-VFO32(0x120, AnmLoaded, scripts);
-VFO32(0x124, AnmLoaded, images);
-VFO32(0x128, AnmLoaded, __load_wait);
-VFO32(0x12C, AnmLoaded, __unload_flag);
-VFO32(0x130, AnmLoaded, total_image_sizes);
-VFO32(0x134, AnmLoaded, __counter_134);
-VFO32(0x138, AnmLoaded, __ptr_138);
-VSS32(0x13C, AnmLoaded);
-#pragma endregion
+// AnmLoaded Validation
+#define VTYPE AnmLoaded
+VFO32(0x0, slot_index);
+VFO32(0x4, anm_path);
+VFO32(0x108, anm_file);
+VFO32(0x10C, __vm_array);
+VFO32(0x110, entry_count);
+VFO32(0x114, script_count);
+VFO32(0x118, sprite_count);
+VFO32(0x11C, sprites);
+VFO32(0x120, scripts);
+VFO32(0x124, images);
+VFO32(0x128, __load_wait);
+VFO32(0x12C, __unload_flag);
+VFO32(0x130, total_image_sizes);
+VFO32(0x134, __counter_134);
+VFO32(0x138, __ptr_138);
+VSS32(0x13C);
+#undef VTYPE
 
 enum AnmFileIndex {
 	TEXT_ANM_INDEX = 0,
@@ -18961,13 +19028,14 @@ struct BackbufferTexture {
 	ZUNRect dst; // 0x18
 	// 0x28
 };
-#pragma region BackbufferTexture Validation
-VFO32(0x0, BackbufferTexture, anm_loaded_index);
-VFO32(0x4, BackbufferTexture, anm_image_index);
-VFO32(0x8, BackbufferTexture, src);
-VFO32(0x18, BackbufferTexture, dst);
-VSS32(0x28, BackbufferTexture);
-#pragma endregion
+// BackbufferTexture Validation
+#define VTYPE BackbufferTexture
+VFO32(0x0, anm_loaded_index);
+VFO32(0x4, anm_image_index);
+VFO32(0x8, src);
+VFO32(0x18, dst);
+VSS32(0x28);
+#undef VTYPE
 
 // 0x4B48F0
 static inline constexpr float TEXT_FONT_TABLE[] = {
@@ -23164,56 +23232,57 @@ public:
 		}
 	}
 };
-#pragma region // AnmManager Validation
-VFO32(0x0, AnmManager, __thread_0);
-VFO32(0x20, AnmManager, backbuffer_textures);
-VFO32(0xC0, AnmManager, __counter_C0);
-VFO32(0xC4, AnmManager, __dword_C4);
-VFO32(0xC8, AnmManager, __dword_C8);
-VFO32(0xCC, AnmManager, __counter_CC);
-VFO32(0xD0, AnmManager, __vertex_offsetA);
-VFO32(0xD8, AnmManager, __vertex_offsetB);
-VFO32(0xE0, AnmManager, __counter_E0);
-VFO32(0xE4, AnmManager, dummy_vm);
-VFO32(0x6F0, AnmManager, world_list);
-VFO32(0x6F8, AnmManager, ui_list);
-VFO32(0x700, AnmManager, fast_array);
-VFO32(0x31200DC, AnmManager, fast_array_end);
-VFO32(0x3120700, AnmManager, next_snapshot_fast_id);
-VFO32(0x3120704, AnmManager, next_snapshot_discriminator);
-VFO32(0x3120708, AnmManager, snapshot_list_head);
-VFO32(0x3120718, AnmManager, free_list_head);
-VFO32(0x312072C, AnmManager, loaded_anm_files);
-VFO32(0x31207B0, AnmManager, __matrix_31207B0);
-VFO32(0x31207F0, AnmManager, __vm_31207F0);
-VFO32(0x3120E00, AnmManager, current_texture_blend_color);
-VFO32(0x3120E04, AnmManager, __current_sprite_index);
-VFO32(0x3120E08, AnmManager, current_blend_mode);
-VFO32(0x3120E09, AnmManager, __byte_3120E09);
-VFO32(0x3120E0A, AnmManager, __current_vertex_type);
-VFO32(0x3120E0B, AnmManager, __byte_3120E0B);
-VFO32(0x3120E0C, AnmManager, __byte_3120E0C);
-VFO32(0x3120E0E, AnmManager, current_resample_mode);
-VFO32(0x3120E0F, AnmManager, current_texture_op);
-VFO32(0x3120E10, AnmManager, current_u_sample_mode);
-VFO32(0x3120E11, AnmManager, current_v_sample_mode);
-VFO32(0x3120E14, AnmManager, current_sprite);
-VFO32(0x3120E18, AnmManager, geometry_vertex_buffer);
-VFO32(0x3120E1C, AnmManager, geometry_vertex_data);
-VFO32(0x3120E6C, AnmManager, unrendered_sprite_count);
-VFO32(0x3120E70, AnmManager, sprite_vertex_data);
-VFO32(0x3820E70, AnmManager, sprite_write_cursor);
-VFO32(0x3820E74, AnmManager, sprite_render_cursor);
-VFO32(0x3820E78, AnmManager, unrendered_primitive_count);
-VFO32(0x3820E7C, AnmManager, primitive_vertex_data);
-VFO32(0x3960E7C, AnmManager, primitive_write_cursor);
-VFO32(0x3960E80, AnmManager, primitive_render_cursor);
-VFO32(0x3960E84, AnmManager, layer_heads);
-VFO32(0x39724AC, AnmManager, prev_slow_id);
-VFO32(0x39724B0, AnmManager, __global_color);
-VFO32(0x39724B4, AnmManager, __global_color_enabled);
-VSS32(0x39724B8, AnmManager);
-#pragma endregion
+// AnmManager Validation
+#define VTYPE AnmManager
+VFO32(0x0, __thread_0);
+VFO32(0x20, backbuffer_textures);
+VFO32(0xC0, __counter_C0);
+VFO32(0xC4, __dword_C4);
+VFO32(0xC8, __dword_C8);
+VFO32(0xCC, __counter_CC);
+VFO32(0xD0, __vertex_offsetA);
+VFO32(0xD8, __vertex_offsetB);
+VFO32(0xE0, __counter_E0);
+VFO32(0xE4, dummy_vm);
+VFO32(0x6F0, world_list);
+VFO32(0x6F8, ui_list);
+VFO32(0x700, fast_array);
+VFO32(0x31200DC, fast_array_end);
+VFO32(0x3120700, next_snapshot_fast_id);
+VFO32(0x3120704, next_snapshot_discriminator);
+VFO32(0x3120708, snapshot_list_head);
+VFO32(0x3120718, free_list_head);
+VFO32(0x312072C, loaded_anm_files);
+VFO32(0x31207B0, __matrix_31207B0);
+VFO32(0x31207F0, __vm_31207F0);
+VFO32(0x3120E00, current_texture_blend_color);
+VFO32(0x3120E04, __current_sprite_index);
+VFO32(0x3120E08, current_blend_mode);
+VFO32(0x3120E09, __byte_3120E09);
+VFO32(0x3120E0A, __current_vertex_type);
+VFO32(0x3120E0B, __byte_3120E0B);
+VFO32(0x3120E0C, __byte_3120E0C);
+VFO32(0x3120E0E, current_resample_mode);
+VFO32(0x3120E0F, current_texture_op);
+VFO32(0x3120E10, current_u_sample_mode);
+VFO32(0x3120E11, current_v_sample_mode);
+VFO32(0x3120E14, current_sprite);
+VFO32(0x3120E18, geometry_vertex_buffer);
+VFO32(0x3120E1C, geometry_vertex_data);
+VFO32(0x3120E6C, unrendered_sprite_count);
+VFO32(0x3120E70, sprite_vertex_data);
+VFO32(0x3820E70, sprite_write_cursor);
+VFO32(0x3820E74, sprite_render_cursor);
+VFO32(0x3820E78, unrendered_primitive_count);
+VFO32(0x3820E7C, primitive_vertex_data);
+VFO32(0x3960E7C, primitive_write_cursor);
+VFO32(0x3960E80, primitive_render_cursor);
+VFO32(0x3960E84, layer_heads);
+VFO32(0x39724AC, prev_slow_id);
+VFO32(0x39724B0, __global_color);
+VFO32(0x39724B4, __global_color_enabled);
+VSS32(0x39724B8);
+#undef VTYPE
 
 // 0x4553B0
 dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_A(void* ptr) {
@@ -23988,11 +24057,11 @@ inline AnmSprite* AnmVM::get_sprite() {
 static inline constexpr size_t TROPHY_TEXT_LINE_LENGTH = 0x100;
 
 extern "C" {
-	// 0x507640
-	externcg TrophyManager* TROPHY_MANAGER_PTR cgasm("_TROPHY_MANAGER_PTR");
+// 0x507640
+externcg TrophyManager* TROPHY_MANAGER_PTR cgasm("_TROPHY_MANAGER_PTR");
 
-	// 0x5713B0
-	externcg char TROPHY_TEXT_BUFFER[TROPHY_TEXT_LINE_LENGTH] cgasm("_TROPHY_TEXT_BUFFER");
+// 0x5713B0
+externcg char TROPHY_TEXT_BUFFER[TROPHY_TEXT_LINE_LENGTH] cgasm("_TROPHY_TEXT_BUFFER");
 }
 
 // size: 0x100
@@ -24124,9 +24193,9 @@ struct TrophyData {
 };
 
 extern "C" {
-	// TODO: Find exact length somehow
-	// 0x4CF440
-	externcg TrophyData TROPHY_DATA[TROPHY_COUNT] cgasm("_TROPHY_DATA");
+// TODO: Find exact length somehow
+// 0x4CF440
+externcg TrophyData TROPHY_DATA[TROPHY_COUNT] cgasm("_TROPHY_DATA");
 }
 
 // 0x46EAB0
@@ -24386,21 +24455,22 @@ struct TrophyManager : ZUNTask {
 		return trophy_manager;
 	}
 };
-#pragma region // TrophyManager Validation
-VFO32(0x0, TrophyManager, task_flags);
-VFO32(0x4, TrophyManager, on_tick_func);
-VFO32(0x8, TrophyManager, on_draw_func);
-VFO32(0xC, TrophyManager, trophy_anm);
-VFO32(0x10, TrophyManager, trophy_id_queue);
-VFO32(0x218, TrophyManager, previous_primary_state);
-VFO32(0x21C, TrophyManager, primary_state);
-VFO32(0x220, TrophyManager, secondary_state);
-VFO32(0x224, TrophyManager, state_timer);
-VFO32(0x238, TrophyManager, __anm_id_238);
-VFO32(0x23C, TrophyManager, __anm_id_23C);
-VFO32(0x240, TrophyManager, __anm_id_240);
-VSS32(0x244, TrophyManager);
-#pragma endregion
+// TrophyManager Validation
+#define VTYPE TrophyManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, trophy_anm);
+VFO32(0x10, trophy_id_queue);
+VFO32(0x218, previous_primary_state);
+VFO32(0x21C, primary_state);
+VFO32(0x220, secondary_state);
+VFO32(0x224, state_timer);
+VFO32(0x238, __anm_id_238);
+VFO32(0x23C, __anm_id_23C);
+VFO32(0x240, __anm_id_240);
+VSS32(0x244);
+#undef VTYPE
 
 // 0x46E490
 dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id) {
@@ -24421,8 +24491,8 @@ dllexport gnu_noinline TrophyManager* fastcall __unlock_trophy(int32_t trophy_id
 }
 
 extern "C" {
-	// 0x4CF3F8
-	externcg LoadingThread* LOADING_THREAD_PTR cgasm("_LOADING_THREAD_PTR");
+// 0x4CF3F8
+externcg LoadingThread* LOADING_THREAD_PTR cgasm("_LOADING_THREAD_PTR");
 }
 
 // size: 0x64C
@@ -24508,19 +24578,20 @@ struct LoadingThread : ZUNTask {
 		return loading_thread;
 	}
 };
-#pragma region // LoadingThread Validation
-VFO32(0x0, LoadingThread, task_flags);
-VFO32(0x4, LoadingThread, on_tick_func);
-VFO32(0x8, LoadingThread, on_draw_func);
-VFO32(0xC, LoadingThread, __thread_C);
-VFO32(0x2C, LoadingThread, __vm_2C);
-VFO32(0x638, LoadingThread, __anm_id_638);
-VFO32(0x63C, LoadingThread, sig_anm);
-VFO32(0x640, LoadingThread, sig_loaded);
-VFO32(0x644, LoadingThread, __ascii_manager_loaded);
-VFO32(0x648, LoadingThread, __int_648);
-VSS32(0x64C, LoadingThread);
-#pragma endregion
+// LoadingThread Validation
+#define VTYPE LoadingThread
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, __thread_C);
+VFO32(0x2C, __vm_2C);
+VFO32(0x638, __anm_id_638);
+VFO32(0x63C, sig_anm);
+VFO32(0x640, sig_loaded);
+VFO32(0x644, __ascii_manager_loaded);
+VFO32(0x648, __int_648);
+VSS32(0x64C);
+#undef VTYPE
 
 // size: 0x20
 struct EffectData {
@@ -24535,24 +24606,24 @@ struct EffectData {
 	int32_t on_copyB_index; // 0x1C
 	// 0x20
 };
-#pragma region // EffectData Validation
-VFO32(0x0, EffectData, __effect_anm_file_index);
-VFO32(0x2, EffectData, __script_id);
-VFO32(0x4, EffectData, on_create_func);
-VFO32(0x8, EffectData, on_tick_index);
-VFO32(0xC, EffectData, on_draw_index);
-VFO32(0x10, EffectData, on_destroy_index);
-VFO32(0x14, EffectData, on_interrupt_index);
-VFO32(0x18, EffectData, on_copyA_index);
-VFO32(0x1C, EffectData, on_copyB_index);
-VSS32(0x20, EffectData);
-#pragma endregion
+// EffectData Validation
+#define VTYPE EffectData
+VFO32(0x0, __effect_anm_file_index);
+VFO32(0x2, __script_id);
+VFO32(0x4, on_create_func);
+VFO32(0x8, on_tick_index);
+VFO32(0xC, on_draw_index);
+VFO32(0x10, on_destroy_index);
+VFO32(0x14, on_interrupt_index);
+VFO32(0x18, on_copyA_index);
+VFO32(0x1C, on_copyB_index);
+VSS32(0x20);
+#undef VTYPE
 
 extern "C" {
-	// 0x507648
-	externcg uint32_t SCREEN_EFFECT_DISABLE_TIME cgasm("_SCREEN_EFFECT_DISABLE_TIME");
+// 0x507648
+externcg uint32_t SCREEN_EFFECT_DISABLE_TIME cgasm("_SCREEN_EFFECT_DISABLE_TIME");
 }
-
 
 // 0x4CCBF8
 // this isn't marked const again...
@@ -25080,25 +25151,26 @@ struct ScreenEffect : ZUNTask {
 		return screen_effect;
 	}
 };
-#pragma region // ScreenEffect Validation
-VFO32(0x0, ScreenEffect, task_flags);
-VFO32(0x4, ScreenEffect, on_tick_func);
-VFO32(0x8, ScreenEffect, on_draw_func);
-VFO32(0xC, ScreenEffect, type);
-VFO32(0x14, ScreenEffect, alpha);
-VFO32(0x18, ScreenEffect, __int_18);
-VFO32(0x1C, ScreenEffect, __int_1C);
-VFO32(0x20, ScreenEffect, __int_20);
-VFO32(0x24, ScreenEffect, __int_24);
-VFO32(0x28, ScreenEffect, __dword_28);
-VFO32(0x2C, ScreenEffect, timer);
-VSS32(0x40, ScreenEffect);
-#pragma endregion
+// ScreenEffect Validation
+#define VTYPE ScreenEffect
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, type);
+VFO32(0x14, alpha);
+VFO32(0x18, __int_18);
+VFO32(0x1C, __int_1C);
+VFO32(0x20, __int_20);
+VFO32(0x24, __int_24);
+VFO32(0x28, __dword_28);
+VFO32(0x2C, timer);
+VSS32(0x40);
+#undef VTYPE
 
 // this does absolutely nothing
 extern "C" {
-	// 0x56AD38
-	externcg ScreenEffect SCREEN_INF cgasm("_SCREEN_INF");
+// 0x56AD38
+externcg ScreenEffect SCREEN_INF cgasm("_SCREEN_INF");
 }
 
 forceinline ScreenEffect* screen_effect_allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) {
@@ -25111,8 +25183,8 @@ forceinline ScreenEffect* screen_effect_allocate_inline(ScreenEffectType type, i
 
 typedef struct EffectManager EffectManager;
 extern "C" {
-	// 0x4CF2C8
-	externcg EffectManager* EFFECT_MANAGER_PTR cgasm("_EFFECT_MANAGER_PTR");
+// 0x4CF2C8
+externcg EffectManager* EFFECT_MANAGER_PTR cgasm("_EFFECT_MANAGER_PTR");
 }
 
 static inline constexpr int32_t MAX_EFFECTS = 0x400;
@@ -25342,20 +25414,21 @@ public:
 		return effect_manager;
 	}
 };
-#pragma region // EffectManager Validation
-VFO32(0x0, EffectManager, task_flags);
-VFO32(0x4, EffectManager, on_tick_func);
-VFO32(0x8, EffectManager, on_draw_func);
-VFO32(0xC, EffectManager, effect_anm);
-VFO32(0x10, EffectManager, bullet_anm);
-VFO32(0x18, EffectManager, slot_index);
-VFO32(0x1C, EffectManager, vm_slots);
-VFO32(0x101C, EffectManager, __slot_indexB);
-VFO32(0x1020, EffectManager, __vm_slotsB);
-VFO32(0x2020, EffectManager, __thread_2020);
-VFO32(0x203C, EffectManager, __done_loading);
-VSS32(0x2040, EffectManager);
-#pragma endregion
+// EffectManager Validation
+#define VTYPE EffectManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, effect_anm);
+VFO32(0x10, bullet_anm);
+VFO32(0x18, slot_index);
+VFO32(0x1C, vm_slots);
+VFO32(0x101C, __slot_indexB);
+VFO32(0x1020, __vm_slotsB);
+VFO32(0x2020, __thread_2020);
+VFO32(0x203C, __done_loading);
+VSS32(0x2040);
+#undef VTYPE
 
 inline void Camera::__copy_vertex_offsetA_to_anm_manager() {
 	if (AnmManager* anm_manager = ANM_MANAGER_PTR) {
@@ -26544,23 +26617,24 @@ struct AsciiString {
 	int __vertical_positioning_mode; // 0x134
 	// 0x138
 };
-#pragma region // AsciiString Validation
-VFO32(0x0, AsciiString, text);
-VFO32(0x100, AsciiString, position);
-VFO32(0x10C, AsciiString, color);
-VFO32(0x110, AsciiString, scale);
-VFO32(0x120, AsciiString, font_id);
-VFO32(0x124, AsciiString, enable_shadows);
-VFO32(0x128, AsciiString, group);
-VFO32(0x12C, AsciiString, duration);
-VFO32(0x130, AsciiString, __horizontal_positioning_mode);
-VFO32(0x134, AsciiString, __vertical_positioning_mode);
-VSS32(0x138, AsciiString);
-#pragma endregion
+// AsciiString Validation
+#define VTYPE AsciiString
+VFO32(0x0, text);
+VFO32(0x100, position);
+VFO32(0x10C, color);
+VFO32(0x110, scale);
+VFO32(0x120, font_id);
+VFO32(0x124, enable_shadows);
+VFO32(0x128, group);
+VFO32(0x12C, duration);
+VFO32(0x130, __horizontal_positioning_mode);
+VFO32(0x134, __vertical_positioning_mode);
+VSS32(0x138);
+#undef VTYPE
 
 extern "C" {
-	// 0x4CF2AC
-	externcg AsciiManager* ASCII_MANAGER_PTR cgasm("_ASCII_MANAGER_PTR");
+// 0x4CF2AC
+externcg AsciiManager* ASCII_MANAGER_PTR cgasm("_ASCII_MANAGER_PTR");
 }
 
 // size: 0x19278
@@ -27430,33 +27504,34 @@ public:
 		return __instantiate_vm_id_19268(UNUSED_FLOAT, x, y);
 	}
 };
-#pragma region // AsciiManager Validation
-VFO32(0x0, AsciiManager, task_flags);
-VFO32(0x4, AsciiManager, on_tick_func);
-VFO32(0x8, AsciiManager, on_draw_func);
-VFO32(0xC, AsciiManager, __vm_C);
-VFO32(0x618, AsciiManager, __vm_618);
-VFO32(0xC24, AsciiManager, strings);
-VFO32(0x19224, AsciiManager, string_count);
-VFO32(0x19228, AsciiManager, color);
-VFO32(0x1922C, AsciiManager, color2);
-VFO32(0x19230, AsciiManager, scale);
-VFO32(0x19240, AsciiManager, enable_shadows);
-VFO32(0x19244, AsciiManager, font_id);
-VFO32(0x19248, AsciiManager, group);
-VFO32(0x1924C, AsciiManager, duration);
-VFO32(0x19250, AsciiManager, __horizontal_positioning_mode);
-VFO32(0x19254, AsciiManager, __vertical_positioning_mode);
-VFO32(0x19258, AsciiManager, __character_spacing_for_font_0);
-VFO32(0x1925C, AsciiManager, frame_count);
-VFO32(0x19260, AsciiManager, ascii_anm);
-VFO32(0x19264, AsciiManager, __vm_id_19264);
-VFO32(0x19268, AsciiManager, __vm_id_19268);
-VFO32(0x1926C, AsciiManager, on_draw_func_group_1);
-VFO32(0x19270, AsciiManager, on_draw_func_group_2);
-VFO32(0x19274, AsciiManager, on_draw_func_group_3);
-VSS32(0x19278, AsciiManager);
-#pragma endregion
+// AsciiManager Validation
+#define VTYPE AsciiManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, __vm_C);
+VFO32(0x618, __vm_618);
+VFO32(0xC24, strings);
+VFO32(0x19224, string_count);
+VFO32(0x19228, color);
+VFO32(0x1922C, color2);
+VFO32(0x19230, scale);
+VFO32(0x19240, enable_shadows);
+VFO32(0x19244, font_id);
+VFO32(0x19248, group);
+VFO32(0x1924C, duration);
+VFO32(0x19250, __horizontal_positioning_mode);
+VFO32(0x19254, __vertical_positioning_mode);
+VFO32(0x19258, __character_spacing_for_font_0);
+VFO32(0x1925C, frame_count);
+VFO32(0x19260, ascii_anm);
+VFO32(0x19264, __vm_id_19264);
+VFO32(0x19268, __vm_id_19268);
+VFO32(0x1926C, on_draw_func_group_1);
+VFO32(0x19270, on_draw_func_group_2);
+VFO32(0x19274, on_draw_func_group_3);
+VSS32(0x19278);
+#undef VTYPE
 
 // 0x441A50
 forceinline void Gui::__big_popup_text_inline(BigPopupType type, int32_t score_bonus) {
@@ -27542,10 +27617,10 @@ forceinline void Gui::__big_popup_text_inline(BigPopupType type, int32_t score_b
 typedef struct Ending Ending;
 
 extern "C" {
-	// 0x4CF2CC
-	externcg Ending* ENDING_PTR cgasm("_ENDING_PTR");
-	// 0x4C5F88
-	externcg int32_t UNKNOWN_INT32_I cgasm("_UNKNOWN_INT32_I") ecginit(= -1);
+// 0x4CF2CC
+externcg Ending* ENDING_PTR cgasm("_ENDING_PTR");
+// 0x4C5F88
+externcg int32_t UNKNOWN_INT32_I cgasm("_UNKNOWN_INT32_I") ecginit(= -1);
 }
 
 // 0x4B3Fa0
@@ -27650,22 +27725,23 @@ struct EndVM {
 	// 0x42BE70
 	dllexport gnu_noinline ZUNResult thiscall run_end() ASR(0x42BE70);
 };
-#pragma region // EndVM Validation
-VFO32(0x4, EndVM, __timer_4);
-VFO32(0x18, EndVM, script_time);
-VFO32(0x2C, EndVM, pause_timer);
-VFO32(0x40, EndVM, __vm_id_array_40);
-VFO32(0x54, EndVM, current_instr);
-VFO32(0x70, EndVM, __string_70);
-VFO32(0x74, EndVM, flags);
-VFO32(0x78, EndVM, __int_78);
-VFO32(0x7C, EndVM, __color_7C);
-VFO32(0x80, EndVM, __anm_loaded_array_80);
-VFO32(0x90, EndVM, __vm_id_array_90);
-VFO32(0xD0, EndVM, __thread_D0);
-VFO32(0xEC, EndVM, __int_EC);
-VSS32(0xF0, EndVM);
-#pragma endregion
+// EndVM Validation
+#define VTYPE EndVM
+VFO32(0x4, __timer_4);
+VFO32(0x18, script_time);
+VFO32(0x2C, pause_timer);
+VFO32(0x40, __vm_id_array_40);
+VFO32(0x54, current_instr);
+VFO32(0x70, __string_70);
+VFO32(0x74, flags);
+VFO32(0x78, __int_78);
+VFO32(0x7C, __color_7C);
+VFO32(0x80, __anm_loaded_array_80);
+VFO32(0x90, __vm_id_array_90);
+VFO32(0xD0, __thread_D0);
+VFO32(0xEC, __int_EC);
+VSS32(0xF0);
+#undef VTYPE
 
 // size: 0x24
 struct Ending : ZUNTask {
@@ -27863,14 +27939,15 @@ struct Ending : ZUNTask {
 		return ending;
 	}
 };
-#pragma region // Ending Validation
-VFO32(0x10, Ending, end_file);
-VFO32(0x14, Ending, end_vm);
-VFO32(0x18, Ending, ending_index);
-VFO32(0x1C, Ending, flags);
-VFO32(0x20, Ending, __int_20);
-VSS32(0x24, Ending);
-#pragma endregion
+// Ending Validation
+#define VTYPE Ending
+VFO32(0x10, end_file);
+VFO32(0x14, end_vm);
+VFO32(0x18, ending_index);
+VFO32(0x1C, flags);
+VFO32(0x20, __int_20);
+VSS32(0x24);
+#undef VTYPE
 
 // 0x42BE70
 dllexport gnu_noinline ZUNResult thiscall EndVM::run_end() {
@@ -29376,17 +29453,17 @@ using OptionPositionFunc = int32_t fastcall(PlayerOption* self);
 
 typedef struct ShtFile ShtFile;
 extern "C" {
-	// 0x570920
-	externcg ShtFile* CACHED_SHT_FILE_PTR cgasm("_CACHED_SHT_FILE_PTR");
+// 0x570920
+externcg ShtFile* CACHED_SHT_FILE_PTR cgasm("_CACHED_SHT_FILE_PTR");
 
-	// 0x4B4230
-	//externcg BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] cgasm("_PLAYER_BULLET_INIT_FUNCS");
-	// 0x4B4210
-	//externcg void *const PLAYER_BULLET_TICK_FUNCS[8] cgasm("_PLAYER_BULLET_TICK_FUNCS");
-	// 0x4CF414
-	void* PLAYER_FUNC_TABLE_C[1] cgasm("_PLAYER_FUNC_TABLE_C") = {}; // No, the missing const isn't a typo
-	// 0x4B41F0
-	//externcg BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] cgasm("_PLAYER_BULLET_DAMAGE_FUNCS");
+// 0x4B4230
+//externcg BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] cgasm("_PLAYER_BULLET_INIT_FUNCS");
+// 0x4B4210
+//externcg void *const PLAYER_BULLET_TICK_FUNCS[8] cgasm("_PLAYER_BULLET_TICK_FUNCS");
+// 0x4CF414
+void* PLAYER_FUNC_TABLE_C[1] cgasm("_PLAYER_FUNC_TABLE_C") = {}; // No, the missing const isn't a typo
+// 0x4B41F0
+//externcg BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] cgasm("_PLAYER_BULLET_DAMAGE_FUNCS");
 }
 
 static inline constexpr size_t MAX_SHT_ENTRY_COUNT = 40;
@@ -29431,30 +29508,31 @@ struct ShtEntry {
 	unknown_fields(0xC); // 0x50
 	// 0x5C
 };
-#pragma region // ShtEntry Validation
-VFO(0x0, ShtEntry, __short_timer_modulo);
-VFO(0x1, ShtEntry, __short_timer_value);
-VFO(0x2, ShtEntry, damage);
-VFO(0x4, ShtEntry, position);
-VFO(0xC, ShtEntry, size);
-VFO(0x14, ShtEntry, angle);
-VFO(0x18, ShtEntry, speed);
-VFO(0x20, ShtEntry, __option_index);
-VFO(0x21, ShtEntry, __byte_21);
-VFO(0x22, ShtEntry, anm_script);
-VFO(0x24, ShtEntry, sound_id);
-VFO(0x26, ShtEntry, __anm_scriptB);
-VFO(0x28, ShtEntry, __card_long_timer_modulo);
-VFO(0x29, ShtEntry, __card_long_timer_value);
-VFO(0x2A, ShtEntry, __long_timer_modulo);
-VFO(0x2B, ShtEntry, __long_timer_value);
-VFO(0x2C, ShtEntry, init_func);
-VFO(0x30, ShtEntry, on_tick_func);
-VFO(0x34, ShtEntry, __unknown_func_C);
-VFO(0x38, ShtEntry, damage_func);
-VFO(0x4C, ShtEntry, __float_4C);
-VSS(0x5C, ShtEntry);
-#pragma endregion
+// ShtEntry Validation
+#define VTYPE ShtEntry
+VFO(0x0, __short_timer_modulo);
+VFO(0x1, __short_timer_value);
+VFO(0x2, damage);
+VFO(0x4, position);
+VFO(0xC, size);
+VFO(0x14, angle);
+VFO(0x18, speed);
+VFO(0x20, __option_index);
+VFO(0x21, __byte_21);
+VFO(0x22, anm_script);
+VFO(0x24, sound_id);
+VFO(0x26, __anm_scriptB);
+VFO(0x28, __card_long_timer_modulo);
+VFO(0x29, __card_long_timer_value);
+VFO(0x2A, __long_timer_modulo);
+VFO(0x2B, __long_timer_value);
+VFO(0x2C, init_func);
+VFO(0x30, on_tick_func);
+VFO(0x34, __unknown_func_C);
+VFO(0x38, damage_func);
+VFO(0x4C, __float_4C);
+VSS(0x5C);
+#undef VTYPE
 
 // size: 
 struct ShtFile {
@@ -29481,25 +29559,26 @@ struct ShtFile {
 	PTR32Z<ShtEntry> entry_ptrs[MAX_SHT_ENTRY_COUNT]; // 0xE0
 	ShtEntry entry_array[]; // 0x180
 };
-#pragma region // ShtFile Validation
-VFO(0x2, ShtFile, __entry_count);
-VFO(0x4, ShtFile, __float_4);
-VFO(0x8, ShtFile, __float_8);
-VFO(0xC, ShtFile, __float_C);
-VFO(0x10, ShtFile, movement_speeds);
-VFO(0x20, ShtFile, max_level);
-VFO(0x24, ShtFile, power_per_level);
-VFO(0x28, ShtFile, damage_cap);
-VFO(0x40, ShtFile, __float2_array_40);
-VFO(0x90, ShtFile, __float2_array_90);
-VFO(0xE0, ShtFile, entry_ptrs);
-VFO(0x180, ShtFile, entry_array);
-#pragma endregion
+// ShtFile Validation
+#define VTYPE ShtFile
+VFO(0x2, __entry_count);
+VFO(0x4, __float_4);
+VFO(0x8, __float_8);
+VFO(0xC, __float_C);
+VFO(0x10, movement_speeds);
+VFO(0x20, max_level);
+VFO(0x24, power_per_level);
+VFO(0x28, damage_cap);
+VFO(0x40, __float2_array_40);
+VFO(0x90, __float2_array_90);
+VFO(0xE0, entry_ptrs);
+VFO(0x180, entry_array);
+#undef VTYPE
 
 typedef struct Player Player;
 extern "C" {
-	// 0x4CF410
-	externcg Player* PLAYER_PTR cgasm("_PLAYER_PTR");
+// 0x4CF410
+externcg Player* PLAYER_PTR cgasm("_PLAYER_PTR");
 }
 
 static inline bool enemies_are_alive();
@@ -30434,27 +30513,28 @@ struct PlayerDamageSource {
 	// 0x420BF0
 	dllexport gnu_noinline static int32_t fastcall __unknown_func_3(PlayerDamageSource* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x420BF0);
 };
-#pragma region // PlayerDamageSource Validation
-VFO32(0x0, PlayerDamageSource, flags);
-VFO32(0x4, PlayerDamageSource, radius);
-VFO32(0x8, PlayerDamageSource, radius_delta);
-VFO32(0xC, PlayerDamageSource, angle);
-VFO32(0x10, PlayerDamageSource, angular_velocity);
-VFO32(0x14, PlayerDamageSource, size);
-VFO32(0x1C, PlayerDamageSource, motion);
-VFO32(0x60, PlayerDamageSource, duration);
-VFO32(0x74, PlayerDamageSource, damage);
-VFO32(0x78, PlayerDamageSource, damage_dealt);
-VFO32(0x7C, PlayerDamageSource, damage_cap);
-VFO32(0x80, PlayerDamageSource, __hit_frequency);
-VFO32(0x84, PlayerDamageSource, __last_hit_enemy);
-VFO32(0x88, PlayerDamageSource, __int_88);
-VFO32(0x8C, PlayerDamageSource, __damage_type);
-VFO32(0x90, PlayerDamageSource, __player_bullet_index);
-VFO32(0x94, PlayerDamageSource, __enemy_id_94);
-VFO32(0x98, PlayerDamageSource, __unknown_func_index);
-VSS32(0x9C, PlayerDamageSource);
-#pragma endregion
+// PlayerDamageSource Validation
+#define VTYPE PlayerDamageSource
+VFO32(0x0, flags);
+VFO32(0x4, radius);
+VFO32(0x8, radius_delta);
+VFO32(0xC, angle);
+VFO32(0x10, angular_velocity);
+VFO32(0x14, size);
+VFO32(0x1C, motion);
+VFO32(0x60, duration);
+VFO32(0x74, damage);
+VFO32(0x78, damage_dealt);
+VFO32(0x7C, damage_cap);
+VFO32(0x80, __hit_frequency);
+VFO32(0x84, __last_hit_enemy);
+VFO32(0x88, __int_88);
+VFO32(0x8C, __damage_type);
+VFO32(0x90, __player_bullet_index);
+VFO32(0x94, __enemy_id_94);
+VFO32(0x98, __unknown_func_index);
+VSS32(0x9C);
+#undef VTYPE
 
 // 0x4B4270
 static constexpr DamageSourceFunc *const PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[] = {
@@ -30536,26 +30616,27 @@ struct PlayerOption {
 		return (Float2)this->internal_position * (1.0f / INTERNAL_POSITION_RATIO);
 	}
 };
-#pragma region // PlayerOption Validation
-VFO32(0x0, PlayerOption, state);
-VFO32(0x54, PlayerOption, position);
-VFO32(0x5C, PlayerOption, internal_position);
-VFO32(0x64, PlayerOption, __unfocused_offset);
-VFO32(0x6C, PlayerOption, __focused_offset);
-VFO32(0xA8, PlayerOption, __angle_A8);
-VFO32(0xAC, PlayerOption, __float_AC);
-VFO32(0xB0, PlayerOption, __anm_id_B0);
-VFO32(0xB4, PlayerOption, __anm_id_B4);
-VFO32(0xCC, PlayerOption, focused);
-VFO32(0xD0, PlayerOption, __option_index);
-VFO32(0xD4, PlayerOption, __int_D4);
-VFO32(0xD8, PlayerOption, flags);
-VFO32(0xDC, PlayerOption, __dword_DC);
-VFO32(0xE0, PlayerOption, __float_E0);
-VFO32(0xE4, PlayerOption, __enemy_id_E4);
-VFO32(0xE8, PlayerOption, __func_ptr_E8);
-VSS32(0xF0, PlayerOption);
-#pragma endregion
+// PlayerOption Validation
+#define VTYPE PlayerOption
+VFO32(0x0, state);
+VFO32(0x54, position);
+VFO32(0x5C, internal_position);
+VFO32(0x64, __unfocused_offset);
+VFO32(0x6C, __focused_offset);
+VFO32(0xA8, __angle_A8);
+VFO32(0xAC, __float_AC);
+VFO32(0xB0, __anm_id_B0);
+VFO32(0xB4, __anm_id_B4);
+VFO32(0xCC, focused);
+VFO32(0xD0, __option_index);
+VFO32(0xD4, __int_D4);
+VFO32(0xD8, flags);
+VFO32(0xDC, __dword_DC);
+VFO32(0xE0, __float_E0);
+VFO32(0xE4, __enemy_id_E4);
+VFO32(0xE8, __func_ptr_E8);
+VSS32(0xF0);
+#undef VTYPE
 
 static inline PlayerBullet* get_player_bullet_by_index(int32_t index);
 
@@ -30694,30 +30775,31 @@ struct PlayerBullet {
 		return ZUN_SUCCESS;
 	}
 };
-#pragma region // PlayerBullet Validation
-VFO32(0x0, PlayerBullet, flags);
-VFO32(0x4, PlayerBullet, __bullet_index);
-VFO32(0x8, PlayerBullet, __vm_id_8);
-VFO32(0xC, PlayerBullet, __timer_C);
-VFO32(0x20, PlayerBullet, __timer_20);
-VFO32(0x48, PlayerBullet, motion);
-VFO32(0x8C, PlayerBullet, state);
-VFO32(0x90, PlayerBullet, __enemy_id_90);
-VFO32(0x94, PlayerBullet, __bool_94);
-VFO32(0x98, PlayerBullet, __bool_98);
-VFO32(0x9C, PlayerBullet, damage);
-VFO32(0xA0, PlayerBullet, size);
-VFO32(0xAC, PlayerBullet, __sht_entry_index);
-VFO32(0xB0, PlayerBullet, damage_source_index);
-VFO32(0xD4, PlayerBullet, __float3_D4);
-VFO32(0xE0, PlayerBullet, bullet_anm);
-VFO32(0xE4, PlayerBullet, option);
-VFO32(0xE8, PlayerBullet, init_func);
-VFO32(0xEC, PlayerBullet, on_tick_func);
-VFO32(0xF0, PlayerBullet, __unknown_func_C);
-VFO32(0xF4, PlayerBullet, damage_func);
-VSS32(0xF8, PlayerBullet);
-#pragma endregion
+// PlayerBullet Validation
+#define VTYPE PlayerBullet
+VFO32(0x0, flags);
+VFO32(0x4, __bullet_index);
+VFO32(0x8, __vm_id_8);
+VFO32(0xC, __timer_C);
+VFO32(0x20, __timer_20);
+VFO32(0x48, motion);
+VFO32(0x8C, state);
+VFO32(0x90, __enemy_id_90);
+VFO32(0x94, __bool_94);
+VFO32(0x98, __bool_98);
+VFO32(0x9C, damage);
+VFO32(0xA0, size);
+VFO32(0xAC, __sht_entry_index);
+VFO32(0xB0, damage_source_index);
+VFO32(0xD4, __float3_D4);
+VFO32(0xE0, bullet_anm);
+VFO32(0xE4, option);
+VFO32(0xE8, init_func);
+VFO32(0xEC, on_tick_func);
+VFO32(0xF0, __unknown_func_C);
+VFO32(0xF4, damage_func);
+VSS32(0xF8);
+#undef VTYPE
 
 // 0x4B41F0
 static BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] = {
@@ -30837,50 +30919,51 @@ struct PlayerData {
 	// 0x45D5E0
 	dllexport gnu_noinline void thiscall __update_option_power_levels(int = UNUSED_DWORD) ASR(0x45D5E0);
 };
-#pragma region // PlayerData Validation
-VFO32(0x0, PlayerData, position);
-VFO32(0xC, PlayerData, internal_position);
-VFO32(0x14, PlayerData, state_timer);
-VFO32(0x28, PlayerData, __timer_28);
-VFO32(0x3C, PlayerData, __timer_3C);
-VFO32(0x50, PlayerData, options);
-VFO32(0x410, PlayerData, equipment);
-VFO32(0xF50, PlayerData, bullets);
-VFO32(0x1FF50, PlayerData, last_created_damage_source_index);
-VFO32(0x1FF54, PlayerData, damage_sources);
-VFO32(0x46FF0, PlayerData, __dummy_damage_source);
-VFO32(0x4708C, PlayerData, state);
-VFO32(0x47090, PlayerData, focus_sigil_vm_id);
-VFO32(0x47094, PlayerData, __graze_aura_vm_id);
-VFO32(0x47098, PlayerData, __graze_aura_timer);
-VFO32(0x470AC, PlayerData, focused);
-VFO32(0x470B0, PlayerData, shoot_key_short_timer);
-VFO32(0x470C4, PlayerData, shoot_key_long_timer);
-VFO32(0x470D8, PlayerData, __option_count);
-VFO32(0x470DC, PlayerData, __level_array_470DC);
-VFO32(0x47154, PlayerData, invulnerable_timer);
-VFO32(0x47168, PlayerData, __timer_47168);
-VFO32(0x4717C, PlayerData, flags);
-VFO32(0x47180, PlayerData, __yukari_wrap_timer);
-VFO32(0x47194, PlayerData, __unfocused_linear_speed);
-VFO32(0x47198, PlayerData, __focused_linear_speed);
-VFO32(0x4719C, PlayerData, __unfocused_diagonal_speed);
-VFO32(0x471A0, PlayerData, __focused_diagonal_speed);
-VFO32(0x471A4, PlayerData, velocity);
-VFO32(0x471B0, PlayerData, __last_movement_velocity);
-VFO32(0x471BC, PlayerData, __internal_velocity);
-VFO32(0x471C4, PlayerData, __int_471C4);
-VFO32(0x471C8, PlayerData, __options_hidden_frames);
-VFO32(0x471CC, PlayerData, __speed_modifier);
-VFO32(0x471D0, PlayerData, __base_axis_speed);
-VFO32(0x471DC, PlayerData, power_level);
-VFO32(0x471E0, PlayerData, previous_positions);
-VFO32(0x472E8, PlayerData, num_deathbomb_frames);
-VFO32(0x472EC, PlayerData, __shot_tilt_angle);
-VFO32(0x472F0, PlayerData, __shot_spread);
-VFO32(0x472F4, PlayerData, __timer_472F4);
-VSS32(0x47308, PlayerData);
-#pragma endregion
+// PlayerData Validation
+#define VTYPE PlayerData
+VFO32(0x0, position);
+VFO32(0xC, internal_position);
+VFO32(0x14, state_timer);
+VFO32(0x28, __timer_28);
+VFO32(0x3C, __timer_3C);
+VFO32(0x50, options);
+VFO32(0x410, equipment);
+VFO32(0xF50, bullets);
+VFO32(0x1FF50, last_created_damage_source_index);
+VFO32(0x1FF54, damage_sources);
+VFO32(0x46FF0, __dummy_damage_source);
+VFO32(0x4708C, state);
+VFO32(0x47090, focus_sigil_vm_id);
+VFO32(0x47094, __graze_aura_vm_id);
+VFO32(0x47098, __graze_aura_timer);
+VFO32(0x470AC, focused);
+VFO32(0x470B0, shoot_key_short_timer);
+VFO32(0x470C4, shoot_key_long_timer);
+VFO32(0x470D8, __option_count);
+VFO32(0x470DC, __level_array_470DC);
+VFO32(0x47154, invulnerable_timer);
+VFO32(0x47168, __timer_47168);
+VFO32(0x4717C, flags);
+VFO32(0x47180, __yukari_wrap_timer);
+VFO32(0x47194, __unfocused_linear_speed);
+VFO32(0x47198, __focused_linear_speed);
+VFO32(0x4719C, __unfocused_diagonal_speed);
+VFO32(0x471A0, __focused_diagonal_speed);
+VFO32(0x471A4, velocity);
+VFO32(0x471B0, __last_movement_velocity);
+VFO32(0x471BC, __internal_velocity);
+VFO32(0x471C4, __int_471C4);
+VFO32(0x471C8, __options_hidden_frames);
+VFO32(0x471CC, __speed_modifier);
+VFO32(0x471D0, __base_axis_speed);
+VFO32(0x471DC, power_level);
+VFO32(0x471E0, previous_positions);
+VFO32(0x472E8, num_deathbomb_frames);
+VFO32(0x472EC, __shot_tilt_angle);
+VFO32(0x472F0, __shot_spread);
+VFO32(0x472F4, __timer_472F4);
+VSS32(0x47308);
+#undef VTYPE
 
 // 0x4B7088
 static inline constexpr const char *const PLAYER_SHT_FILENAMES[] = {
@@ -32153,41 +32236,42 @@ public:
 		return damage;
 	}
 };
-#pragma region // Player Validation
-VFO32(0x0, Player, task_flags);
-VFO32(0x4, Player, on_tick_func);
-VFO32(0x8, Player, on_draw_func);
-VFO32(0xC, Player, player_anm);
-VFO32(0x10, Player, bullet_anm);
-VFO32(0x14, Player, __vm_14);
-VFO32(0x620, Player, data);
-VFO32(0x47928, Player, __float3_47928);
-VFO32(0x47934, Player, __base_movement);
-VFO32(0x4793C, Player, movement_direction);
-VFO32(0x47940, Player, sht_file);
-VFO32(0x47944, Player, __dword_47944);
-VFO32(0x47948, Player, __byte_47948);
-VFO32(0x4794C, Player, scale_interp);
-VFO32(0x4797C, Player, scale);
-VFO32(0x47980, Player, damage_multiplier);
-VFO32(0x47984, Player, damage_cap);
-VFO32(0x47988, Player, __item_attract_speed);
-VFO32(0x4798C, Player, item_collect_radius);
-VFO32(0x47990, Player, item_attract_radius_focused);
-VFO32(0x47994, Player, item_attract_radius_unfocused);
-VFO32(0x47998, Player, poc_height);
-VFO32(0x4799C, Player, __hitbox_radius_unfocused);
-VFO32(0x479A0, Player, __hitbox_radius_focused);
-VFO32(0x479A4, Player, __hitbox_size_unfocused);
-VFO32(0x479AC, Player, __float_479AC);
-VFO32(0x479B0, Player, __hitbox_size_focused);
-VFO32(0x479B8, Player, __float_479B8);
-VFO32(0x479BC, Player, __dword_479BC);
-VFO32(0x479C0, Player, __dword_479C0);
-VFO32(0x479C4, Player, __dword_479C4);
-VFO32(0x479CC, Player, __angle_479CC);
-VSS32(0x479D0, Player);
-#pragma endregion
+// Player Validation
+#define VTYPE Player
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, player_anm);
+VFO32(0x10, bullet_anm);
+VFO32(0x14, __vm_14);
+VFO32(0x620, data);
+VFO32(0x47928, __float3_47928);
+VFO32(0x47934, __base_movement);
+VFO32(0x4793C, movement_direction);
+VFO32(0x47940, sht_file);
+VFO32(0x47944, __dword_47944);
+VFO32(0x47948, __byte_47948);
+VFO32(0x4794C, scale_interp);
+VFO32(0x4797C, scale);
+VFO32(0x47980, damage_multiplier);
+VFO32(0x47984, damage_cap);
+VFO32(0x47988, __item_attract_speed);
+VFO32(0x4798C, item_collect_radius);
+VFO32(0x47990, item_attract_radius_focused);
+VFO32(0x47994, item_attract_radius_unfocused);
+VFO32(0x47998, poc_height);
+VFO32(0x4799C, __hitbox_radius_unfocused);
+VFO32(0x479A0, __hitbox_radius_focused);
+VFO32(0x479A4, __hitbox_size_unfocused);
+VFO32(0x479AC, __float_479AC);
+VFO32(0x479B0, __hitbox_size_focused);
+VFO32(0x479B8, __float_479B8);
+VFO32(0x479BC, __dword_479BC);
+VFO32(0x479C0, __dword_479C0);
+VFO32(0x479C4, __dword_479C4);
+VFO32(0x479CC, __angle_479CC);
+VSS32(0x479D0);
+#undef VTYPE
 
 // 0x45F0F0
 dllexport gnu_noinline int32_t vectorcall HitboxManager::Impl::enm_compute_damage_sources(
@@ -33047,8 +33131,8 @@ break_skip_time:
 
 typedef struct PopupManager PopupManager;
 extern "C" {
-	// 0x4CF420
-	externcg PopupManager* POPUP_MANAGER_PTR cgasm("_POPUP_MANAGER_PTR");
+// 0x4CF420
+externcg PopupManager* POPUP_MANAGER_PTR cgasm("_POPUP_MANAGER_PTR");
 }
 
 // size: 0x48
@@ -33378,14 +33462,14 @@ typedef struct AbilityTextData AbilityTextData;
 typedef struct AbilityMenu AbilityMenu;
 
 extern "C" {
-	// 0x4CF298
-	externcg AbilityManager* ABILITY_MANAGER_PTR cgasm("_ABILITY_MANAGER_PTR");
-	// 0x4CF29C
-	externcg AbilityTextData* ABILITY_TEXT_DATA_PTR cgasm("_ABILITY_TEXT_DATA_PTR");
-	// 0x4CF2A0
-	externcg AbilityMenu* ABILITY_MENU_PTR cgasm("_ABILITY_MENU_PTR");
-	// 0x4CF2D4
-	externcg int32_t MOMOYO_CARD_COUNTER cgasm("_MOMOYO_CARD_COUNTER");
+// 0x4CF298
+externcg AbilityManager* ABILITY_MANAGER_PTR cgasm("_ABILITY_MANAGER_PTR");
+// 0x4CF29C
+externcg AbilityTextData* ABILITY_TEXT_DATA_PTR cgasm("_ABILITY_TEXT_DATA_PTR");
+// 0x4CF2A0
+externcg AbilityMenu* ABILITY_MENU_PTR cgasm("_ABILITY_MENU_PTR");
+// 0x4CF2D4
+externcg int32_t MOMOYO_CARD_COUNTER cgasm("_MOMOYO_CARD_COUNTER");
 }
 
 static inline void enemy_manager_fail_spell();
@@ -37334,12 +37418,13 @@ struct AbilityTextData {
 		this->initialize();
 	}
 };
-#pragma region // AbilityTextData Validation
-VFO32(0x0, AbilityTextData, description_text);
-VFO32(0x63C0, AbilityTextData, __text_line_vms);
-VFO32(0x63DC, AbilityTextData, card_type_label);
-VSS32(0x63E0, AbilityTextData);
-#pragma endregion
+// AbilityTextData Validation
+#define VTYPE AbilityTextData
+VFO32(0x0, description_text);
+VFO32(0x63C0, __text_line_vms);
+VFO32(0x63DC, card_type_label);
+VSS32(0x63E0);
+#undef VTYPE
 
 static inline constexpr int32_t MAX_EQUIPPED_CARDS = 0x100;
 
@@ -38334,33 +38419,34 @@ public:
 		return ABILITY_MANAGER_PTR->equipped_cards_run_on_load_impl();
 	}
 };
-#pragma region // AbilityManager Validation
-VFO32(0x0, AbilityManager, task_flags);
-VFO32(0x4, AbilityManager, on_tick_func);
-VFO32(0x8, AbilityManager, on_draw_func);
-VFO32(0xC, AbilityManager, ability_anm);
-VFO32(0x10, AbilityManager, abcard_anm);
-VFO32(0x14, AbilityManager, abmenu_anm);
-VFO32(0x18, AbilityManager, card_list);
-VFO32(0x28, AbilityManager, card_count);
-VFO32(0x2C, AbilityManager, active_card_count);
-VFO32(0x30, AbilityManager, equipment_card_count);
-VFO32(0x34, AbilityManager, passive_card_count);
-VFO32(0x38, AbilityManager, selected_active_card);
-VFO32(0x3C, AbilityManager, __selected_card_vm);
-VFO32(0x40, AbilityManager, __selected_card_hidden);
-VFO32(0x44, AbilityManager, __timer_44);
-VFO32(0x58, AbilityManager, __card_vms);
-VFO32(0x458, AbilityManager, __active_card_vms);
-VFO32(0x858, AbilityManager, __active_card_array);
-VFO32(0xC58, AbilityManager, __float_C58);
-VFO32(0xC5C, AbilityManager, __int_C5C);
-VFO32(0xC60, AbilityManager, __ability_data_loaded);
-VFO32(0xC64, AbilityManager, __created_ability_data);
-VFO32(0xC68, AbilityManager, __thread_C68);
-VFO32(0xC84, AbilityManager, purchased_cards);
-VSS32(0xD70, AbilityManager);
-#pragma endregion
+// AbilityManager Validation
+#define VTYPE AbilityManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, ability_anm);
+VFO32(0x10, abcard_anm);
+VFO32(0x14, abmenu_anm);
+VFO32(0x18, card_list);
+VFO32(0x28, card_count);
+VFO32(0x2C, active_card_count);
+VFO32(0x30, equipment_card_count);
+VFO32(0x34, passive_card_count);
+VFO32(0x38, selected_active_card);
+VFO32(0x3C, __selected_card_vm);
+VFO32(0x40, __selected_card_hidden);
+VFO32(0x44, __timer_44);
+VFO32(0x58, __card_vms);
+VFO32(0x458, __active_card_vms);
+VFO32(0x858, __active_card_array);
+VFO32(0xC58, __float_C58);
+VFO32(0xC5C, __int_C5C);
+VFO32(0xC60, __ability_data_loaded);
+VFO32(0xC64, __created_ability_data);
+VFO32(0xC68, __thread_C68);
+VFO32(0xC84, purchased_cards);
+VSS32(0xD70);
+#undef VTYPE
 
 static inline float& ability_manager_get_float_C58() {
 	return ABILITY_MANAGER_PTR->__float_C58;
@@ -38449,8 +38535,8 @@ dllexport gnu_noinline void EnemyDrops::spawn_extra_items(Float3* position) {
 // entire file, why does it even exist?!
 typedef struct AbilityTrophyManager AbilityTrophyManager;
 extern "C" {
-	// 0x4CF2A8
-	externcg AbilityTrophyManager* ABILITY_TROPHY_MANAGER_PTR cgasm("_ABILITY_TROPHY_MANAGER_PTR");
+// 0x4CF2A8
+externcg AbilityTrophyManager* ABILITY_TROPHY_MANAGER_PTR cgasm("_ABILITY_TROPHY_MANAGER_PTR");
 }
 
 // size: 0x248
@@ -38613,22 +38699,23 @@ struct AbilityTrophyManager : ZUNTask {
 		return ability_trophy_manager;
 	}
 };
-#pragma region // AbilityTrophyManager Validation
-VFO32(0x0, AbilityTrophyManager, task_flags);
-VFO32(0x4, AbilityTrophyManager, on_tick_func);
-VFO32(0x8, AbilityTrophyManager, on_draw_func);
-VFO32(0xC, AbilityTrophyManager, trophy_anm);
-VFO32(0x10, AbilityTrophyManager, card_id_queue);
-VFO32(0x218, AbilityTrophyManager, previous_primary_state);
-VFO32(0x21C, AbilityTrophyManager, primary_state);
-VFO32(0x220, AbilityTrophyManager, secondary_state);
-VFO32(0x224, AbilityTrophyManager, __bool_224);
-VFO32(0x228, AbilityTrophyManager, state_timer);
-VFO32(0x23C, AbilityTrophyManager, __anm_id_23C);
-VFO32(0x240, AbilityTrophyManager, __anm_id_240);
-VFO32(0x244, AbilityTrophyManager, __anm_id_244);
-VSS32(0x248, AbilityTrophyManager);
-#pragma endregion
+// AbilityTrophyManager Validation
+#define VTYPE AbilityTrophyManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, trophy_anm);
+VFO32(0x10, card_id_queue);
+VFO32(0x218, previous_primary_state);
+VFO32(0x21C, primary_state);
+VFO32(0x220, secondary_state);
+VFO32(0x224, __bool_224);
+VFO32(0x228, state_timer);
+VFO32(0x23C, __anm_id_23C);
+VFO32(0x240, __anm_id_240);
+VFO32(0x244, __anm_id_244);
+VSS32(0x248);
+#undef VTYPE
 
 // 0x418DE0
 dllexport gnu_noinline AbilityTrophyManager* fastcall __unlock_card(int32_t card_id, BOOL arg2) ASR(0x418DE0);
@@ -38913,14 +39000,14 @@ normal_angle:
 }
 
 extern "C" {
-	// 0x4CDB60
-	// For all characters: 0, 1, 3, 6, 10, 11, 13, 16
-	externcg int32_t UNKNOWN_W[SHOTTYPE_COUNT][MAX_ALLOWED_POWER_LEVEL] cgasm("_UNKNOWN_W") ecginit(= {
-		{ 0, 1, 3, 6, 10, 11, 13, 16 },
-		{ 0, 1, 3, 6, 10, 11, 13, 16 },
-		{ 0, 1, 3, 6, 10, 11, 13, 16 },
-		{ 0, 1, 3, 6, 10, 11, 13, 16 }
-	});
+// 0x4CDB60
+// For all characters: 0, 1, 3, 6, 10, 11, 13, 16
+externcg int32_t UNKNOWN_W[SHOTTYPE_COUNT][MAX_ALLOWED_POWER_LEVEL] cgasm("_UNKNOWN_W") ecginit(= {
+	{ 0, 1, 3, 6, 10, 11, 13, 16 },
+	{ 0, 1, 3, 6, 10, 11, 13, 16 },
+	{ 0, 1, 3, 6, 10, 11, 13, 16 },
+	{ 0, 1, 3, 6, 10, 11, 13, 16 }
+});
 }
 
 // 0x4B7020
@@ -39460,27 +39547,28 @@ struct AbilityShop : ZUNTask {
 		return ability_shop;
 	}
 };
-#pragma region // AbilityShop Validation
-VFO32(0x0, AbilityShop, task_flags);
-VFO32(0x4, AbilityShop, on_tick_func);
-VFO32(0x8, AbilityShop, on_draw_func);
-VFO32(0xC, AbilityShop, confirm_menu);
-VFO32(0xE4, AbilityShop, card_choice);
-VFO32(0x1BC, AbilityShop, state_timer);
-VFO32(0x1D0, AbilityShop, position);
-VFO32(0x1DC, AbilityShop, __float3_1DC);
-VFO32(0x1F4, AbilityShop, __timer_1F4);
-VFO32(0x208, AbilityShop, __timer_208);
-VFO32(0x228, AbilityShop, __anm_id_228);
-VFO32(0x22C, AbilityShop, __anm_id_array_22C);
-VFO32(0x62C, AbilityShop, __anm_id_array_62C);
-VFO32(0xA2C, AbilityShop, card_count);
-VFO32(0xA30, AbilityShop, card_array);
-VFO32(0xE30, AbilityShop, __purchased_card_id);
-VFO32(0xE34, AbilityShop, __has_blank_card_already);
-VFO32(0xE38, AbilityShop, primary_state);
-VSS32(0xE3C, AbilityShop);
-#pragma endregion
+// AbilityShop Validation
+#define VTYPE AbilityShop
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, confirm_menu);
+VFO32(0xE4, card_choice);
+VFO32(0x1BC, state_timer);
+VFO32(0x1D0, position);
+VFO32(0x1DC, __float3_1DC);
+VFO32(0x1F4, __timer_1F4);
+VFO32(0x208, __timer_208);
+VFO32(0x228, __anm_id_228);
+VFO32(0x22C, __anm_id_array_22C);
+VFO32(0x62C, __anm_id_array_62C);
+VFO32(0xA2C, card_count);
+VFO32(0xA30, card_array);
+VFO32(0xE30, __purchased_card_id);
+VFO32(0xE34, __has_blank_card_already);
+VFO32(0xE38, primary_state);
+VSS32(0xE3C);
+#undef VTYPE
 
 // size: 0x13FC
 struct AbilityMenu : ZUNTask {
@@ -39600,27 +39688,28 @@ struct AbilityMenu : ZUNTask {
 		return ability_menu;
 	}
 };
-#pragma region // AbilityMenu Validation
-VFO32(0x0, AbilityMenu, task_flags);
-VFO32(0x4, AbilityMenu, on_tick_func);
-VFO32(0x8, AbilityMenu, on_draw_func);
-VFO32(0xC, AbilityMenu, __menu_select_C);
-VFO32(0xE4, AbilityMenu, __menu_select_E4);
-VFO32(0x1BC, AbilityMenu, __menu_select_1BC);
-VFO32(0x294, AbilityMenu, __timer_294);
-VFO32(0x2A8, AbilityMenu, __float3_2A8);
-VFO32(0x2CC, AbilityMenu, __timer_2CC);
-VFO32(0x2E0, AbilityMenu, __timer_2E0);
-VFO32(0x3E4, AbilityMenu, __int_3E4);
-VFO32(0x3E8, AbilityMenu, __anm_id_3E8);
-VFO32(0x3EC, AbilityMenu, __anm_id_array_3EC);
-VFO32(0x7EC, AbilityMenu, __anm_id_array_7EC);
-VFO32(0xBEC, AbilityMenu, __anm_id_array_BEC);
-VFO32(0x13EC, AbilityMenu, __int_13EC);
-VFO32(0x13F0, AbilityMenu, __int_13F0);
-VFO32(0x13F4, AbilityMenu, __int_13F4);
-VSS32(0x13FC, AbilityMenu);
-#pragma endregion
+// AbilityMenu Validation
+#define VTYPE AbilityMenu
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, __menu_select_C);
+VFO32(0xE4, __menu_select_E4);
+VFO32(0x1BC, __menu_select_1BC);
+VFO32(0x294, __timer_294);
+VFO32(0x2A8, __float3_2A8);
+VFO32(0x2CC, __timer_2CC);
+VFO32(0x2E0, __timer_2E0);
+VFO32(0x3E4, __int_3E4);
+VFO32(0x3E8, __anm_id_3E8);
+VFO32(0x3EC, __anm_id_array_3EC);
+VFO32(0x7EC, __anm_id_array_7EC);
+VFO32(0xBEC, __anm_id_array_BEC);
+VFO32(0x13EC, __int_13EC);
+VFO32(0x13F0, __int_13F0);
+VFO32(0x13F4, __int_13F4);
+VSS32(0x13FC);
+#undef VTYPE
 
 #if INCLUDE_PATCH_CODE
 dllexport gnu_noinline void count_cards_of_type(EnemyData* self) {
@@ -40032,33 +40121,34 @@ public:
 		return enemy_manager;
 	}
 };
-#pragma region // EnemyManager Validation
-VFO32(0x0, EnemyManager, task_flags);
-VFO32(0x4, EnemyManager, on_tick_func);
-VFO32(0x8, EnemyManager, on_draw_func);
-VFO32(0xC, EnemyManager, int_vars);
-VFO32(0x1C, EnemyManager, float_vars);
-VFO32(0x3C, EnemyManager, player_death_count);
-VFO32(0x40, EnemyManager, player_bomb_count);
-VFO32(0x44, EnemyManager, can_capture_spell);
-VFO32(0x48, EnemyManager, boss_ids);
-VFO32(0x88, EnemyManager, flags);
-VFO32(0x8C, EnemyManager, enemy_limit);
-VFO32(0x90, EnemyManager, next_enemy_id);
-VFO32(0x94, EnemyManager, prev_enemy_id);
-VFO32(0x98, EnemyManager, __timer_98);
-VFO32(0xAC, EnemyManager, __damage_dealt_by_bomb);
-VFO32(0xB0, EnemyManager, __damage_dealt);
-VFO32(0x15C, EnemyManager, __enemy_list_iter);
-VFO32(0x164, EnemyManager, disable_enemy_collision);
-VFO32(0x168, EnemyManager, enemy_anms);
-VFO32(0x188, EnemyManager, ecl_manager);
-VFO32(0x18C, EnemyManager, enemy_list);
-VFO32(0x194, EnemyManager, __unknown_enemy_list);
-VFO32(0x198, EnemyManager, enemy_count);
-VFO32(0x19C, EnemyManager, __angle_19C);
-VSS32(0x1A0, EnemyManager);
-#pragma endregion
+// EnemyManager Validation
+#define VTYPE EnemyManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, int_vars);
+VFO32(0x1C, float_vars);
+VFO32(0x3C, player_death_count);
+VFO32(0x40, player_bomb_count);
+VFO32(0x44, can_capture_spell);
+VFO32(0x48, boss_ids);
+VFO32(0x88, flags);
+VFO32(0x8C, enemy_limit);
+VFO32(0x90, next_enemy_id);
+VFO32(0x94, prev_enemy_id);
+VFO32(0x98, __timer_98);
+VFO32(0xAC, __damage_dealt_by_bomb);
+VFO32(0xB0, __damage_dealt);
+VFO32(0x15C, __enemy_list_iter);
+VFO32(0x164, disable_enemy_collision);
+VFO32(0x168, enemy_anms);
+VFO32(0x188, ecl_manager);
+VFO32(0x18C, enemy_list);
+VFO32(0x194, __unknown_enemy_list);
+VFO32(0x198, enemy_count);
+VFO32(0x19C, __angle_19C);
+VSS32(0x1A0);
+#undef VTYPE
 
 static inline void enemy_manager_fail_spell() {
 	ENEMY_MANAGER_PTR->can_capture_spell = FALSE;
@@ -40554,14 +40644,15 @@ struct AnmVMSpecialDataA {
 	int32_t __int_1E44; // 0x1E44
 	// 0x1E48
 };
-#pragma region // AnmVMSpecialDataA Validation
-VFO32(0x0, AnmVMSpecialDataA, __vm_array_0);
-VFO32(0x1830, AnmVMSpecialDataA, __anm_vm_1830);
-VFO32(0x1E3C, AnmVMSpecialDataA, __int_1E3C);
-VFO32(0x1E40, AnmVMSpecialDataA, __int_1E40);
-VFO32(0x1E44, AnmVMSpecialDataA, __int_1E44);
-VSS32(0x1E48, AnmVMSpecialDataA);
-#pragma endregion
+// AnmVMSpecialDataA Validation
+#define VTYPE AnmVMSpecialDataA
+VFO32(0x0, __vm_array_0);
+VFO32(0x1830, __anm_vm_1830);
+VFO32(0x1E3C, __int_1E3C);
+VFO32(0x1E40, __int_1E40);
+VFO32(0x1E44, __int_1E44);
+VSS32(0x1E48);
+#undef VTYPE
 
 // 0x406AD0
 dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataA(AnmVM* vm, void* arg) {
@@ -40787,11 +40878,12 @@ struct AnmVMSpecialDataB {
 	Timer __timer_1928; // 0x1928
 	// 0x193C
 };
-#pragma region // AnmVMSpecialDataB Validation
-VFO32(0x0, AnmVMSpecialDataB, __anm_id_array_0);
-VFO32(0x1928, AnmVMSpecialDataB, __timer_1928);
-VSS32(0x193C, AnmVMSpecialDataB);
-#pragma endregion
+// AnmVMSpecialDataB Validation
+#define VTYPE AnmVMSpecialDataB
+VFO32(0x0, __anm_id_array_0);
+VFO32(0x1928, __timer_1928);
+VSS32(0x193C);
+#undef VTYPE
 
 // 0x404FC0
 dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataB(AnmVM* vm, void* arg) {
@@ -40848,13 +40940,14 @@ struct AnmVMSpecialDataC {
 	Timer __timer_304; // 0x304
 	// 0x318
 };
-#pragma region // AnmVMSpecialDataC Validation
-VFO32(0x0, AnmVMSpecialDataC, position_array);
-VFO32(0x200, AnmVMSpecialDataC, color_array);
-VFO32(0x300, AnmVMSpecialDataC, __angle_300);
-VFO32(0x304, AnmVMSpecialDataC, __timer_304);
-VSS32(0x318, AnmVMSpecialDataC);
-#pragma endregion
+// AnmVMSpecialDataC Validation
+#define VTYPE AnmVMSpecialDataC
+VFO32(0x0, position_array);
+VFO32(0x200, color_array);
+VFO32(0x300, __angle_300);
+VFO32(0x304, __timer_304);
+VSS32(0x318);
+#undef VTYPE
 
 // 0x405D70
 dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataC1(AnmVM* vm, void* arg) {
@@ -40988,16 +41081,16 @@ struct AnmVMSpecialDataD {
 	Timer __timer_968; // 0x968
 	// 0x97C
 };
-#pragma region // AnmVMSpecialDataD Validation
-VFO32(0x0, AnmVMSpecialDataD, __vertices_0);
-VFO32(0x900, AnmVMSpecialDataD, __float3_interp_900);
-VFO32(0x968, AnmVMSpecialDataD, __timer_968);
-VSS32(0x97C, AnmVMSpecialDataD);
-#pragma endregion
+// AnmVMSpecialDataD Validation
+#define VTYPE AnmVMSpecialDataD
+VFO32(0x0, __vertices_0);
+VFO32(0x900, __float3_interp_900);
+VFO32(0x968, __timer_968);
+VSS32(0x97C);
+#undef VTYPE
 
 // 0x407590
 dllexport gnu_noinline int fastcall AnmVM::on_create_special_dataD(AnmVM* vm, void* arg) {
-
 	
 	AnmLoaded* anm_loaded = ENEMY_MANAGER_PTR->enemy_anms[3];
 	anm_loaded->__copy_data_to_vm_unknown_A(vm);
@@ -41065,9 +41158,10 @@ struct AnmVMSpecialDataE {
 	unknown_fields(0x4); // 0x4AC
 	// 0x4B0
 };
-#pragma region // AnmVMSpecialDataE Validation
-VSS32(0x4B0, AnmVMSpecialDataE);
-#pragma endregion
+// AnmVMSpecialDataE Validation
+#define VTYPE AnmVMSpecialDataE
+VSS32(0x4B0);
+#undef VTYPE
 
 // 0x4832F0
 dllexport gnu_noinline int thiscall AnmVM::create_special_dataE() {
@@ -41185,10 +41279,10 @@ dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataE(AnmVM* vm) {
 
 typedef struct Stage Stage;
 extern "C" {
-	// 0x4CF2B4
-	externcg Stage* STAGE_PTR cgasm("_STAGE_PTR");
-	// 0x4CF2B0
-	externcg Stage* STAGE_B_PTR cgasm("_STAGE_B_PTR");
+// 0x4CF2B4
+externcg Stage* STAGE_PTR cgasm("_STAGE_PTR");
+// 0x4CF2B0
+externcg Stage* STAGE_B_PTR cgasm("_STAGE_B_PTR");
 }
 
 // size: 0x30
@@ -41346,16 +41440,17 @@ struct StdHeader {
 	char anm_name[128]; // 0x10
 	PTR32Z<StdObject> objects[]; // 0x90 stored as offsets
 };
-#pragma region // StdHeader Validation
-VFO(0x0, StdHeader, object_count);
-VFO(0x2, StdHeader, instance_count);
-VFO(0x4, StdHeader, instances_offset);
-VFO(0x8, StdHeader, script_offset);
-VFO(0x10, StdHeader, anm_name);
-VFO(0x90, StdHeader, objects);
-VSS(0x90, StdHeader);
-VSA(0x4, StdHeader);
-#pragma endregion
+// StdHeader Validation
+#define VTYPE StdHeader
+VFO(0x0, object_count);
+VFO(0x2, instance_count);
+VFO(0x4, instances_offset);
+VFO(0x8, script_offset);
+VFO(0x10, anm_name);
+VFO(0x90, objects);
+VSS(0x90);
+VSA(0x4);
+#undef VTYPE
 
 // size: 0x10
 struct StdInstance {
@@ -41369,12 +41464,13 @@ struct StdInstance {
 	Float3 position; // 0x4
 	// 0x10
 };
-#pragma region // StdInstance Validation
-VFO(0x0, StdInstance, object_id);
-VFO(0x2, StdInstance, flags);
-VFO(0x4, StdInstance, position);
-VSS(0x10, StdInstance);
-#pragma endregion
+// StdInstance Validation
+#define VTYPE StdInstance
+VFO(0x0, object_id);
+VFO(0x2, flags);
+VFO(0x4, position);
+VSS(0x10);
+#undef VTYPE
 
 // size: 0x8+
 struct StdInstruction {
@@ -41475,26 +41571,27 @@ struct StdVM {
 		}
 	}
 };
-#pragma region // StdVM Validation
-VFO32(0x0, StdVM, script_time);
-VFO32(0x14, StdVM, current_instruction_offset);
-VFO32(0x18, StdVM, shaking_mode);
-VFO32(0x1C, StdVM, shaking_timer);
-VFO32(0x30, StdVM, __shaking_6_timer);
-VFO32(0x44, StdVM, camera_facing_interp);
-VFO32(0x9C, StdVM, camera_position_interp);
-VFO32(0xF4, StdVM, camera_rotation_interp);
-VFO32(0x14C, StdVM, sky_data_interp);
-VFO32(0x1F4, StdVM, camera_fov_interp);
-VFO32(0x224, StdVM, camera);
-VFO32(0x388, StdVM, full_stage);
-VFO32(0x38C, StdVM, slot_vms);
-VFO32(0x33EC, StdVM, slot_layers);
-VFO32(0x340C, StdVM, draw_distance_squared);
-VFO32(0x3410, StdVM, distortion);
-VFO32(0x3440, StdVM, __color_3440);
-VSS32(0x3444, StdVM);
-#pragma endregion
+// StdVM Validation
+#define VTYPE StdVM
+VFO32(0x0, script_time);
+VFO32(0x14, current_instruction_offset);
+VFO32(0x18, shaking_mode);
+VFO32(0x1C, shaking_timer);
+VFO32(0x30, __shaking_6_timer);
+VFO32(0x44, camera_facing_interp);
+VFO32(0x9C, camera_position_interp);
+VFO32(0xF4, camera_rotation_interp);
+VFO32(0x14C, sky_data_interp);
+VFO32(0x1F4, camera_fov_interp);
+VFO32(0x224, camera);
+VFO32(0x388, full_stage);
+VFO32(0x38C, slot_vms);
+VFO32(0x33EC, slot_layers);
+VFO32(0x340C, draw_distance_squared);
+VFO32(0x3410, distortion);
+VFO32(0x3440, __color_3440);
+VSS32(0x3444);
+#undef VTYPE
 
 // ZUN name: BackgroundInf
 // size: 0x34A0
@@ -42003,29 +42100,30 @@ corrupted_data:
 		return stage;
 	}
 };
-#pragma region // Stage Validation
-VFO32(0x0, Stage, task_flags);
-VFO32(0x4, Stage, on_tick_func);
-VFO32(0x8, Stage, on_draw_func);
-VFO32(0xC, Stage, std_vm);
-VFO32(0x3450, Stage, instance_vms);
-VFO32(0x3454, Stage, std_file);
-VFO32(0x3458, Stage, objects);
-VFO32(0x345C, Stage, instances);
-VFO32(0x3460, Stage, script);
-VFO32(0x3464, Stage, stage_anm);
-VFO32(0x3468, Stage, __rendered_instances_counter);
-VFO32(0x346C, Stage, __culled_instances_counter);
-VFO32(0x3470, Stage, __rendered_quads_counter);
-VFO32(0x3474, Stage, flags);
-VFO32(0x3478, Stage, __transition_timer);
-VFO32(0x348C, Stage, stage_number);
-VFO32(0x3490, Stage, __int_3490);
-VFO32(0x3494, Stage, std_file_buffer);
-VFO32(0x3498, Stage, std_file_size);
-VFO32(0x349C, Stage, on_draw_func_B);
-VSS32(0x34A0, Stage);
-#pragma endregion
+// Stage Validation
+#define VTYPE Stage
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, std_vm);
+VFO32(0x3450, instance_vms);
+VFO32(0x3454, std_file);
+VFO32(0x3458, objects);
+VFO32(0x345C, instances);
+VFO32(0x3460, script);
+VFO32(0x3464, stage_anm);
+VFO32(0x3468, __rendered_instances_counter);
+VFO32(0x346C, __culled_instances_counter);
+VFO32(0x3470, __rendered_quads_counter);
+VFO32(0x3474, flags);
+VFO32(0x3478, __transition_timer);
+VFO32(0x348C, stage_number);
+VFO32(0x3490, __int_3490);
+VFO32(0x3494, std_file_buffer);
+VFO32(0x3498, std_file_size);
+VFO32(0x349C, on_draw_func_B);
+VSS32(0x34A0);
+#undef VTYPE
 
 inline StdInstruction* StdVM::get_current_instruction() {
 	StdInstruction* current_instruction = this->full_stage->script;
@@ -42798,29 +42896,30 @@ public:
 		return spellcard;
 	}
 };
-#pragma region // Spellcard Validation
-VFO32(0x0, Spellcard, task_flags);
-VFO32(0x4, Spellcard, on_tick_func);
-VFO32(0x8, Spellcard, on_draw_func);
-VFO32(0xC, Spellcard, spell_background);
-VFO32(0x10, Spellcard, __spell_name_vms);
-VFO32(0x1C, Spellcard, __spell_ring_effect);
-VFO32(0x20, Spellcard, __timer_20);
-VFO32(0x34, Spellcard, name);
-VFO32(0x74, Spellcard, id);
-VFO32(0x78, Spellcard, flags);
-VFO32(0x7C, Spellcard, __bonus_A);
-VFO32(0x80, Spellcard, __bonus_B);
-VFO32(0x84, Spellcard, time);
-VFO32(0x88, Spellcard, __index_88);
-VFO32(0x8C, Spellcard, __int_8C);
-VFO32(0x90, Spellcard, __int_90);
-VFO32(0x98, Spellcard, __double_98);
-VFO32(0xA0, Spellcard, __double_A0);
-VFO32(0xA8, Spellcard, __int_A8);
-VFO32(0xAC, Spellcard, __spell_ring_position);
-VSS32(0xC0, Spellcard);
-#pragma endregion
+// Spellcard Validation
+#define VTYPE Spellcard
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, spell_background);
+VFO32(0x10, __spell_name_vms);
+VFO32(0x1C, __spell_ring_effect);
+VFO32(0x20, __timer_20);
+VFO32(0x34, name);
+VFO32(0x74, id);
+VFO32(0x78, flags);
+VFO32(0x7C, __bonus_A);
+VFO32(0x80, __bonus_B);
+VFO32(0x84, time);
+VFO32(0x88, __index_88);
+VFO32(0x8C, __int_8C);
+VFO32(0x90, __int_90);
+VFO32(0x98, __double_98);
+VFO32(0xA0, __double_A0);
+VFO32(0xA8, __int_A8);
+VFO32(0xAC, __spell_ring_position);
+VSS32(0xC0);
+#undef VTYPE
 
 static inline void __spellcard_fail() {
 	SPELLCARD_PTR->__spellcard_fail();
@@ -43244,8 +43343,8 @@ struct ItemSpriteData {
 };
 
 extern "C" {
-	// 0x4B4020
-	//externcg const ItemSpriteData ITEM_SPRITE_DATA[21] cgasm("_ITEM_SPRITE_DATA");
+// 0x4B4020
+//externcg const ItemSpriteData ITEM_SPRITE_DATA[21] cgasm("_ITEM_SPRITE_DATA");
 }
 
 static const ItemSpriteData ITEM_SPRITE_DATA[] = {
@@ -43573,31 +43672,32 @@ struct Item {
 		clang_forceinline GAME_MANAGER.globals.add_bomb();
 	}
 };
-#pragma region // Item Validation
-VFO32(0x0, Item, free_list_node);
-VFO32(0x10, Item, __vm_10);
-VFO32(0x61C, Item, __vm_61C);
-VFO32(0xC28, Item, __vm_id_C28);
-VFO32(0xC2C, Item, position);
-VFO32(0xC38, Item, velocity);
-VFO32(0xC44, Item, speed);
-VFO32(0xC48, Item, angle);
-VFO32(0xC4C, Item, __timer_C4C);
-VFO32(0xC74, Item, state);
-VFO32(0xC78, Item, id);
-VFO32(0xC7C, Item, __int_C7C);
-VFO32(0xC80, Item, __attract_speed);
-VFO32(0xC84, Item, __spawn_delay);
-VFO32(0xC88, Item, __dword_C88);
-VFO32(0xC8C, Item, __dword_C8C);
-VFO32(0xC90, Item, sound_id);
-VSS32(0xC94, Item);
-#pragma endregion
+// Item Validation
+#define VTYPE Item
+VFO32(0x0, free_list_node);
+VFO32(0x10, __vm_10);
+VFO32(0x61C, __vm_61C);
+VFO32(0xC28, __vm_id_C28);
+VFO32(0xC2C, position);
+VFO32(0xC38, velocity);
+VFO32(0xC44, speed);
+VFO32(0xC48, angle);
+VFO32(0xC4C, __timer_C4C);
+VFO32(0xC74, state);
+VFO32(0xC78, id);
+VFO32(0xC7C, __int_C7C);
+VFO32(0xC80, __attract_speed);
+VFO32(0xC84, __spawn_delay);
+VFO32(0xC88, __dword_C88);
+VFO32(0xC8C, __dword_C8C);
+VFO32(0xC90, sound_id);
+VSS32(0xC94);
+#undef VTYPE
 
 typedef struct ItemManager ItemManager;
 extern "C" {
-	// 0x4CF2EC
-	externcg ItemManager* ITEM_MANAGER_PTR cgasm("_ITEM_MANAGER_PTR");
+// 0x4CF2EC
+externcg ItemManager* ITEM_MANAGER_PTR cgasm("_ITEM_MANAGER_PTR");
 }
 
 static inline constexpr size_t MAX_ITEM_COUNT = 600;
@@ -44148,22 +44248,23 @@ struct ItemManager : ZUNTask {
 		return item_manager;
 	}
 };
-#pragma region // ItemManager Validation
-VFO32(0x0, ItemManager, task_flags);
-VFO32(0x4, ItemManager, on_tick_func);
-VFO32(0x8, ItemManager, on_draw_func);
-VFO32(0x10, ItemManager, on_draw_func_B);
-VFO32(0x14, ItemManager, items);
-VFO32(0x1D7AF4, ItemManager, cancel_items);
-VFO32(0xE6BAF4, ItemManager, item_free_list);
-VFO32(0xE6BB04, ItemManager, cancel_item_free_list);
-VFO32(0xE6BB14, ItemManager, slowdown_factor);
-VFO32(0xE6BB18, ItemManager, items_onscreen);
-VFO32(0xE6BB1C, ItemManager, item_count);
-VFO32(0xE6BB20, ItemManager, __int_E6BB20);
-VFO32(0xE6BB24, ItemManager, __dword_E6BB24);
-VSS32(0xE6BB28, ItemManager);
-#pragma endregion
+// ItemManager Validation
+#define VTYPE ItemManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0x10, on_draw_func_B);
+VFO32(0x14, items);
+VFO32(0x1D7AF4, cancel_items);
+VFO32(0xE6BAF4, item_free_list);
+VFO32(0xE6BB04, cancel_item_free_list);
+VFO32(0xE6BB14, slowdown_factor);
+VFO32(0xE6BB18, items_onscreen);
+VFO32(0xE6BB1C, item_count);
+VFO32(0xE6BB20, __int_E6BB20);
+VFO32(0xE6BB24, __dword_E6BB24);
+VSS32(0xE6BB28);
+#undef VTYPE
 
 static inline Item* spawn_item(int32_t item_id, Float3* position, float angle, float speed, int32_t spawn_delay) {
 	return ITEM_MANAGER_PTR->spawn_item(item_id, position, angle, speed, spawn_delay);
@@ -44409,10 +44510,10 @@ make_bullet_colors_fixed(int32_t cancel_script) {
 }
 
 extern "C" {
-	// 0x4C5F90
-	//externcg BulletSpriteData BULLET_SPRITE_DATA[48] cgasm("_BULLET_SPRITE_DATA");
-	// 0x4B36F0
-	//externcg int32_t BULLET_IDK_DATA[8] cgasm("_BULLET_IDK_DATA");
+// 0x4C5F90
+//externcg BulletSpriteData BULLET_SPRITE_DATA[48] cgasm("_BULLET_SPRITE_DATA");
+// 0x4B36F0
+//externcg int32_t BULLET_IDK_DATA[8] cgasm("_BULLET_IDK_DATA");
 }
 
 // 0x4C5F90
@@ -44861,10 +44962,10 @@ static inline const int32_t BULLET_IDK_DATA[8] = {
 typedef struct BulletManager BulletManager;
 typedef struct LaserManager LaserManager;
 extern "C" {
-	// 0x4CF2BC
-	externcg BulletManager* BULLET_MANAGER_PTR cgasm("_BULLET_MANAGER_PTR");
-	// 0x4CF3F4
-	externcg LaserManager* LASER_MANAGER_PTR cgasm("_LASER_MANAGER_PTR");
+// 0x4CF2BC
+externcg BulletManager* BULLET_MANAGER_PTR cgasm("_BULLET_MANAGER_PTR");
+// 0x4CF3F4
+externcg LaserManager* LASER_MANAGER_PTR cgasm("_LASER_MANAGER_PTR");
 }
 
 enum BulletEffectType : uint32_t {
@@ -45594,60 +45695,61 @@ struct Bullet {
 		ANM_MANAGER_PTR->draw_vm(&this->vm);
 	}
 };
-#pragma region // Bullet Validation
-VFO32(0x0, Bullet, free_list_node);
-VFO32(0x10, Bullet, tick_list_node);
-VFO32(0x20, Bullet, flags);
-VFO32(0x24, Bullet, invulnerable_time);
-VFO32(0x28, Bullet, vm);
-VFO32(0x634, Bullet, __anm_tree_id);
-VFO32(0x638, Bullet, position);
-VFO32(0x644, Bullet, velocity);
-VFO32(0x650, Bullet, speed);
-VFO32(0x654, Bullet, angle);
-VFO32(0x658, Bullet, hitbox_size);
-VFO32(0x660, Bullet, bullet_manager_index);
-VFO32(0x664, Bullet, __ex_react_val);
-VFO32(0x670, Bullet, offscreen_time);
-VFO32(0x674, Bullet, cancel_script_id);
-VFO32(0x678, Bullet, __int_678);
-VFO32(0x67C, Bullet, effect_index);
-VFO32(0x680, Bullet, effect_loop_index);
-VFO32(0x684, Bullet, active_effects);
-VFO32(0x688, Bullet, initial_effects);
-VFO32(0x68C, Bullet, next_in_layer);
-VFO32(0x690, Bullet, __int_690);
-VFO32(0x694, Bullet, transform_sound);
-VFO32(0x698, Bullet, layer);
-VFO32(0x69C, Bullet, effects);
-VFO32(0xABC, Bullet, effect_speedup);
-VFO32(0xB04, Bullet, effect_accel);
-VFO32(0xB4C, Bullet, effect_angle_accel);
-VFO32(0xB94, Bullet, effect_angle);
-VFO32(0xBDC, Bullet, effect_bounce);
-VFO32(0xC24, Bullet, effect_wait);
-VFO32(0xC6C, Bullet, effect_wrap);
-VFO32(0xCB4, Bullet, effect_homing);
-VFO32(0xCFC, Bullet, effect_move);
-VFO32(0xD44, Bullet, effect_posadd);
-VFO32(0xD8C, Bullet, effect_veltime);
-VFO32(0xDD4, Bullet, effect_offscreen);
-VFO32(0xE1C, Bullet, effect_save);
-VFO32(0xE64, Bullet, effect_delay);
-VFO32(0xEB0, Bullet, effect_move_interp);
-VFO32(0xF08, Bullet, scale_interp);
-VFO32(0xF38, Bullet, scale);
-VFO32(0xF3C, Bullet, __timer_F3C);
-VFO32(0xF50, Bullet, __timer_F50);
-VFO32(0xF64, Bullet, __int_F64);
-VFO32(0xF68, Bullet, state);
-VFO32(0xF6C, Bullet, __timer_F6C);
-VFO32(0xF80, Bullet, __timer_F80);
-VFO32(0xF94, Bullet, sprite_data);
-VFO32(0xF98, Bullet, sprite);
-VFO32(0xF9A, Bullet, color);
-VSS32(0xFA0, Bullet);
-#pragma endregion
+// Bullet Validation
+#define VTYPE Bullet
+VFO32(0x0, free_list_node);
+VFO32(0x10, tick_list_node);
+VFO32(0x20, flags);
+VFO32(0x24, invulnerable_time);
+VFO32(0x28, vm);
+VFO32(0x634, __anm_tree_id);
+VFO32(0x638, position);
+VFO32(0x644, velocity);
+VFO32(0x650, speed);
+VFO32(0x654, angle);
+VFO32(0x658, hitbox_size);
+VFO32(0x660, bullet_manager_index);
+VFO32(0x664, __ex_react_val);
+VFO32(0x670, offscreen_time);
+VFO32(0x674, cancel_script_id);
+VFO32(0x678, __int_678);
+VFO32(0x67C, effect_index);
+VFO32(0x680, effect_loop_index);
+VFO32(0x684, active_effects);
+VFO32(0x688, initial_effects);
+VFO32(0x68C, next_in_layer);
+VFO32(0x690, __int_690);
+VFO32(0x694, transform_sound);
+VFO32(0x698, layer);
+VFO32(0x69C, effects);
+VFO32(0xABC, effect_speedup);
+VFO32(0xB04, effect_accel);
+VFO32(0xB4C, effect_angle_accel);
+VFO32(0xB94, effect_angle);
+VFO32(0xBDC, effect_bounce);
+VFO32(0xC24, effect_wait);
+VFO32(0xC6C, effect_wrap);
+VFO32(0xCB4, effect_homing);
+VFO32(0xCFC, effect_move);
+VFO32(0xD44, effect_posadd);
+VFO32(0xD8C, effect_veltime);
+VFO32(0xDD4, effect_offscreen);
+VFO32(0xE1C, effect_save);
+VFO32(0xE64, effect_delay);
+VFO32(0xEB0, effect_move_interp);
+VFO32(0xF08, scale_interp);
+VFO32(0xF38, scale);
+VFO32(0xF3C, __timer_F3C);
+VFO32(0xF50, __timer_F50);
+VFO32(0xF64, __int_F64);
+VFO32(0xF68, state);
+VFO32(0xF6C, __timer_F6C);
+VFO32(0xF80, __timer_F80);
+VFO32(0xF94, sprite_data);
+VFO32(0xF98, sprite);
+VFO32(0xF9A, color);
+VSS32(0xFA0);
+#undef VTYPE
 
 enum LaserType {
 	LineLaser = 0,
@@ -48456,31 +48558,32 @@ public:
 		return bullet_manager;
 	}
 };
-#pragma region // BulletManager Validation
-VFO32(0x0, BulletManager, task_flags);
-VFO32(0x4, BulletManager, on_tick_func);
-VFO32(0x8, BulletManager, on_draw_func);
-VFO32(0xC, BulletManager, __bullet_ptr_C);
-VFO32(0x10, BulletManager, __bullet_cache_A);
-VFO32(0x28, BulletManager, __bullet_cache_B);
-VFO32(0x40, BulletManager, __bullet_count);
-VFO32(0x44, BulletManager, player_protect_radius_squared);
-VFO32(0x48, BulletManager, __bounce_bounds);
-VFO32(0x58, BulletManager, __graze_array);
-VFO32(0xA8, BulletManager, __int_A8);
-VFO32(0xAC, BulletManager, bullet_free_list);
-VFO32(0xBC, BulletManager, bullet_tick_list);
-VFO32(0xEC, BulletManager, bullets);
-VFO32(0x7A228C, BulletManager, anm_ids);
-VFO32(0x7A41D0, BulletManager, __cancel_counter);
-VFO32(0x7A41D4, BulletManager, __int_7A41D4);
-VFO32(0x7A41D8, BulletManager, bullet_iter);
-VFO32(0x7A41E8, BulletManager, __cancel_counter2);
-VFO32(0x7A41EC, BulletManager, bullet_anm);
-VFO32(0x7A41F0, BulletManager, __grazing_despawns_bullets);
-VFO32(0x7A41F4, BulletManager, __graze_despawn_counter);
-VSS32(0x7A41F8, BulletManager);
-#pragma endregion
+// BulletManager Validation
+#define VTYPE BulletManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, __bullet_ptr_C);
+VFO32(0x10, __bullet_cache_A);
+VFO32(0x28, __bullet_cache_B);
+VFO32(0x40, __bullet_count);
+VFO32(0x44, player_protect_radius_squared);
+VFO32(0x48, __bounce_bounds);
+VFO32(0x58, __graze_array);
+VFO32(0xA8, __int_A8);
+VFO32(0xAC, bullet_free_list);
+VFO32(0xBC, bullet_tick_list);
+VFO32(0xEC, bullets);
+VFO32(0x7A228C, anm_ids);
+VFO32(0x7A41D0, __cancel_counter);
+VFO32(0x7A41D4, __int_7A41D4);
+VFO32(0x7A41D8, bullet_iter);
+VFO32(0x7A41E8, __cancel_counter2);
+VFO32(0x7A41EC, bullet_anm);
+VFO32(0x7A41F0, __grazing_despawns_bullets);
+VFO32(0x7A41F4, __graze_despawn_counter);
+VSS32(0x7A41F8);
+#undef VTYPE
 
 static inline AnmLoaded* get_bullet_anm() {
 	return BULLET_MANAGER_PTR->bullet_anm;
@@ -55716,14 +55819,15 @@ struct ReplayHeader {
 		this->__int_10 = 256;
 	}
 };
-#pragma region // ReplayHeader Verification
-VFO(0x0, ReplayHeader, magic);
-VFO(0x4, ReplayHeader, __version);
-VFO(0x10, ReplayHeader, __int_10);
-VFO(0x1C, ReplayHeader, compressed_size);
-VFO(0x20, ReplayHeader, uncompressed_size);
-VSS(0x24, ReplayHeader);
-#pragma endregion
+// ReplayHeader Verification
+#define VTYPE ReplayHeader
+VFO(0x0, magic);
+VFO(0x4, __version);
+VFO(0x10, __int_10);
+VFO(0x1C, compressed_size);
+VFO(0x20, uncompressed_size);
+VSS(0x24);
+#undef VTYPE
 
 // size: 0xC+
 struct ReplayUserData {
@@ -55733,13 +55837,14 @@ struct ReplayUserData {
 	probably_padding_bytes(3); // 0x9
 	char text[]; // 0xC
 };
-#pragma region // ReplayUserData Verification
-VFO(0x0, ReplayUserData, magic);
-VFO(0x4, ReplayUserData, size);
-VFO(0x8, ReplayUserData, __byte_8);
-VFO(0xC, ReplayUserData, text);
-VSS(0xC, ReplayUserData);
-#pragma endregion
+// ReplayUserData Verification
+#define VTYPE ReplayUserData
+VFO(0x0, magic);
+VFO(0x4, size);
+VFO(0x8, __byte_8);
+VFO(0xC, text);
+VSS(0xC);
+#undef VTYPE
 
 // size: 0x6
 struct ReplayFrameInput {
@@ -55752,12 +55857,13 @@ struct ReplayFrameInput {
 		return this->current == 0xFFFF && this->rising_edge == 0xFFFF && this->falling_edge == 0xFFFF;
 	}
 };
-#pragma region // ReplayFrameInput Verification
-VFO(0x0, ReplayFrameInput, current);
-VFO(0x2, ReplayFrameInput, rising_edge);
-VFO(0x4, ReplayFrameInput, falling_edge);
-VSS(0x6, ReplayFrameInput);
-#pragma endregion
+// ReplayFrameInput Verification
+#define VTYPE ReplayFrameInput
+VFO(0x0, current);
+VFO(0x2, rising_edge);
+VFO(0x4, falling_edge);
+VSS(0x6);
+#undef VTYPE
 
 static inline constexpr ReplayFrameInput REPLAY_INPUT_END = { 0xFFFF, 0xFFFF, 0xFFFF };
 
@@ -55794,26 +55900,27 @@ struct ReplayGamestate {
 		this->zero_contents();
 	}
 };
-#pragma region // ReplayGamestate Verification
-VFO(0x0, ReplayGamestate, stage_number);
-VFO(0x2, ReplayGamestate, rng);
-VFO(0x4, ReplayGamestate, input_count);
-VFO(0x8, ReplayGamestate, extra_size);
-VFO(0xC, ReplayGamestate, player_position);
-VFO(0x14, ReplayGamestate, player_focused);
-VFO(0x18, ReplayGamestate, __int_array_18);
-VFO(0x68, ReplayGamestate, globals);
-VFO(0x164, ReplayGamestate, cards_owned);
-VFO(0x564, ReplayGamestate, card_replay_states);
-VFO(0x964, ReplayGamestate, card_selected);
-VFO(0x968, ReplayGamestate, __globalsB);
-VFO(0xA64, ReplayGamestate, __cards_ownedB);
-VFO(0xE64, ReplayGamestate, __card_replay_statesB);
-VFO(0x1264, ReplayGamestate, __card_selectedB);
-VFO(0x1268, ReplayGamestate, flags);
-VFO(0x126C, ReplayGamestate, extra);
-VSS(0x126C, ReplayGamestate);
-#pragma endregion
+// ReplayGamestate Verification
+#define VTYPE ReplayGamestate
+VFO(0x0, stage_number);
+VFO(0x2, rng);
+VFO(0x4, input_count);
+VFO(0x8, extra_size);
+VFO(0xC, player_position);
+VFO(0x14, player_focused);
+VFO(0x18, __int_array_18);
+VFO(0x68, globals);
+VFO(0x164, cards_owned);
+VFO(0x564, card_replay_states);
+VFO(0x964, card_selected);
+VFO(0x968, __globalsB);
+VFO(0xA64, __cards_ownedB);
+VFO(0xE64, __card_replay_statesB);
+VFO(0x1264, __card_selectedB);
+VFO(0x1268, flags);
+VFO(0x126C, extra);
+VSS(0x126C);
+#undef VTYPE
 
 // size: 0xC8
 struct ReplayInfo {
@@ -55885,22 +55992,23 @@ public:
 		return ReplayInfo::__print_in_menuA(arg1, position, this);
 	}
 };
-#pragma region // ReplayFrameInput Verification
-VFO(0x0, ReplayInfo, name);
-VFO(0xA, ReplayInfo, flags);
-VFO(0x10, ReplayInfo, time);
-VFO(0x18, ReplayInfo, score);
-VFO(0x1C, ReplayInfo, config);
-VFO(0xA4, ReplayInfo, slowdown_rate);
-VFO(0xA8, ReplayInfo, stage_count);
-VFO(0xAC, ReplayInfo, character);
-VFO(0xB0, ReplayInfo, shottype);
-VFO(0xB4, ReplayInfo, difficulty);
-VFO(0xB8, ReplayInfo, __end_stage);
-VFO(0xBC, ReplayInfo, continues);
-VFO(0xC0, ReplayInfo, spell_practice_id);
-VSS(0xC8, ReplayInfo);
-#pragma endregion
+// ReplayFrameInput Verification
+#define VTYPE ReplayInfo
+VFO(0x0, name);
+VFO(0xA, flags);
+VFO(0x10, time);
+VFO(0x18, score);
+VFO(0x1C, config);
+VFO(0xA4, slowdown_rate);
+VFO(0xA8, stage_count);
+VFO(0xAC, character);
+VFO(0xB0, shottype);
+VFO(0xB4, difficulty);
+VFO(0xB8, __end_stage);
+VFO(0xBC, continues);
+VFO(0xC0, spell_practice_id);
+VSS(0xC8);
+#undef VTYPE
 
 // size: 0x28
 struct ReplayStageData {
@@ -55929,16 +56037,17 @@ struct ReplayStageData {
 		this->list_node.unlink();
 	}
 };
-#pragma region // ReplayStageData Verification
-VFO32(0x0, ReplayStageData, input_start);
-VFO32(0x4, ReplayStageData, inputs_current);
-VFO32(0x8, ReplayStageData, fps_counts_start);
-VFO32(0xC, ReplayStageData, fps_counts_current);
-VFO32(0x10, ReplayStageData, gamestate_start);
-VFO32(0x14, ReplayStageData, current_frame);
-VFO32(0x18, ReplayStageData, list_node);
-VSS32(0x28, ReplayStageData);
-#pragma endregion
+// ReplayStageData Verification
+#define VTYPE ReplayStageData
+VFO32(0x0, input_start);
+VFO32(0x4, inputs_current);
+VFO32(0x8, fps_counts_start);
+VFO32(0xC, fps_counts_current);
+VFO32(0x10, gamestate_start);
+VFO32(0x14, current_frame);
+VFO32(0x18, list_node);
+VSS32(0x28);
+#undef VTYPE
 
 // size: 0x18B4
 struct ReplayChunk {
@@ -55999,19 +56108,20 @@ struct ReplayChunk {
 		return this->fps_count() * sizeof(uint8_t);
 	}
 };
-#pragma region // ReplayChunk Verification
-VFO32(0x0, ReplayChunk, inputs);
-VFO32(0x1518, ReplayChunk, next_input_write_pos);
-VFO32(0x151C, ReplayChunk, fps_counts);
-VFO32(0x18A0, ReplayChunk, next_fps_count_write_pos);
-VFO32(0x18A4, ReplayChunk, list_node);
-VSS32(0x18B4, ReplayChunk);
-#pragma endregion
+// ReplayChunk Verification
+#define VTYPE ReplayChunk
+VFO32(0x0, inputs);
+VFO32(0x1518, next_input_write_pos);
+VFO32(0x151C, fps_counts);
+VFO32(0x18A0, next_fps_count_write_pos);
+VFO32(0x18A4, list_node);
+VSS32(0x18B4);
+#undef VTYPE
 
 typedef struct ReplayManager ReplayManager;
 extern "C" {
-	// 0x4CF40C
-	externcg ReplayManager* REPLAY_MANAGER_PTR cgasm("_REPLAY_MANAGER_PTR");
+// 0x4CF40C
+externcg ReplayManager* REPLAY_MANAGER_PTR cgasm("_REPLAY_MANAGER_PTR");
 }
 
 static inline constexpr int32_t REPLAYS_PER_PAGE = 25;
@@ -56437,28 +56547,29 @@ struct ReplayManager : ZUNTask {
 		return replay_manager;
 	}
 };
-#pragma region // ReplayManager Verification
-VFO32(0x0, ReplayManager, task_flags);
-VFO32(0x4, ReplayManager, on_tick_func);
-VFO32(0x8, ReplayManager, on_draw_func);
-VFO32(0xC, ReplayManager, mode);
-VFO32(0x10, ReplayManager, __dword_10);
-VFO32(0x14, ReplayManager, header);
-VFO32(0x18, ReplayManager, info);
-VFO32(0x1C, ReplayManager, game_states);
-VFO32(0x3C, ReplayManager, chunk_lists);
-VFO32(0xBC, ReplayManager, current_chunk_node);
-VFO32(0xC0, ReplayManager, __chunk_count);
-VFO32(0xC4, ReplayManager, stage_data);
-VFO32(0x204, ReplayManager, file_buffer);
-VFO32(0x208, ReplayManager, __fps);
-VFO32(0x20C, ReplayManager, __tick_count);
-VFO32(0x210, ReplayManager, on_tick_func_B);
-VFO32(0x214, ReplayManager, stage_number);
-VFO32(0x218, ReplayManager, flags);
-VFO32(0x21C, ReplayManager, file_path);
-VSS32(0x31C, ReplayManager);
-#pragma endregion
+// ReplayManager Verification
+#define VTYPE ReplayManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, mode);
+VFO32(0x10, __dword_10);
+VFO32(0x14, header);
+VFO32(0x18, info);
+VFO32(0x1C, game_states);
+VFO32(0x3C, chunk_lists);
+VFO32(0xBC, current_chunk_node);
+VFO32(0xC0, __chunk_count);
+VFO32(0xC4, stage_data);
+VFO32(0x204, file_buffer);
+VFO32(0x208, __fps);
+VFO32(0x20C, __tick_count);
+VFO32(0x210, on_tick_func_B);
+VFO32(0x214, stage_number);
+VFO32(0x218, flags);
+VFO32(0x21C, file_path);
+VSS32(0x31C);
+#undef VTYPE
 
 // 0x462D20
 dllexport gnu_noinline void __replay_manager_global_sub_462D20() ASR(0x462D20);
@@ -56676,8 +56787,8 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
 typedef struct HelpMenu HelpMenu;
 
 extern "C" {
-	// 0x4CF2E8
-	externcg HelpMenu* HELP_MENU_PTR cgasm("_HELP_MENU_PTR");
+// 0x4CF2E8
+externcg HelpMenu* HELP_MENU_PTR cgasm("_HELP_MENU_PTR");
 }
 
 // size: 0x1BC
@@ -56918,24 +57029,25 @@ struct HelpMenu : ZUNTask {
 		return help_menu;
 	}
 };
-#pragma region // HelpMenu Verification
-VFO32(0x0, HelpMenu, task_flags);
-VFO32(0x4, HelpMenu, on_tick_func);
-VFO32(0x8, HelpMenu, on_draw_func);
-VFO32(0xC, HelpMenu, primary_state);
-VFO32(0x10, HelpMenu, state_timer);
-VFO32(0x24, HelpMenu, menu_select);
-VFO32(0xFC, HelpMenu, __anm_id_array_FC);
-VFO32(0x120, HelpMenu, __anm_id_120);
-VFO32(0x124, HelpMenu, __int_124);
-VFO32(0x128, HelpMenu, __float_128);
-VFO32(0x12C, HelpMenu, help_anm);
-VFO32(0x130, HelpMenu, file_buffer);
-VFO32(0x134, HelpMenu, secondary_state);
-VFO32(0x138, HelpMenu, filename_buffer);
-VFO32(0x1B8, HelpMenu, file_size);
-VSS32(0x1BC, HelpMenu);
-#pragma endregion
+// HelpMenu Verification
+#define VTYPE HelpMenu
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, primary_state);
+VFO32(0x10, state_timer);
+VFO32(0x24, menu_select);
+VFO32(0xFC, __anm_id_array_FC);
+VFO32(0x120, __anm_id_120);
+VFO32(0x124, __int_124);
+VFO32(0x128, __float_128);
+VFO32(0x12C, help_anm);
+VFO32(0x130, file_buffer);
+VFO32(0x134, secondary_state);
+VFO32(0x138, filename_buffer);
+VFO32(0x1B8, file_size);
+VSS32(0x1BC);
+#undef VTYPE
 
 // 0x4B6700
 static inline constexpr const char *const KEY_CONFIG_MENU_ENTRIES[] = {
@@ -56951,8 +57063,8 @@ static inline constexpr const char *const KEY_CONFIG_MENU_ENTRIES[] = {
 
 typedef struct KeyConfigMenu KeyConfigMenu;
 extern "C" {
-	// 0x4CF3F0
-	externcg KeyConfigMenu* KEY_CONFIG_MENU_PTR cgasm("_KEY_CONFIG_MENU_PTR");
+// 0x4CF3F0
+externcg KeyConfigMenu* KEY_CONFIG_MENU_PTR cgasm("_KEY_CONFIG_MENU_PTR");
 }
 
 // size: 0x180
@@ -57045,25 +57157,26 @@ struct KeyConfigMenu : ZUNTask {
 		return key_config_menu;
 	}
 };
-#pragma region // KeyConfigMenu Verification
-VFO32(0x0, KeyConfigMenu, task_flags);
-VFO32(0x4, KeyConfigMenu, on_tick_func);
-VFO32(0x8, KeyConfigMenu, on_draw_func);
-VFO32(0x10, KeyConfigMenu, menu_select);
-VFO32(0xE8, KeyConfigMenu, joypad_mapping);
-VFO32(0x108, KeyConfigMenu, xinput_mapping);
-VFO32(0x128, KeyConfigMenu, keyboard_mapping);
-VFO32(0x148, KeyConfigMenu, __timer_148);
-VFO32(0x15C, KeyConfigMenu, __float3_15C);
-VFO32(0x168, KeyConfigMenu, __timer_168);
-VFO32(0x17C, KeyConfigMenu, __int_17C);
-VSS32(0x180, KeyConfigMenu);
-#pragma endregion
+// KeyConfigMenu Verification
+#define VTYPE KeyConfigMenu
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0x10, menu_select);
+VFO32(0xE8, joypad_mapping);
+VFO32(0x108, xinput_mapping);
+VFO32(0x128, keyboard_mapping);
+VFO32(0x148, __timer_148);
+VFO32(0x15C, __float3_15C);
+VFO32(0x168, __timer_168);
+VFO32(0x17C, __int_17C);
+VSS32(0x180);
+#undef VTYPE
 
 typedef struct OptionsMenu OptionsMenu;
 extern "C" {
-	// 0x4CF408
-	externcg OptionsMenu* OPTIONS_MENU_PTR cgasm("_OPTIONS_MENU_PTR");
+// 0x4CF408
+externcg OptionsMenu* OPTIONS_MENU_PTR cgasm("_OPTIONS_MENU_PTR");
 }
 
 // size: 0x138
@@ -57151,24 +57264,25 @@ struct OptionsMenu : ZUNTask {
 		return options_menu;
 	}
 };
-#pragma region // OptionsMenu Verification
-VFO32(0x0, OptionsMenu, task_flags);
-VFO32(0x4, OptionsMenu, on_tick_func);
-VFO32(0x8, OptionsMenu, on_draw_func);
-VFO32(0x10, OptionsMenu, menu_select);
-VFO32(0xE8, OptionsMenu, __timer_E8);
-VFO32(0xFC, OptionsMenu, __float3_FC);
-VFO32(0x108, OptionsMenu, __timer_108);
-VFO32(0x11C, OptionsMenu, __timer_11C);
-VFO32(0x130, OptionsMenu, __int_130);
-VFO32(0x134, OptionsMenu, __int_134);
-VSS32(0x138, OptionsMenu);
-#pragma endregion
+// OptionsMenu Verification
+#define VTYPE OptionsMenu
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0x10, menu_select);
+VFO32(0xE8, __timer_E8);
+VFO32(0xFC, __float3_FC);
+VFO32(0x108, __timer_108);
+VFO32(0x11C, __timer_11C);
+VFO32(0x130, __int_130);
+VFO32(0x134, __int_134);
+VSS32(0x138);
+#undef VTYPE
 
 typedef struct PauseMenu PauseMenu;
 extern "C" {
-	// 0x4CF40C
-	externcg PauseMenu* PAUSE_MENU_PTR cgasm("_PAUSE_MENU_PTR");
+// 0x4CF40C
+externcg PauseMenu* PAUSE_MENU_PTR cgasm("_PAUSE_MENU_PTR");
 }
 
 // 0x4B6D50
@@ -58217,33 +58331,34 @@ struct PauseMenu : ZUNTask {
 		return pause_menu;
 	}
 };
-#pragma region // PauseMenu Verification
-VFO32(0x0, PauseMenu, task_flags);
-VFO32(0x4, PauseMenu, on_tick_func);
-VFO32(0x8, PauseMenu, on_draw_func);
-VFO32(0xC, PauseMenu, state_timer);
-VFO32(0x20, PauseMenu, __state_timer_20);
-VFO32(0x34, PauseMenu, __menu_select_34);
-VFO32(0x10C, PauseMenu, __menu_select_10C);
-VFO32(0x1E4, PauseMenu, __vm_id_1E4);
-VFO32(0x1E8, PauseMenu, __vm_id_1E8);
-VFO32(0x1EC, PauseMenu, primary_state);
-VFO32(0x1F0, PauseMenu, previous_primary_state);
-VFO32(0x1F4, PauseMenu, secondary_state);
-VFO32(0x1F8, PauseMenu, __name_length);
-VFO32(0x1FC, PauseMenu, __bool_1FC);
-VFO32(0x200, PauseMenu, __int_200);
-VFO32(0x204, PauseMenu, __bool_204);
-VFO32(0x208, PauseMenu, __int_208);
-VFO32(0x20C, PauseMenu, replay_manager_array);
-VFO32(0x2D4, PauseMenu, __name_buffer);
-VFO32(0x2E0, PauseMenu, __float_2E0);
-VFO32(0x2E8, PauseMenu, __double_2E8);
-VFO32(0x2F0, PauseMenu, __text_buffer_2F0);
-VFO32(0x3F0, PauseMenu, flags);
-VFO32(0x3F4, PauseMenu, front_anm);
-VSS32(0x3F8, PauseMenu);
-#pragma endregion
+// PauseMenu Verification
+#define VTYPE PauseMenu
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, state_timer);
+VFO32(0x20, __state_timer_20);
+VFO32(0x34, __menu_select_34);
+VFO32(0x10C, __menu_select_10C);
+VFO32(0x1E4, __vm_id_1E4);
+VFO32(0x1E8, __vm_id_1E8);
+VFO32(0x1EC, primary_state);
+VFO32(0x1F0, previous_primary_state);
+VFO32(0x1F4, secondary_state);
+VFO32(0x1F8, __name_length);
+VFO32(0x1FC, __bool_1FC);
+VFO32(0x200, __int_200);
+VFO32(0x204, __bool_204);
+VFO32(0x208, __int_208);
+VFO32(0x20C, replay_manager_array);
+VFO32(0x2D4, __name_buffer);
+VFO32(0x2E0, __float_2E0);
+VFO32(0x2E8, __double_2E8);
+VFO32(0x2F0, __text_buffer_2F0);
+VFO32(0x3F0, flags);
+VFO32(0x3F4, front_anm);
+VSS32(0x3F8);
+#undef VTYPE
 
 // 0x4588F0
 dllexport gnu_noinline void __pause_menu_end_game_screen() {
@@ -58862,8 +58977,8 @@ static const char* DEMO_REPLAY_FILENAMES[] = {
 };
 
 extern "C" {
-	// 0x4CF43C
-	externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
+// 0x4CF43C
+externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
 
 static int32_t DEBUG_STAGE = DebugStage;
@@ -59020,8 +59135,8 @@ gnu_noinline void debug_command_line() {
 typedef struct NoticeManager NoticeManager;
 
 extern "C" {
-	// 0x4CF404
-	externcg NoticeManager* NOTICE_MANAGER_PTR cgasm("_NOTICE_MANAGER_PTR");
+// 0x4CF404
+externcg NoticeManager* NOTICE_MANAGER_PTR cgasm("_NOTICE_MANAGER_PTR");
 }
 
 // size: 0x1B4
@@ -59236,48 +59351,49 @@ struct NoticeManager : ZUNTask {
 		return notice_manager;
 	}
 };
-#pragma region // NoticeManager Verification
-VFO32(0x0, NoticeManager, task_flags);
-VFO32(0x4, NoticeManager, on_tick_func);
-VFO32(0x8, NoticeManager, on_draw_func);
-VFO32(0xC, NoticeManager, primary_state);
-VFO32(0x10, NoticeManager, state_timer);
-VFO32(0x24, NoticeManager, menu_select);
-VFO32(0xFC, NoticeManager, __anm_id_FC);
-VFO32(0x100, NoticeManager, __dword_100);
-VFO32(0x104, NoticeManager, __dword_104);
-VFO32(0x108, NoticeManager, __dword_108);
-VFO32(0x10C, NoticeManager, __anm_id_10C);
-VFO32(0x110, NoticeManager, __anm_id_110);
-VFO32(0x114, NoticeManager, __int_114);
-VFO32(0x11C, NoticeManager, __int_11C);
-VFO32(0x120, NoticeManager, notice_anm);
-VFO32(0x128, NoticeManager, image_file_buffer);
-VFO32(0x12C, NoticeManager, secondary_state);
-VFO32(0x130, NoticeManager, image_path);
-VFO32(0x1B0, NoticeManager, image_size);
-VSS32(0x1B4, NoticeManager);
-#pragma endregion
+// NoticeManager Verification
+#define VTYPE NoticeManager
+VFO32(0x0, task_flags);
+VFO32(0x4, on_tick_func);
+VFO32(0x8, on_draw_func);
+VFO32(0xC, primary_state);
+VFO32(0x10, state_timer);
+VFO32(0x24, menu_select);
+VFO32(0xFC, __anm_id_FC);
+VFO32(0x100, __dword_100);
+VFO32(0x104, __dword_104);
+VFO32(0x108, __dword_108);
+VFO32(0x10C, __anm_id_10C);
+VFO32(0x110, __anm_id_110);
+VFO32(0x114, __int_114);
+VFO32(0x11C, __int_11C);
+VFO32(0x120, notice_anm);
+VFO32(0x128, image_file_buffer);
+VFO32(0x12C, secondary_state);
+VFO32(0x130, image_path);
+VFO32(0x1B0, image_size);
+VSS32(0x1B4);
+#undef VTYPE
 
 extern "C" {
-	// 0x4CF42C
-	externcg int32_t MENU_CHARACTER_SELECTION cgasm("_MENU_CHARACTER_SELECTION");
-	// 0x4CF430
-	externcg int32_t TROPHY_MENU_SELECTION cgasm("_TROPHY_MENU_SELECTION");
-	// 0x4CF434
-	externcg int32_t MENU_REPLAY_SELECTION cgasm("_MENU_REPLAY_SELECTION");
-	// 0x4CF438
-	externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
-	// 0x4C9AB0
-	externcg int32_t MENU_DIFFICULTY_SELECTION cgasm("_MENU_DIFFICULTY_SELECTION") ecginit(= NORMAL);
-	// 0x4C9AB4
-	externcg int32_t UNKNOWN_INT32_F cgasm("_UNKNOWN_INT32_F") ecginit(= -1);
-	// 0x4C9AB8
-	externcg int32_t UNKNOWN_INT32_E cgasm("_UNKNOWN_INT32_E") ecginit(= -1);
-	// 0x4C9ABC
-	externcg int32_t MENU_SPELL_PRACTICE_STAGE_SELECTION cgasm("_MENU_SPELL_PRACTICE_STAGE_SELECTION") ecginit(= -1);
-	// 0x4C9AC0
-	externcg int32_t MENU_STAGE_SELECTION cgasm("_MENU_STAGE_SELECTION") ecginit(= -1);
+// 0x4CF42C
+externcg int32_t MENU_CHARACTER_SELECTION cgasm("_MENU_CHARACTER_SELECTION");
+// 0x4CF430
+externcg int32_t TROPHY_MENU_SELECTION cgasm("_TROPHY_MENU_SELECTION");
+// 0x4CF434
+externcg int32_t MENU_REPLAY_SELECTION cgasm("_MENU_REPLAY_SELECTION");
+// 0x4CF438
+externcg int32_t UNKNOWN_INT32_C cgasm("_UNKNOWN_INT32_C");
+// 0x4C9AB0
+externcg int32_t MENU_DIFFICULTY_SELECTION cgasm("_MENU_DIFFICULTY_SELECTION") ecginit(= NORMAL);
+// 0x4C9AB4
+externcg int32_t UNKNOWN_INT32_F cgasm("_UNKNOWN_INT32_F") ecginit(= -1);
+// 0x4C9AB8
+externcg int32_t UNKNOWN_INT32_E cgasm("_UNKNOWN_INT32_E") ecginit(= -1);
+// 0x4C9ABC
+externcg int32_t MENU_SPELL_PRACTICE_STAGE_SELECTION cgasm("_MENU_SPELL_PRACTICE_STAGE_SELECTION") ecginit(= -1);
+// 0x4C9AC0
+externcg int32_t MENU_STAGE_SELECTION cgasm("_MENU_STAGE_SELECTION") ecginit(= -1);
 }
 
 // 0x4B7A78
@@ -62733,22 +62849,23 @@ public:
 		return main_menu;
 	}
 };
-#pragma region // MainMenu Verification
-VVFO32(0x4, MainMenu, task_flags);
-VVFO32(0x8, MainMenu, on_tick_func);
-VVFO32(0xC, MainMenu, on_draw_func);
-VVFO32(0x10, MainMenu, title_anm);
-VVFO32(0x14, MainMenu, title_v_anm);
-VVFO32(0x18, MainMenu, primary_state);
-VVFO32(0x1C, MainMenu, previous_primary_state);
-VVFO32(0x20, MainMenu, secondary_state);
-VVFO32(0x24, MainMenu, __menu_select_24);
-VVFO32(0xFC, MainMenu, __menu_select_FC);
-VVFO32(0x1D4, MainMenu, __menu_select_1D4);
-VVFO32(0x2AC, MainMenu, __menu_select_2AC);
-VVFO32(0x384, MainMenu, state_timer);
-VSS32(0x5D98, MainMenu);
-#pragma endregion
+// MainMenu Verification
+#define VTYPE MainMenu
+VVFO32(0x4, task_flags);
+VVFO32(0x8, on_tick_func);
+VVFO32(0xC, on_draw_func);
+VVFO32(0x10, title_anm);
+VVFO32(0x14, title_v_anm);
+VVFO32(0x18, primary_state);
+VVFO32(0x1C, previous_primary_state);
+VVFO32(0x20, secondary_state);
+VVFO32(0x24, __menu_select_24);
+VVFO32(0xFC, __menu_select_FC);
+VVFO32(0x1D4, __menu_select_1D4);
+VVFO32(0x2AC, __menu_select_2AC);
+VVFO32(0x384, state_timer);
+VSS32(0x5D98);
+#undef VTYPE
 
 // 0x43A8B0
 dllexport gnu_noinline void Gui::__allocate_hud() {
@@ -66270,8 +66387,8 @@ struct MutexData {
 	HANDLE handle; // 0x0
 };
 extern "C" {
-	// 0x570C98
-	externcg MutexData MUTEX_DATA cgasm("_MUTEX_DATA");
+// 0x570C98
+externcg MutexData MUTEX_DATA cgasm("_MUTEX_DATA");
 }
 
 #include <ShObjIdl.h>
@@ -66345,8 +66462,8 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
 }
 
 extern "C" {
-	// 0x5705F0
-	externcg JOYCAPSA JOYCAPS_GLOBAL cgasm("_JOYCAPS");
+// 0x5705F0
+externcg JOYCAPSA JOYCAPS_GLOBAL cgasm("_JOYCAPS");
 }
 
 // 0x4B4280
@@ -67142,7 +67259,7 @@ winmain_load_config:
 		joyGetPosEx(JOYSTICKID1, &joy_info) == JOYERR_NOERROR &&
 		joyGetPosEx(JOYSTICKID2, &joy_info) == JOYERR_NOERROR
 	) {
-		SUPERVISOR.__unknown_flag_su_B = false;
+		SUPERVISOR.__unknown_flag_su_I = false;
 	} else {
 		joyGetDevCapsA(JOYSTICKID1, &JOYCAPS_GLOBAL, sizeof(JOYCAPSA));
 		SUPERVISOR.__unknown_flag_su_B = true;
