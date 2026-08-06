@@ -13733,7 +13733,7 @@ struct GameThread : ZUNTask {
 			uint32_t __pause_world : 1; // 2 This only applies to world list ANMs, enemies, some screen effects, and sort of lasers?
 			uint32_t skip_flag : 1; // 3 why is this called skip_flag? Doesn't seem to be related to skipping anything...
 			uint32_t __marked_for_cleanup : 1; // 4
-			uint32_t __unknown_flag_gt_I : 1; // 5 Set by the pause menu
+			uint32_t paused : 1; // 5
 			uint32_t __unknown_flag_gt_L : 1; // 6
 			uint32_t __unknown_flag_gt_M : 1; // 7
 			uint32_t __unknown_flag_gt_J : 1; // 8
@@ -13852,7 +13852,7 @@ inline void FpsCounter::__update() {
 		}
 		if (GameThread* game_thread_ptr = GAME_THREAD_PTR) {
 			if (
-				!(game_thread_ptr->__unknown_flag_gt_I | game_thread_ptr->skip_flag)
+				!(game_thread_ptr->paused | game_thread_ptr->skip_flag)
 			) {
 				this->__double_28 += 60.0;
 				double D = this->__double_20;
@@ -24886,7 +24886,7 @@ struct ScreenEffect : ZUNTask {
 			if (
 				game_thread_ptr &&
 				!(game_thread_ptr->__unknown_flag_gt_A | game_thread_ptr->skip_flag) &&
-				!(game_thread_ptr->__pause_world | game_thread_ptr->__unknown_flag_gt_I | game_thread_ptr->__unknown_flag_gt_L | game_thread_ptr->__unknown_flag_gt_M)
+				!(game_thread_ptr->__pause_world | game_thread_ptr->paused | game_thread_ptr->__unknown_flag_gt_L | game_thread_ptr->__unknown_flag_gt_M)
 			) {
 				self->timer++;
 
@@ -57678,7 +57678,7 @@ struct PauseMenu : ZUNTask {
 	dllexport gnu_noinline void thiscall __sub_458680() ASR(0x458680) {
 		GAME_MANAGER.__update_scorefile_game_time();
 		this->change_primary_state(1);
-		GAME_THREAD_PTR->__unknown_flag_gt_I = true;
+		GAME_THREAD_PTR->paused = true;
 		this->front_anm = GUI_PTR->front_anm;
 		this->__vm_id_1E4.mark_tree_for_delete();
 
@@ -58219,7 +58219,7 @@ struct PauseMenu : ZUNTask {
 							if (GAME_THREAD_PTR->replay_mode == ReplayRecording) {
 								GAME_MANAGER.game_time_double = get_runtime();
 							}
-							GAME_THREAD_PTR->__unknown_flag_gt_I = false;
+							GAME_THREAD_PTR->paused = false;
 							GAME_SPEED.set(this->__float_2E0);
 							Gui* gui = GUI_PTR;
 							if (MsgVM* msg_vm = gui->msg_vm) {
@@ -58270,7 +58270,7 @@ struct PauseMenu : ZUNTask {
 										GAME_MANAGER.globals.score = 0;
 										--GAME_MANAGER.continue_credits;
 										GAME_MANAGER.globals.continues = __min(continues_used, MAX_CONTINUES);
-										GAME_THREAD_PTR->__unknown_flag_gt_I = false;
+										GAME_THREAD_PTR->paused = false;
 										SOUND_MANAGER.__restart_all_playing_sfx();
 										SOUND_MANAGER.queue_sound_command(SndLoadBgm, -1, this->__text_buffer_2F0);
 										while (SOUND_MANAGER.__on_tick() != SndCmdEmpty);
@@ -58366,7 +58366,7 @@ dllexport gnu_noinline void __pause_menu_end_game_screen() {
 	if (!REPLAY_MANAGER_PTR->__unknown_flag_rm_A) {
 		pause_menu->change_primary_state(1);
 		clang_forceinline pause_menu->change_secondary_state(1);
-		GAME_THREAD_PTR->__unknown_flag_gt_I = true;
+		GAME_THREAD_PTR->paused = true;
 		pause_menu->__sub_458480();
 		pause_menu->front_anm = GUI_PTR->front_anm;
 
@@ -58405,7 +58405,7 @@ dllexport gnu_noinline void __pause_menu_game_over_screen() {
 	}
 	pause_menu->change_primary_state(2);
 	clang_forceinline pause_menu->change_secondary_state(2);
-	game_thread_ptr->__unknown_flag_gt_I = true;
+	game_thread_ptr->paused = true;
 
 	SOUND_MANAGER.__stop_all_sound_effects();
 	SOUND_MANAGER.play_sound(14);
@@ -58441,7 +58441,7 @@ dllexport gnu_noinline void __pause_menu_practice_end_screen() {
 		SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 		return;
 	}
-	game_thread_ptr->__unknown_flag_gt_I = true;
+	game_thread_ptr->paused = true;
 	pause_menu->change_primary_state(3);
 	clang_forceinline pause_menu->change_secondary_state(3);
 
@@ -64966,7 +64966,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	}
 
 	if (this->__unknown_flag_gt_E) {
-		if (this->__unknown_flag_gt_I) {
+		if (this->paused) {
 			return UpdateFuncEnd1;
 		}
 
@@ -65008,7 +65008,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	if (
 		gui->__unknown_flag_gu_A &&
 		gui->__timer_198 < 120 &&
-		!this->__unknown_flag_gt_I
+		!this->paused
 	) {
 		return UpdateFuncNext;
 	}
@@ -65044,7 +65044,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	if (GAME_MANAGER.__is_demo) {
 		if (
 			INPUT_P1.check_hardware_inputs(BUTTON_SELECT | BUTTON_CANCEL) ||
-			(this->__unknown_flag_gt_I | this->__unknown_flag_gt_L | this->__unknown_flag_gt_M)
+			(this->paused | this->__unknown_flag_gt_L | this->__unknown_flag_gt_M)
 		) {
 			SUPERVISOR.gamemode_switch = SUPERVISOR.__unknown_flag_su_G ? GameMode::GameMode2 : GameMode::MainMenu;
 		}
@@ -65101,7 +65101,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 		this->open_ability_shop = false;
 	}
 
-	if (this->__unknown_flag_gt_J) {
+	if (this->paused | this->__unknown_flag_gt_L | this->__unknown_flag_gt_M) {
 		return UpdateFuncEnd1;
 	}
 
