@@ -1791,120 +1791,7 @@ externcg ArcFileEx ARCFILE_ARRAY[20] cgasm("_ARCFILE_ARRAY");
 }
 
 #if TESTING_FEATURES
-
-#ifndef STATUS_NOT_IMPLEMENTED
-#define STATUS_NOT_IMPLEMENTED				((DWORD)0xC0000002L)
-#endif
-#ifndef STATUS_INVALID_LOCK_SEQUENCE
-#define STATUS_INVALID_LOCK_SEQUENCE		((DWORD)0xC000001EL)
-#endif
-#ifndef STATUS_BAD_STACK
-#define STATUS_BAD_STACK					((DWORD)0xC0000028L)
-#endif
-#ifndef STATUS_INVALID_UNWIND_TARGET
-#define STATUS_INVALID_UNWIND_TARGET		((DWORD)0xC0000029L)
-#endif
-#ifndef STATUS_BAD_FUNCTION_TABLE
-#define STATUS_BAD_FUNCTION_TABLE			((DWORD)0xC00000FFL)
-#endif
-#ifndef STATUS_DATATYPE_MISALIGNMENT_ERROR
-#define STATUS_DATATYPE_MISALIGNMENT_ERROR	((DWORD)0xC00002C5L)
-#endif
-#ifndef STATUS_HEAP_CORRUPTION
-#define STATUS_HEAP_CORRUPTION				((DWORD)0xC0000374L)
-#endif
-
-#define EH_EXCEPTION_NUMBER 0xE06D7363
-
-static constexpr const char* EMOTE_CAPTIONS[] = {
-	":ReisenWorried:",
-	":NotLikeAlice:",
-	":tannedcirno:",
-	":KeikiPout:",
-	":ReisenDying:",
-	":ClownpieceSweat:",
-	":ReimuWat:",
-	":KogasaGun:"
-};
-
-inline int Zmbox(const char* message, const char* caption, UINT type) {
-	if (!caption) {
-		unsigned int random;
-		rand_s(&random);
-		caption = EMOTE_CAPTIONS[random % countof(EMOTE_CAPTIONS)];
-	}
-	return MessageBoxA(NULL, message, caption, type);
-}
-inline int Zmboxf(const char* format, const char* caption, UINT type, ...) {
-	va_list va, va2;
-	va_start(va, type);
-	va_copy(va2, va);
-	int length = vsnprintf(NULL, 0, format, va);
-	va_end(va);
-	char buffer[length + 1];
-	vsprintf(buffer, format, va2);
-	va_end(va2);
-	return Zmbox(buffer, caption, type);
-}
-
-gnu_noinline void make_sure_file_exists(const char* path) {
-	while (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES) {
-		switch (Zmboxf("Count not find %s", NULL, MB_TOPMOST | MB_ICONERROR | MB_ABORTRETRYIGNORE | MB_DEFBUTTON2, path)) {
-			case IDRETRY:
-				break;
-			case IDIGNORE: // if you insist
-				return;
-			case IDABORT:
-				ExitProcess(-1);
-		}
-	}
-}
-
-LONG WINAPI exception_filter(LPEXCEPTION_POINTERS lpEI) {
-	LPEXCEPTION_RECORD lpER = lpEI->ExceptionRecord;
-
-	switch (lpER->ExceptionCode) {
-		case EXCEPTION_BREAKPOINT:
-			if (!IsDebuggerPresent()) {
-		case STATUS_ACCESS_VIOLATION:
-		case STATUS_ILLEGAL_INSTRUCTION:
-		case STATUS_INTEGER_DIVIDE_BY_ZERO:
-		case EH_EXCEPTION_NUMBER:
-
-		case STATUS_NOT_IMPLEMENTED:
-		case STATUS_INVALID_LOCK_SEQUENCE:
-		case STATUS_ARRAY_BOUNDS_EXCEEDED:
-		case STATUS_PRIVILEGED_INSTRUCTION:
-		case STATUS_DATATYPE_MISALIGNMENT_ERROR:
-		case STATUS_ASSERTION_FAILURE:
-
-		case STATUS_FLOAT_INVALID_OPERATION:
-		case STATUS_FLOAT_OVERFLOW:
-		case STATUS_FLOAT_STACK_CHECK:
-		case STATUS_FLOAT_UNDERFLOW:
-		case STATUS_FLOAT_MULTIPLE_FAULTS:
-		case STATUS_FLOAT_MULTIPLE_TRAPS:
-
-		case STATUS_STACK_OVERFLOW:
-		case STATUS_STACK_BUFFER_OVERRUN:
-		case STATUS_BAD_STACK:
-		case STATUS_INVALID_UNWIND_TARGET:
-		case STATUS_BAD_FUNCTION_TABLE:
-		case STATUS_HEAP_CORRUPTION:
-				Zmboxf(
-					"Your dodging is ass. Session terminated.\n"
-					"\n"
-					"Exception %08X at 0x%p",
-					"Yes this is actually a crash handler",
-					MB_OK | MB_ICONSTOP | MB_TASKMODAL,
-					lpER->ExceptionCode, lpER->ExceptionAddress
-				);
-			}
-			[[fallthrough]];
-		default:
-			return EXCEPTION_CONTINUE_SEARCH;
-	}
-}
+#include "testing_code.cpp"
 #endif
 
 // 0x402060
@@ -4463,264 +4350,9 @@ externcg StageData* STAGE_DATA_PTR cgasm("_STAGE_DATA_PTR");
 
 // 0x4C9410
 static StageData STAGE_DATA[STAGE_COUNT] = {
-	{
-		.stage_number = DebugStage, // 0
-		.std_filename = "st01.std",
-		.ecl_filename = "st00.ecl",
-		.bgm_filenames = { "th18_03", "th17_04" },
-		.msg_filenames = { "st01a.msg", "st01b.msg", "st01c.msg", "st01d.msg" },
-		.logo_anm_filename = "st01logo.anm",
-		.bgm_indices = { 1, 2 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
-			}
-		},
-		.__int_D0 = 0
-	},
-	{
-		.stage_number = Stage1,
-		.std_filename = "st01.std",
-		.ecl_filename = "st01.ecl",
-		.bgm_filenames = { "th18_03", "th18_04" },
-		.msg_filenames = { "st01a.msg", "st01b.msg", "st01c.msg", "st01d.msg" },
-		.logo_anm_filename = "st01logo.anm",
-		.bgm_indices = { 1, 2 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
-			},
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
-				.intro_anm_index = -1, .intro_anm_script = -1,
-				.portrait_anm_index = -1, .portrait_anm_script = -1
-			},
-			{
-				.boss_name_index = -1
-			}
-		},
-		.__int_D0 = 0
-	},
-	{
-		.stage_number = Stage2,
-		.std_filename = "st02.std",
-		.ecl_filename = "st02.ecl",
-		.bgm_filenames = { "th18_05", "th18_06" },
-		.msg_filenames = { "st02a.msg", "st02b.msg", "st02c.msg", "st02d.msg" },
-		.logo_anm_filename = "st02logo.anm",
-		.bgm_indices = { 3, 4 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 11,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 10
-			},
-			{
-				.boss_name_index = 1,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 11,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
-				.intro_anm_index = -1, .intro_anm_script = -1,
-				.portrait_anm_index = -1, .portrait_anm_script = -1
-			},
-			{
-				.boss_name_index = -1
-			}
-		},
-		.__int_D0 = 0
-	},
-	{
-		.stage_number = Stage3,
-		.std_filename = "st03.std",
-		.ecl_filename = "st03.ecl",
-		.bgm_filenames = { "th18_07", "th18_08" },
-		.msg_filenames = { "st03a.msg", "st03b.msg", "st03c.msg", "st03d.msg" },
-		.logo_anm_filename = "st03logo.anm",
-		.bgm_indices = { 5, 6 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 17,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 14,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
-			},
-			{
-				.boss_name_index = 2,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
-				.intro_anm_index = -1, .intro_anm_script = -1,
-				.portrait_anm_index = -1, .portrait_anm_script = -1
-			},
-			{
-				.boss_name_index = -1
-			}
-		},
-		.__int_D0 = 0
-	},
-	{
-		.stage_number = Stage4,
-		.std_filename = "st04.std",
-		.ecl_filename = "st04.ecl",
-		.bgm_filenames = { "th18_09", "th18_10" },
-		.msg_filenames = { "st04a.msg", "st04b.msg", "st04c.msg", "st04d.msg" },
-		.logo_anm_filename = "st04logo.anm",
-		.bgm_indices = { 7, 8 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 12,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 19,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 16,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 8
-			},
-			{
-				.boss_name_index = 3,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 12,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
-				.intro_anm_index = -1, .intro_anm_script = -1,
-				.portrait_anm_index = -1, .portrait_anm_script = -1
-			},
-			{
-				.boss_name_index = -1
-			}
-		},
-		.__int_D0 = 0
-	},
-	{
-		.stage_number = Stage5,
-		.std_filename = "st05.std",
-		.ecl_filename = "st05.ecl",
-		.bgm_filenames = { "th18_11", "th18_12" },
-		.msg_filenames = { "st05a.msg", "st05b.msg", "st05c.msg", "st05d.msg" },
-		.logo_anm_filename = "st05logo.anm",
-		.bgm_indices = { 9, 10 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 9,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 18,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 15,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 8
-			},
-			{
-				.boss_name_index = 5,
-				.spell_background_anm_index = -1, .spell_background_anm_script = -1,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_2, .intro_anm_script = 9,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
-			},
-			{
-				.boss_name_index = -1
-			}
-		},
-		.__int_D0 = 0
-	},
-	{
-		.stage_number = Stage6,
-		.std_filename = "st06.std",
-		.ecl_filename = "st06.ecl",
-		.bgm_filenames = { "th18_13", "th18_14" },
-		.msg_filenames = { "st06a.msg", "st06b.msg", "st06c.msg", "st06d.msg" },
-		.logo_anm_filename = "st06logo.anm",
-		.bgm_indices = { 11, 12 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 13,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 21,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 18,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 12
-			},
-			{
-				.boss_name_index = 6,
-				.spell_background_anm_index = -1, .spell_background_anm_script = -1,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = -1, .spell_cut_in_anm_script = -1,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_2, .intro_anm_script = 9,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
-			},
-			{
-				.boss_name_index = 4,
-				.spell_background_anm_index = -1, .spell_background_anm_script = 0,
-				.__render_stage_during_spell = true,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 21,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 18,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 12
-			},
-			{
-				.boss_name_index = 4
-			}
-		},
-		.__int_D0 = 0
-	},
-	{
-		.stage_number = ExtraStage, // 7
-		.std_filename = "st07.std",
-		.ecl_filename = "st07.ecl",
-		.bgm_filenames = { "th18_17", "th18_18" },
-		.msg_filenames = { "st07a.msg", "st07b.msg", "st07c.msg", "st07d.msg" },
-		.logo_anm_filename = "st07logo.anm",
-		.bgm_indices = { 13, 14 },
-		.inner = {
-			{
-				.boss_name_index = 0,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_background_anm_script = 10,
-				.__render_stage_during_spell = false,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_1, .spell_cut_in_anm_script = 19,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_1, .intro_anm_script = 16,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_1, .portrait_anm_script = 9
-			},
-			{
-				.boss_name_index = 7,
-				.spell_background_anm_index = -1, .spell_background_anm_script = 0,
-				.__render_stage_during_spell = true,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_2, .spell_cut_in_anm_script = 12,
-				.intro_anm_index = -1, .intro_anm_script = -1,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_2, .portrait_anm_script = 8
-			},
-			{
-				.boss_name_index = 4,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_background_anm_script = 12,
-				.__render_stage_during_spell = true,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_cut_in_anm_script = 19,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_3, .intro_anm_script = 16,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_3, .portrait_anm_script = 11
-			},
-			{
-				.boss_name_index = 3,
-				.spell_background_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_background_anm_script = 12,
-				.__render_stage_during_spell = true,
-				.spell_cut_in_anm_index = ECL_INCLUDE_ANM_INDEX_3, .spell_cut_in_anm_script = 19,
-				.intro_anm_index = ECL_INCLUDE_ANM_INDEX_3, .intro_anm_script = 16,
-				.portrait_anm_index = ECL_INCLUDE_ANM_INDEX_3, .portrait_anm_script = 8
-			}
-		},
-		.__int_D0 = 3
-	}
+#if !__INTELLISENSE__
+#include "stage_data_table.h"
+#endif
 };
 
 typedef struct AnmManager AnmManager;
@@ -4784,14 +4416,14 @@ union AnmID {
 	}
 
 	// 0x488E70
-	dllexport void __show_tree() ASR(0x488E70);
+	dllexport void show_tree() ASR(0x488E70);
 
-	inline void __show_tree(AnmManager* anm_manager);
+	inline void show_tree(AnmManager* anm_manager);
 
 	// 0x488EB0
-	dllexport void __hide_tree() ASR(0x488EB0);
+	dllexport void hide_tree() ASR(0x488EB0);
 
-	inline void __hide_tree(AnmManager* anm_manager);
+	inline void hide_tree(AnmManager* anm_manager);
 
 	// 0x488F50
 	dllexport forceinline void mark_tree_for_delete() ASR(0x488F50);
@@ -8680,7 +8312,7 @@ struct CardData {
 	const char* name; // 0x0
 	CardId id; // 0x4
 	int __int_8; // 0x8
-	int32_t __card_type; // 0xC
+	int32_t card_type; // 0xC
 	int32_t price_tier; // 0x10
 	int32_t shop_weight; // 0x14
 	int32_t availability; // 0x18
@@ -8700,7 +8332,7 @@ struct CardData {
 VFO32(0x0,name)
 VFO32(0x4,id)
 VFO32(0x8,__int_8)
-VFO32(0xC,__card_type)
+VFO32(0xC,card_type)
 VFO32(0x10,price_tier)
 VFO32(0x14,shop_weight)
 VFO32(0x18,availability)
@@ -14020,6 +13652,10 @@ struct MenuSelect {
 		this->menu_length = 999;
 	}
 
+	forceinline constexpr operator int32_t() const {
+		return this->current_selection;
+	}
+
 	// 0x402940
 	dllexport gnu_noinline void thiscall push_state() ASR(0x402940) {
 		this->selection_stack[this->stack_index] = this->current_selection;
@@ -14512,10 +14148,10 @@ public:
 	}
 
 	// 0x4412B0
-	dllexport gnu_noinline void thiscall __hide_all_anms() ASR(0x4412B0);
+	dllexport gnu_noinline void thiscall hide_all_anms() ASR(0x4412B0);
 
 	// 0x4414C0
-	dllexport gnu_noinline void thiscall __show_all_anms() ASR(0x4414C0);
+	dllexport gnu_noinline void thiscall show_all_anms() ASR(0x4414C0);
 
 	// 0x43E550
 	dllexport gnu_noinline ZUNResult thiscall run_msg() ASR(0x43E550);
@@ -14785,9 +14421,9 @@ struct Gui : ZUNTask {
 
 	inline void __spell_timer_vms_interrupt_and_run(int32_t interrupt);
 
-	inline void __show_spell_timer_anms();
+	inline void show_spell_timer_anms();
 
-	inline void __hide_spell_timer_anms();
+	inline void hide_spell_timer_anms();
 
 	// 0x42D560
 	dllexport gnu_noinline void set_boss_life_count(int value) ASR(0x42D560) {
@@ -18175,18 +17811,18 @@ public:
 	}
 
 	// 0x488EF0
-	dllexport void __show_tree() ASR(0x488EF0) {
+	dllexport void show_tree() ASR(0x488EF0) {
 		this->data.__visible2 = true;
 		this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
-			clang_noinline vm->__show_tree();
+			clang_noinline vm->show_tree();
 		});
 	}
 
 	// 0x488F20
-	dllexport void __hide_tree() ASR(0x488F20) {
+	dllexport void hide_tree() ASR(0x488F20) {
 		this->data.__visible2 = false;
 		this->controller.child_list.for_each([](AnmVM* vm) gnu_always_inline static_lambda {
-			clang_noinline vm->__hide_tree();
+			clang_noinline vm->hide_tree();
 		});
 	}
 
@@ -23909,26 +23545,26 @@ inline void Gui::__spell_timer_vms_interrupt_and_run(int32_t interrupt) {
 	this->spell_timer_vms[1]->interrupt_and_run(interrupt);
 }
 
-inline void Gui::__show_spell_timer_anms() {
-	this->spell_timer_vms[0]->__show_tree();
-	this->spell_timer_vms[1]->__show_tree();
+inline void Gui::show_spell_timer_anms() {
+	this->spell_timer_vms[0]->show_tree();
+	this->spell_timer_vms[1]->show_tree();
 }
 
-inline void Gui::__hide_spell_timer_anms() {
-	this->spell_timer_vms[0]->__hide_tree();
-	this->spell_timer_vms[1]->__hide_tree();
+inline void Gui::hide_spell_timer_anms() {
+	this->spell_timer_vms[0]->hide_tree();
+	this->spell_timer_vms[1]->hide_tree();
 }
 
 // 0x442330
 dllexport gnu_noinline void __hide_gui_vm_id_114() ASR(0x442330);
 dllexport gnu_noinline void __hide_gui_vm_id_114() {
-	GUI_PTR->__anm_id_114.__hide_tree();
+	GUI_PTR->__anm_id_114.hide_tree();
 }
 
 // 0x442370
 dllexport gnu_noinline void __show_gui_vm_id_114() ASR(0x442370);
 dllexport gnu_noinline void __show_gui_vm_id_114() {
-	GUI_PTR->__anm_id_114.__show_tree();
+	GUI_PTR->__anm_id_114.show_tree();
 }
 
 // 0x429C30
@@ -23938,9 +23574,9 @@ dllexport gnu_noinline void __spell_timer_vms_interrupt_and_run_3() {
 }
 
 // 0x457810
-dllexport gnu_noinline void __hide_spell_timer_anms() ASR(0x457810);
-dllexport gnu_noinline void __hide_spell_timer_anms() {
-	GUI_PTR->__hide_spell_timer_anms();
+dllexport gnu_noinline void hide_spell_timer_anms() ASR(0x457810);
+dllexport gnu_noinline void hide_spell_timer_anms() {
+	GUI_PTR->hide_spell_timer_anms();
 }
 
 // 0x441ED0
@@ -23978,35 +23614,35 @@ dllexport gnu_noinline void vectorcall MsgVM::__sub_4416D0(int, float, float x, 
 }
 
 // 0x4412B0
-dllexport gnu_noinline void thiscall MsgVM::__hide_all_anms() {
+dllexport gnu_noinline void thiscall MsgVM::hide_all_anms() {
 	for (size_t i = 0; i != MAX_PORTRAIT_COUNT; ++i) {
-		this->player_portraits[i].__hide_tree();
-		this->enemy_portraits[i].__hide_tree();
+		this->player_portraits[i].hide_tree();
+		this->enemy_portraits[i].hide_tree();
 	}
-	this->__anm_id_60.__hide_tree();
-	this->dialogue_lines[0].__hide_tree();
-	this->dialogue_lines[1].__hide_tree();
-	this->furigana_lines[0].__hide_tree();
-	this->furigana_lines[1].__hide_tree();
-	this->intro.__hide_tree();
-	this->__anm_id_7C.__hide_tree();
-	this->__callout_related.__hide_tree();
+	this->__anm_id_60.hide_tree();
+	this->dialogue_lines[0].hide_tree();
+	this->dialogue_lines[1].hide_tree();
+	this->furigana_lines[0].hide_tree();
+	this->furigana_lines[1].hide_tree();
+	this->intro.hide_tree();
+	this->__anm_id_7C.hide_tree();
+	this->__callout_related.hide_tree();
 }
 
 // 0x4414C0
-dllexport gnu_noinline void thiscall MsgVM::__show_all_anms() {
+dllexport gnu_noinline void thiscall MsgVM::show_all_anms() {
 	for (size_t i = 0; i != MAX_PORTRAIT_COUNT; ++i) {
-		this->player_portraits[i].__show_tree();
-		this->enemy_portraits[i].__show_tree();
+		this->player_portraits[i].show_tree();
+		this->enemy_portraits[i].show_tree();
 	}
-	this->__anm_id_60.__show_tree();
-	this->dialogue_lines[0].__show_tree();
-	this->dialogue_lines[1].__show_tree();
-	this->furigana_lines[0].__show_tree();
-	this->furigana_lines[1].__show_tree();
-	this->intro.__show_tree();
-	this->__anm_id_7C.__show_tree();
-	this->__callout_related.__show_tree();
+	this->__anm_id_60.show_tree();
+	this->dialogue_lines[0].show_tree();
+	this->dialogue_lines[1].show_tree();
+	this->furigana_lines[0].show_tree();
+	this->furigana_lines[1].show_tree();
+	this->intro.show_tree();
+	this->__anm_id_7C.show_tree();
+	this->__callout_related.show_tree();
 }
 
 // 0x457570
@@ -26174,32 +25810,32 @@ forceinline void AnmID::interrupt_and_run_tree_word_offset(int16_t interrupt_ind
 	this->interrupt_and_run_tree(interrupt_index);
 }
 
-inline void AnmID::__show_tree(AnmManager* anm_manager) {
+inline void AnmID::show_tree(AnmManager* anm_manager) {
 	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
 		vm->data.__visible2 = true;
 		vm->controller.child_list.for_each([](AnmVM* vm) static_lambda {
-			vm->__show_tree();
+			vm->show_tree();
 		});
 	}
 }
 
 // 0x488E70
-dllexport void AnmID::__show_tree() {
-	this->__show_tree(ANM_MANAGER_PTR);
+dllexport void AnmID::show_tree() {
+	this->show_tree(ANM_MANAGER_PTR);
 }
 
-inline void AnmID::__hide_tree(AnmManager* anm_manager) {
+inline void AnmID::hide_tree(AnmManager* anm_manager) {
 	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
 		vm->data.__visible2 = false;
 		vm->controller.child_list.for_each([](AnmVM* vm) static_lambda {
-			vm->__hide_tree();
+			vm->hide_tree();
 		});
 	}
 }
 
 // 0x488EB0
-dllexport void AnmID::__hide_tree() {
-	this->__hide_tree(ANM_MANAGER_PTR);
+dllexport void AnmID::hide_tree() {
+	this->hide_tree(ANM_MANAGER_PTR);
 }
 
 inline void AnmID::mark_tree_for_delete(AnmManager* anm_manager) {
@@ -27617,13 +27253,9 @@ forceinline void Gui::__big_popup_text_inline(BigPopupType type, int32_t score_b
 				id.set_sprite_unsafe(239 + D);
 				AnmVM* vm = id.get_vm_ptr();
 				if (!C) {
-					if (vm) {
-						vm->__hide_tree();
-					}
+					if (vm) vm->hide_tree();
 				} else {
-					if (vm) {
-						vm->__show_tree();
-					}
+					if (vm) vm->show_tree();
 				}
 				A /= 10;
 			}
@@ -30947,7 +30579,7 @@ struct PlayerData {
 		uint32_t flags; // 0x4717C, 0x4779C
 		struct {
 			uint32_t __unknown_flag_pl_A : 1; // 1
-			uint32_t __hide_options : 1; // 2
+			uint32_t hide_options : 1; // 2
 			uint32_t __unknown_flag_pl_H : 1; // 3
 			uint32_t __unknown_flag_pl_B : 1; // 4
 			uint32_t scale_enabled : 1; // 5
@@ -31176,8 +30808,8 @@ public:
 	}
 
 	// 0x416CD0
-	dllexport gnu_noinline void thiscall __hide_options() ASR(0x416CD0) {
-		this->data.__hide_options = true;
+	dllexport gnu_noinline void thiscall hide_options() ASR(0x416CD0) {
+		this->data.hide_options = true;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(3);
 			this->data.options[i].__anm_id_B4.interrupt_tree(3);
@@ -31190,8 +30822,8 @@ public:
 	}
 
 	// 0x416D50
-	dllexport gnu_noinline void thiscall __show_options() ASR(0x416D50) {
-		this->data.__hide_options = false;
+	dllexport gnu_noinline void thiscall show_options() ASR(0x416D50) {
+		this->data.hide_options = false;
 		nounroll for (size_t i = 0; i < PLAYER_OPTION_COUNT; ++i) {
 			this->data.options[i].__anm_id_B0.interrupt_tree(2);
 			this->data.options[i].__anm_id_B4.interrupt_tree(2);
@@ -31239,7 +30871,7 @@ public:
 		Int2 movement;
 		if (this->data.__yukari_wrap_type) {
 			if (this->data.__yukari_wrap_timer == 0) {
-				this->__hide_options();
+				this->hide_options();
 			}
 			++this->data.__yukari_wrap_timer;
 			if (this->data.__yukari_wrap_type == 1) {
@@ -31266,7 +30898,7 @@ public:
 			}
 			movement.y = 0;
 			if (this->data.__yukari_wrap_timer >= 16) {
-				this->__show_options();
+				this->show_options();
 				this->__set_yukari_wrap(0);
 			}
 			else {
@@ -31419,7 +31051,7 @@ skip_movement_keys:;
 			this->update_previous_positions();
 		}
 
-		if (this->data.__hide_options) {
+		if (this->data.hide_options) {
 			++this->data.__options_hidden_frames;
 		}
 
@@ -31535,7 +31167,7 @@ public:
 	dllexport gnu_noinline void thiscall __update_option_positions(PlayerOption* options, int32_t count) ASR(0x45BC90) {
 		for (int32_t i = 0; i < count; ++i, ++options) {
 			if (options->state != PlayerOptionState::State0) { // 0
-				if (!this->data.__hide_options) {
+				if (!this->data.hide_options) {
 					if (!options->__unknown_flag_po_A) {
 						options->position = this->data.internal_position + (this->data.focused ? options->__focused_offset : options->__unfocused_offset);
 					}
@@ -37273,27 +36905,27 @@ struct AbilityTextData {
 	}
 
 	// 0x413390
-	dllexport static void __hide_card_type_label() ASR(0x413390) {
-		ABILITY_TEXT_DATA_PTR->card_type_label.__hide_tree();
+	dllexport static void hide_card_type_label() ASR(0x413390) {
+		ABILITY_TEXT_DATA_PTR->card_type_label.hide_tree();
 	}
 
 	// 0x4133D0
-	dllexport static void __hide_anms() ASR(0x4133D0) {
+	dllexport static void hide_anms() ASR(0x4133D0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		size_t i = countof(ability_text_data->__text_line_vms);
 		AnmID* current_vm_id = ability_text_data->__text_line_vms;
 		do {
-			current_vm_id++->__hide_tree(anm_manager);
+			current_vm_id++->hide_tree(anm_manager);
 		} while (--i);
-		ABILITY_TEXT_DATA_PTR->card_type_label.__hide_tree(anm_manager);
+		ABILITY_TEXT_DATA_PTR->card_type_label.hide_tree(anm_manager);
 	}
 
 	// 0x4162B0
 	dllexport gnu_noinline static int __sub_4162B0(Float3* position, BOOL arg2) ASR(0x4162B0);
 
 	// 0x416540
-	dllexport gnu_noinline static void __sub_416540(Float3* position, CardId card_id, BOOL print_description, BOOL hide_unlocked_text) ASR(0x416540) {
+	dllexport gnu_noinline static void __sub_416540(Float3* position, int32_t card_id, BOOL print_description, BOOL hide_unlocked_text) ASR(0x416540) {
 		Float3 positionB = *position + Float3(0.0f, 310.0f, 0.0f);
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		BOOL enable_description;
@@ -37330,25 +36962,25 @@ struct AbilityTextData {
 				);
 				ability_text_data->__text_line_vms[i + 1].set_controller_position(&positionB);
 				positionB.y += 38.0f;
-				ability_text_data->__text_line_vms[i + 1].__show_tree();
+				ability_text_data->__text_line_vms[i + 1].show_tree();
 			}
 		}
 		else {
 			nounroll for (size_t i = 0; i != countof(ability_text_data->__text_line_vms) - 1; ++i) {
-				ability_text_data->__text_line_vms[i + 1].__hide_tree();
+				ability_text_data->__text_line_vms[i + 1].hide_tree();
 			}
 		}
 	}
 
 	// 0x4168A0
-	dllexport gnu_noinline static void __set_card_type_label(int32_t card_type) ASR(0x4168A0) {
+	dllexport gnu_noinline static void set_card_type_label(int32_t card_type) ASR(0x4168A0) {
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		if (card_type != InternalCard) { // 4
 			ability_text_data->card_type_label.set_sprite_unsafe(5 + card_type);
 			ability_text_data->card_type_label.interrupt_tree(2);
 		}
 		else {
-			ability_text_data->__hide_card_type_label();
+			ability_text_data->hide_card_type_label();
 		}
 	}
 
@@ -37356,23 +36988,22 @@ struct AbilityTextData {
 	dllexport void thiscall __show_card_type_label_if_unlocked(int32_t card_id, BOOL force_show) ASR(0x416940) {
 		if (
 			(SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id] || force_show) &&
-			find_id_in_card_data(card_id).__card_type != InternalCard
+			find_id_in_card_data(card_id).card_type != InternalCard
 		) {
-			this->card_type_label.__show_tree();
-		}
-		else {
-			this->card_type_label.__hide_tree();
+			this->card_type_label.show_tree();
+		} else {
+			this->card_type_label.hide_tree();
 		}
 	}
 
 	// 0x416C10
-	dllexport static void stdcall __show_anms(int32_t card_id) ASR(0x416C10) {
+	dllexport static void stdcall show_anms(int32_t card_id) ASR(0x416C10) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
 		AbilityTextData* ability_text_data = ABILITY_TEXT_DATA_PTR;
 		size_t i = countof(ability_text_data->__text_line_vms);
 		AnmID* current_vm_id = ability_text_data->__text_line_vms;
 		do {
-			current_vm_id++->__show_tree(anm_manager);
+			current_vm_id++->show_tree(anm_manager);
 		} while (--i);
 		ability_text_data->__show_card_type_label_if_unlocked(card_id, false);
 	}
@@ -37728,7 +37359,7 @@ public:
 					ability_manager->selected_active_card = card;
 					const CardData* card_data = card->data;
 
-					ability_manager->__selected_card_vm.__show_tree();
+					ability_manager->__selected_card_vm.show_tree();
 					if (AnmVM* vm = ability_manager->__selected_card_vm.__find_child_vm_with_script(4)) {
 						vm->set_sprite(card_data->sprite_small);
 					}
@@ -37750,13 +37381,13 @@ public:
 	}
 
 	// 0x4094C0
-	dllexport gnu_noinline static void __hide_card_anms() ASR(0x4094C0) {
+	dllexport gnu_noinline static void hide_card_anms() ASR(0x4094C0) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		for (int32_t i = 0; i < ability_manager->card_count; ++i) {
-			ability_manager->__card_vms[i].__hide_tree();
-			ability_manager->__active_card_vms[i].__hide_tree();
+			ability_manager->__card_vms[i].hide_tree();
+			ability_manager->__active_card_vms[i].hide_tree();
 		}
-		ability_manager->__selected_card_vm.__hide_tree();
+		ability_manager->__selected_card_vm.hide_tree();
 	}
 
 	// 0x408DE0
@@ -38350,12 +37981,12 @@ public:
 	dllexport gnu_noinline void thiscall __sub_408C30() ASR(0x408C30) {
 		CardBase* card = this->selected_active_card;
 		if (!card) {
-			this->__selected_card_vm.__hide_tree();
+			this->__selected_card_vm.hide_tree();
 		}
 		else {
 			const CardData* card_data = card->data;
 
-			this->__selected_card_vm.__show_tree();
+			this->__selected_card_vm.show_tree();
 
 			if (AnmVM* vm = this->__selected_card_vm.__find_child_vm_with_script(4)) {
 				vm->set_sprite(card_data->sprite_small);
@@ -39223,7 +38854,7 @@ inline void Player::reset_impl() {
 
 	GUI_PTR->__update_life_ui(GAME_MANAGER.globals.life_stocks, GAME_MANAGER.globals.life_fragments, GAME_MANAGER.globals.life_stock_max);
 
-	this->__show_options();
+	this->show_options();
 	this->data.__update_option_power_levels();
 
 	this->data.__unknown_flag_pl_H = false;
@@ -39622,7 +39253,7 @@ struct AbilityShop : ZUNTask {
 	inline static AbilityShop* allocate(Float3* arg1) {
 		AbilityShop* ability_shop = new AbilityShop();
 		if (Player* player = PLAYER_PTR) {
-			player->__hide_options();
+			player->hide_options();
 		}
 		if (ZUN_FAILED(ability_shop->initialize(arg1))) {
 			delete ability_shop;
@@ -39672,16 +39303,16 @@ struct AbilityMenu : ZUNTask {
 	Timer __timer_2CC; // 0x2CC
 	Timer __timer_2E0; // 0x2E0
 	unknown_fields(0x4); // 0x2F4
-	int __int_2F8; // 0x2F8
-	int __int_2FC; // 0x2FC
+	int32_t __int_2F8; // 0x2F8
+	int32_t __int_2FC; // 0x2FC
 	int32_t __int_300; // 0x300
-	CardId __card_id_array_304[USABLE_CARD_COUNT]; // 0x304
+	int32_t card_ids[USABLE_CARD_COUNT]; // 0x304
 	int32_t __int_3E4; // 0x3E4
 	AnmID __anm_id_3E8; // 0x3E8
-	AnmID __anm_id_array_3EC[256]; // 0x3EC
-	AnmID __anm_id_array_7EC[256]; // 0x7EC
-	AnmID __anm_id_array_BEC[256]; // 0xBEC
-	CardBase* __card_array_FEC[256]; // 0xFEC
+	AnmID __anm_id_array_3EC[MAX_EQUIPPED_CARDS]; // 0x3EC
+	AnmID __anm_id_array_7EC[MAX_EQUIPPED_CARDS]; // 0x7EC
+	AnmID __anm_id_array_BEC[MAX_EQUIPPED_CARDS]; // 0xBEC
+	CardBase* cards[MAX_EQUIPPED_CARDS]; // 0xFEC
 	int __int_13EC; // 0x13EC
 	int __int_13F0; // 0x13F0
 	int32_t primary_state; // 0x13F4
@@ -39732,12 +39363,15 @@ struct AbilityMenu : ZUNTask {
 		// I cannot emphasize just how disgustingly bad it is just from a comment
 		UNKNOWN_INT32_A = this->__int_13EC ? 10 : 7;
 		if (ABILITY_MANAGER_PTR->__ability_data_loaded) {
+			int32_t A;
+			int32_t selection;
+			Float3 position;
 			switch (this->primary_state) {
 				case 17: {
 					this->__anm_id_3E8.mark_tree_for_delete();
 					this->__anm_id_3E8 = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(15, &ZERO_FLOAT3, 0.0f, -1, NULL);
 					this->__fill_card_array();
-					Float3 position = { 340.0f, 690.0f, 0.0f };
+					position = { 340.0f, 690.0f, 0.0f };
 					this->__sub_415CB0(&position, 512.0f, 80.0f, false);
 					if (this->previous_primary_state == 14) {
 						this->__sub_4134D0();
@@ -39760,12 +39394,12 @@ struct AbilityMenu : ZUNTask {
 					this->__anm_id_3E8.mark_tree_for_delete();
 					AnmID id = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(4, &this->__float3_2A8, 0.0f, -1, NULL);
 					this->__anm_id_3E8 = id;
-					id.interrupt_tree_word_offset(this->__menu_select_C.current_selection, 7);
+					id.interrupt_tree_word_offset(this->__menu_select_C, 7);
 					if (this->__int_13EC) {
 						this->__anm_id_3E8.__find_child_vm_with_script(1)->set_sprite(15);
 					}
 					this->__fill_card_array();
-					Float3 position = { 0.0f, 230.0f, 0.0f };
+					position = { 0.0f, 230.0f, 0.0f };
 					this->__sub_415CB0(&position, 512.0f, 100.0f, false);
 					if (this->__int_13EC) {
 						for (int32_t i = 0; i < this->__int_3E4; ++i) {
@@ -39783,14 +39417,14 @@ struct AbilityMenu : ZUNTask {
 					if (this->__menu_select_C.update(&MenuSelect::scroll_up_and_down)) {
 						SOUND_MANAGER.play_sound(10);
 						this->__timer_2CC.set(8);
-						this->__anm_id_3E8.interrupt_tree_word_offset(this->__menu_select_C.current_selection, 7);
+						this->__anm_id_3E8.interrupt_tree_word_offset(this->__menu_select_C, 7);
 					}
 					if (
 						INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) ||
 						(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE)) ||
 						!INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)
 					) {
-						switch (this->__menu_select_C.current_selection) {
+						switch (this->__menu_select_C) {
 							case 0:
 								SOUND_MANAGER.play_sound(7);
 								this->change_primary_state(3);
@@ -39816,13 +39450,15 @@ struct AbilityMenu : ZUNTask {
 					break;
 				case 3:
 					if (this->state_timer > 30) {
-						switch (this->__menu_select_C.current_selection) {
+						switch (this->__menu_select_C) {
 							case 0:
 								this->__anm_id_3E8.interrupt_tree(1);
-								// TODO: branch goto
+								if (ABILITY_MANAGER_PTR->card_count) {
+									goto sprite_set_loop_A;
+								}
 								this->change_primary_state(5);
 								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2A8, false);
-								ABILITY_TEXT_DATA_PTR->__hide_anms();
+								ABILITY_TEXT_DATA_PTR->hide_anms();
 								if (this->previous_primary_state != 0) {
 									this->change_primary_state(8);
 								}
@@ -39830,19 +39466,19 @@ struct AbilityMenu : ZUNTask {
 							case 1: {
 								this->__anm_id_3E8.interrupt_tree(1);
 
-								int32_t A = UNKNOWN_INT32_A;
+								A = UNKNOWN_INT32_A;
 								int32_t B;
-								if (this->__menu_select_1BC.current_selection < A * 3) {
+								if (this->__menu_select_1BC < A * 3) {
 									B = 0;
 								} else {
-									B = (this->__menu_select_1BC.current_selection / A) - 1;
+									B = (this->__menu_select_1BC / A) - 1;
 								}
 								float offset = 90.0f;
 								this->__int_2F8 = B;
 								float C = A;
 								this->__int_2FC = B;
-								Float3 positionA = this->__float3_2A8 + Float3(0.0f, 150.0f, 0.0f);
-								this->__float3_2C0 = positionA;
+								position = this->__float3_2A8 + Float3(0.0f, 150.0f, 0.0f);
+								this->__float3_2C0 = position;
 								Float3 positionB = {
 									this->__float3_2A8.x + (0.0f - C * offset * 0.5f) + 48.0f,
 									this->__float3_2A8.y + 500.0f,
@@ -39859,11 +39495,11 @@ struct AbilityMenu : ZUNTask {
 									this->__anm_id_array_7EC[i].mark_tree_for_delete();
 									CardId card_id = UNKNOWN_CARD_ID_TABLE[i];
 									if (SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id]) {
-										this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 13, &find_id_in_card_data(card_id));
-										this->__anm_id_array_BEC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 12, &find_id_in_card_data(card_id));
+										this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 13, &find_id_in_card_data(card_id));
+										this->__anm_id_array_BEC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 12, &find_id_in_card_data(card_id));
 									} else {
-										this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 13, &find_id_in_card_data(BACK_CARD));
-										this->__anm_id_array_BEC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 12, &find_id_in_card_data(BACK_CARD));
+										this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 13, &find_id_in_card_data(BACK_CARD));
+										this->__anm_id_array_BEC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 12, &find_id_in_card_data(BACK_CARD));
 									}
 									this->__anm_id_array_7EC[i].set_controller_position(&positionB);
 									this->__anm_id_array_BEC[i].set_controller_position(&positionC);
@@ -39873,20 +39509,20 @@ struct AbilityMenu : ZUNTask {
 									positionC.x += offset;
 									if (i % A == A - 1) {
 										positionC.y += 120.0f;
-										positionC.x -= A * countof(UNKNOWN_CARD_ID_TABLE);
+										positionC.x -= A * 90;
 									}
-									this->__card_id_array_304[i] = card_id;
+									this->card_ids[i] = card_id;
 								}
 								this->__sub_415B70();
-								const CardData& card_data = find_id_in_card_data(UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC.current_selection]);
+								const CardData& card_data = find_id_in_card_data(UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC]);
 								this->__float3_2B4 = this->__float3_2A8;
 								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2B4, true);
-								ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC.current_selection], false, false);
-								ABILITY_TEXT_DATA_PTR->__set_card_type_label(card_data.__card_type);
-								ABILITY_TEXT_DATA_PTR->__hide_card_type_label();
-								this->__anm_id_array_3EC[this->__menu_select_1BC.current_selection].interrupt_and_run_tree(2);
-								this->__anm_id_array_7EC[this->__menu_select_1BC.current_selection].interrupt_and_run_tree(10);
-								this->__anm_id_array_BEC[this->__menu_select_1BC.current_selection].interrupt_and_run_tree(2);
+								ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC], false, false);
+								ABILITY_TEXT_DATA_PTR->set_card_type_label(card_data.card_type);
+								ABILITY_TEXT_DATA_PTR->hide_card_type_label();
+								this->__anm_id_array_3EC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+								this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(10);
+								this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
 								this->change_primary_state(6);
 								break;
 							}
@@ -39894,15 +39530,434 @@ struct AbilityMenu : ZUNTask {
 					}
 					break;
 				case 4: case 8: {
-					// TODO: input handling and copy/paste the entire above case 1
+					selection = this->__menu_select_E4;
+					this->__menu_select_E4.previous_selection = selection;
+					if (ABILITY_MANAGER_PTR->card_count > 1) {
+						if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+							this->__anm_id_array_3EC[selection].interrupt_tree(3);
+							this->__menu_select_E4.move_selection(1);
+							this->__anm_id_array_3EC[this->__menu_select_E4].interrupt_tree(2);
+							selection = this->__menu_select_E4;
+							if (this->__menu_select_E4.previous_selection != selection) {
+								if (selection + 1 < this->__int_3E4) {
+									this->__anm_id_array_7EC[selection + 1].interrupt_tree(17);
+									selection = this->__menu_select_E4;
+								}
+								this->__anm_id_array_7EC[selection].interrupt_tree(15);
+								selection = this->__menu_select_E4;
+								if (selection > 0) {
+									this->__anm_id_array_7EC[selection - 1].interrupt_tree(11);
+									selection = this->__menu_select_E4;
+								}
+								if (selection - 2 >= 0) {
+									this->__anm_id_array_7EC[selection - 2].interrupt_tree(13);
+								}
+							}
+						}
+						if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
+							this->__anm_id_array_3EC[this->__menu_select_E4].interrupt_tree(3);
+							this->__menu_select_E4.move_selection(-1);
+							this->__anm_id_array_3EC[this->__menu_select_E4].interrupt_tree(2);
+							selection = this->__menu_select_E4;
+							if (this->__menu_select_E4.previous_selection != selection) {
+								if (selection > 0) {
+									this->__anm_id_array_7EC[selection - 1].interrupt_tree(18);
+									selection = this->__menu_select_E4;
+								}
+								this->__anm_id_array_7EC[selection].interrupt_tree(16);
+								selection = this->__menu_select_E4;
+								int32_t B = this->__int_3E4;
+								if (selection + 1 < B) {
+									this->__anm_id_array_7EC[selection + 1].interrupt_tree(12);
+									selection = this->__menu_select_E4;
+									B = this->__int_3E4;
+								}
+								if (selection + 2 < B) {
+									this->__anm_id_array_7EC[selection + 2].interrupt_tree(15);
+								}
+							}
+						}
+						if (this->__menu_select_E4.selection_changed()) {
+							SOUND_MANAGER.play_sound(10);
+							ABILITY_TEXT_DATA_PTR->set_card_type_label(this->cards[this->__menu_select_E4]->data->card_type);
+							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->cards[this->__menu_select_E4]->id, true, false);
+							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->cards[this->__menu_select_E4]->id, false);
+						}
+						if (
+							this->primary_state == 8 &&
+							INPUT_P1.check_hardware_inputs(BUTTON_SELECT)
+						) {
+							SOUND_MANAGER.play_sound(7);
+
+							position = this->__float3_2A8 + Float3(0.0f, 224.0f, 0.0f);
+							this->__float3_2C0 = position;
+							Float3 positionB = {
+								this->__float3_2A8.x + (0.0f - UNKNOWN_INT32_A * 90.0f * 0.5f) + 48.0f,
+								this->__float3_2A8.y + 564.0f,
+								this->__float3_2A8.z + 0.0f
+							};
+
+							for (size_t i = 0; i != MAX_EQUIPPED_CARDS; ++i) {
+								this->__anm_id_array_3EC[i].mark_tree_for_delete();
+								this->__anm_id_array_7EC[i].mark_tree_for_delete();
+							}
+
+							int32_t card_count = 0;
+							for (int32_t i = 0; i < countof(UNKNOWN_CARD_ID_TABLE); ++i) {
+								int32_t card_id = UNKNOWN_CARD_ID_TABLE[i];
+								if (
+									find_id_in_card_data(card_id).__can_starting_equip &&
+									SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id]
+								) {
+									AnmID id = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 13, &find_id_in_card_data(card_id));
+									this->__anm_id_array_7EC[card_count] = id;
+									id.set_controller_position(&position);
+									id = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 12, &find_id_in_card_data(card_id));
+									this->__anm_id_array_BEC[card_count] = id;
+									id.set_controller_position(&positionB);
+									this->__anm_id_array_BEC[card_count].interrupt_and_run_tree(8);
+									if (this->__int_13EC) {
+										this->__anm_id_array_BEC[card_count].interrupt_and_run_tree(22);
+									}
+									A = UNKNOWN_INT32_A;
+									positionB.x += 90.0f;
+									if (i % A == A - 1) {
+										positionB.y += 120.0f;
+										positionB.x -= A * 90;
+									}
+									this->card_ids[card_count] = card_id;
+									++card_count;
+								}
+							}
+
+							this->__int_300 = card_count;
+							this->__menu_select_1BC.menu_length = card_count;
+
+							int32_t i = 0;
+							if (card_count > 0) {
+								int32_t card_id = this->cards[i]->id;
+								do {
+									if (this->card_ids[i] == card_id) goto found_idA;
+								} while (++i < card_count);
+								i = 0;
+						found_idA:;
+							}
+							this->__menu_select_1BC.set_selection(i);
+							this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+							this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+							this->__menu_select_1BC.menu_length = this->__int_300;
+							this->__sub_415B70();
+							ABILITY_TEXT_DATA_PTR->hide_card_type_label();
+							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], false, false);
+						} else if (
+							INPUT_P1.check_hardware_inputs(BUTTON_CANCEL) ||
+							!(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs(BUTTON_PAUSE))
+						) {
+							SOUND_MANAGER.play_sound(9);
+							this->change_primary_state(this->__int_13EC != 2 ? 0 : 14);
+							for (size_t i = 0; i != MAX_EQUIPPED_CARDS; ++i) {
+								this->__anm_id_array_3EC[i].mark_tree_for_delete();
+								this->__anm_id_array_7EC[i].mark_tree_for_delete();
+							}
+							ABILITY_TEXT_DATA_PTR->delete_vms();
+						}
+					}
 					break;
 				}
 				case 6: case 9: {
-					// TODO: TON of input handling
+					selection = this->__menu_select_1BC;
+					this->__menu_select_1BC.previous_selection = selection;
+					if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
+						this->__anm_id_array_7EC[selection].interrupt_and_run_tree(7);
+						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(3);
+						A = UNKNOWN_INT32_A;
+						int32_t B = this->__menu_select_1BC / A;
+						if (!(this->__menu_select_1BC % A)) {
+							this->__menu_select_1BC.move_selection(-1);
+						} else if (B >= this->__int_300 / A) {
+							this->__menu_select_1BC.set_selection(this->__int_300 - 1);
+						} else {
+							this->__menu_select_1BC.move_selection(A - 1);
+						}
+						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(9);
+						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+					}
+					if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
+						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(8);
+						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(3);
+						int32_t B = this->__int_300;
+						selection = this->__menu_select_1BC;
+						if (selection >= B - 1) {
+							this->__menu_select_1BC.set_selection(B / UNKNOWN_INT32_A * UNKNOWN_INT32_A);
+						} else {
+							A = UNKNOWN_INT32_A;
+							if (selection % A != A - 1) {
+								this->__menu_select_1BC.move_selection(1);
+							} else {
+								this->__menu_select_1BC.move_selection(1 - A);
+							}
+						}
+						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(10);
+						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+					}
+					if (check_hardware_inputs_repeating(BUTTON_UP)) {
+						selection = this->__menu_select_1BC;
+						int32_t B = selection - UNKNOWN_INT32_A;
+						if (B >= 0) {
+							this->__anm_id_array_7EC[selection].interrupt_and_run_tree(7);
+							this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(3);
+							this->__menu_select_1BC.set_selection(B);
+							this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(9);
+							this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+						}
+					}
+					if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
+						A = UNKNOWN_INT32_A;
+						selection = this->__menu_select_1BC;
+						int32_t B = A + selection;
+						if (B < this->__int_300) {
+							this->__anm_id_array_7EC[selection].interrupt_tree(8);
+							this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(3);
+							this->__menu_select_1BC.set_selection(B);
+							this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_tree(10);
+							this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+						}
+					}
+					if (this->__menu_select_1BC.selection_changed()) {
+						SOUND_MANAGER.play_sound(10);
+						ABILITY_TEXT_DATA_PTR->set_card_type_label(find_id_in_card_data(this->card_ids[this->__menu_select_1BC]).card_type);
+						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], false, false);
+						int32_t B = this->__menu_select_1BC / UNKNOWN_INT32_A;
+						int32_t i = this->__int_2F8;
+						if (B < i + 1) {
+							this->__int_2F8 = i = B - 1;
+							if (i < 0) {
+								this->__int_2F8 = i = 0;
+							}
+						} else if (B >= i + 2) {
+							this->__int_2F8 = B - 1;
+							int32_t C = this->__int_300 / UNKNOWN_INT32_A + 2;
+							i = B - 1;
+							if (i > C) {
+								this->__int_2F8 = i = C;
+							}
+						}
+						if (this->__int_2FC != i) {
+							if (this->__int_300 > 0) {
+								i = 0;
+								do {
+									if (this->__int_2FC < this->__int_2F8) {
+										this->__anm_id_array_BEC[i].interrupt_and_run_tree(9);
+										int32_t C = i / UNKNOWN_INT32_A;
+										if (C == this->__int_2FC) {
+											this->__anm_id_array_BEC[i].interrupt_and_run_tree(11);
+										} else if (C == this->__int_2F8 + 2) {
+											this->__anm_id_array_BEC[i].interrupt_and_run_tree(12);
+										}
+									} else {
+										this->__anm_id_array_BEC[i].interrupt_and_run_tree(10);
+										if (i / UNKNOWN_INT32_A == this->__int_2F8) {
+											this->__anm_id_array_BEC[i].interrupt_and_run_tree(12);
+										}
+									}
+								} while (++i < this->__int_300);
+								i = this->__int_2F8;
+							}
+							this->__int_2FC = i;
+						}
+					}
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+						if (this->primary_state == 9) {
+							int32_t card_count = ABILITY_MANAGER_PTR->card_count;
+							for (int32_t i = 0; i < card_count; ++i) {
+								if (this->__menu_select_E4 != i) {
+									int32_t B = this->__int_300;
+									int32_t j = 0;
+									if (B > 0) {
+										int32_t card_id = this->cards[i]->id;
+										do {
+											if (this->card_ids[j] == card_id) goto found_idB;
+										} while (++j < B);
+										j = 0;
+								found_idB:;
+									}
+									if (
+										this->__menu_select_1BC == j &&
+										this->cards[i]->id == NULL_CARD
+									) {
+										SOUND_MANAGER.play_sound(16);
+										goto check_buttons_1; // GOTO WARNING
+									}
+								}
+							}
+							SOUND_MANAGER.play_sound(7);
+							this->change_primary_state(8);
+							for (size_t i = 0; i != MAX_EQUIPPED_CARDS; ++i) {
+								this->__anm_id_array_3EC[i].mark_tree_for_delete();
+								this->__anm_id_array_7EC[i].mark_tree_for_delete();
+								this->__anm_id_array_BEC[i].mark_tree_for_delete();
+							}
+							SCOREFILE_MANAGER_PTR->primary_file.common.__card_ids_150[ABILITY_MANAGER_PTR->__int_C5C][this->__menu_select_E4] = this->card_ids[this->__menu_select_1BC];
+							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], true, false);
+							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_ids[this->__menu_select_1BC], false);
+							ABILITY_MANAGER_PTR->__sub_407DA0(true);
+							this->__fill_card_array();
+							goto sprite_set_loop_A; // GOTO WARNING
+						}
+						SOUND_MANAGER.play_sound(7);
+						this->change_primary_state(7);
+						for (int32_t i = 0; i < this->__int_300; ++i) {
+							this->__anm_id_array_BEC[i].hide_tree();
+						}
+						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], false, false);
+						ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_ids[this->__menu_select_1BC], false);
+					}
+			check_buttons_1:
+					if (
+						INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) ||
+						(!this->state_timer.previous && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE))
+					) {
+						SOUND_MANAGER.play_sound(9);
+						if (this->primary_state == 9) {
+							this->change_primary_state(8);
+							for (size_t i = 0; i != MAX_EQUIPPED_CARDS; ++i) {
+								this->__anm_id_array_7EC[i].mark_tree_for_delete();
+								this->__anm_id_array_BEC[i].mark_tree_for_delete();
+							}
+							this->__menu_select_1BC.set_selection(this->cards[this->__menu_select_C]->id);
+							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], true, false);
+							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_ids[this->__menu_select_1BC], false);
+				sprite_set_loop_A:
+							position = this->__float3_2A8 + Float3(0.0f, 224.0f, 0.0f);
+							for (int32_t i = 0; i < this->__int_3E4; ++i) {
+								this->__anm_id_array_7EC[i].mark_tree_for_delete();
+								this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 13, this->cards[i]);
+							}
+							this->__anm_id_array_7EC[this->__menu_select_E4].interrupt_and_run_tree(2);
+							int32_t B = this->__menu_select_E4;
+							if (B + 1 < ABILITY_MANAGER_PTR->card_count) {
+								this->__anm_id_array_7EC[B + 1].interrupt_and_run_tree(21);
+								B = this->__menu_select_E4;
+							}
+							this->__anm_id_array_7EC[B].interrupt_and_run_tree(20);
+							B = this->__menu_select_E4;
+							if (B > 0) {
+								this->__anm_id_array_7EC[B - 1].interrupt_and_run_tree(10);
+							}
+							position = { 0.0f, 16.0f, 0.0f };
+							this->__sub_415CB0(&position, 512.0f, 100.0f, true);
+							this->__anm_id_array_3EC[this->__menu_select_E4].interrupt_and_run_tree(2);
+							if (this->__int_13EC) {
+								for (int32_t i = 0; i < this->__int_3E4; ++i) {
+									this->__anm_id_array_3EC[i].interrupt_and_run_tree(22);
+									this->__anm_id_array_7EC[i].interrupt_and_run_tree(22);
+								}
+							}
+							const CardData& card_data = *this->cards[this->__menu_select_E4]->data;
+							this->__float3_2B4 = this->__float3_2A8;
+							this->__float3_2B4.y += 92.0f;
+							ABILITY_TEXT_DATA_PTR->delete_vms();
+							ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2B4, true);
+							ABILITY_TEXT_DATA_PTR->set_card_type_label(card_data.card_type);
+							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->cards[this->__menu_select_E4]->id, true, false);
+							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->cards[this->__menu_select_E4]->id, false);
+							this->change_primary_state(4);
+							if (this->__int_13EC) {
+								this->change_primary_state(8);
+							}
+						} else {
+							this->change_primary_state(0);
+							for (int32_t i = 0; i < this->__int_300; ++i) {
+								this->__anm_id_array_3EC[i].mark_tree_for_delete();
+								this->__anm_id_array_7EC[i].mark_tree_for_delete();
+								this->__anm_id_array_BEC[i].mark_tree_for_delete();
+							}
+							ABILITY_TEXT_DATA_PTR->delete_vms();
+						}
+					}
 					break;
 				}
 				case 7: {
-					// TODO: input handling
+					selection = this->__menu_select_1BC;
+					this->__menu_select_1BC.previous_selection = selection;
+					if (
+						check_hardware_inputs_repeating(BUTTON_LEFT) &&
+						selection > 0
+					) {
+						this->__anm_id_array_BEC[selection].interrupt_and_run_tree(3);
+						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(7);
+						this->__menu_select_1BC.move_selection(-1);
+						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(9);
+						selection = this->__menu_select_1BC;
+					}
+					if (
+						check_hardware_inputs_repeating(BUTTON_RIGHT) &&
+						selection < this->__menu_select_1BC.menu_length - 1
+					) {
+						this->__anm_id_array_BEC[selection].interrupt_and_run_tree(3);
+						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(8);
+						this->__menu_select_1BC.move_selection(1);
+						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
+						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(10);
+					}
+					if (this->__menu_select_1BC.selection_changed()) {
+						SOUND_MANAGER.play_sound(10);
+						int32_t card_id = UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC];
+						const CardData& card_data = find_id_in_card_data(card_id);
+						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, card_id, true, false);
+						ABILITY_TEXT_DATA_PTR->set_card_type_label(card_data.card_type);
+						ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC], false);
+						int32_t B = this->__menu_select_1BC / UNKNOWN_INT32_A;
+						int32_t C = this->__int_2F8;
+						if (B < C + 1) {
+							this->__int_2F8 = C = B - 1;
+							if (C < 0) {
+								this->__int_2F8 = C = 0;
+							}
+						} else if (B >= C + 2) {
+							this->__int_2F8 = B - 1;
+							int32_t D = USABLE_CARD_COUNT / UNKNOWN_INT32_A - 2;
+							C = B - 1;
+							if (C > D) {
+								this->__int_2F8 = C = D;
+							}
+						}
+						if (this->__int_2FC != C) {
+							for (int32_t i = 0; i < USABLE_CARD_COUNT; ++i) {
+								if (this->__int_2FC < this->__int_2F8) {
+									this->__anm_id_array_BEC[i].interrupt_and_run_tree(9);
+									int32_t D = i / UNKNOWN_INT32_A;
+									if (D == this->__int_2FC) {
+										this->__anm_id_array_BEC[i].interrupt_and_run_tree(11);
+									} else if (D == this->__int_2F8 + 2) {
+										this->__anm_id_array_BEC[i].interrupt_and_run_tree(12);
+									}
+								} else {
+									this->__anm_id_array_BEC[i].interrupt_and_run_tree(10);
+									int32_t D = i / UNKNOWN_INT32_A;
+									if (D == this->__int_2FC + 2) {
+										this->__anm_id_array_BEC[i].interrupt_and_run_tree(11);
+									} else if (D == this->__int_2F8) {
+										this->__anm_id_array_BEC[i].interrupt_and_run_tree(12);
+									}
+								}
+							}
+							this->__int_2FC = this->__int_2F8;
+						}
+					}
+					if (
+						INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) ||
+						(!this->state_timer.previous && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE))
+					) {
+						SOUND_MANAGER.play_sound(9);
+						this->change_primary_state(6);
+						for (size_t i = 0; i != USABLE_CARD_COUNT; ++i) {
+							this->__anm_id_array_BEC[i].hide_tree();
+						}
+						ABILITY_TEXT_DATA_PTR->hide_card_type_label();
+						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], false, false);
+					}
 					break;
 				}
 				case 5:
@@ -39956,12 +40011,12 @@ struct AbilityMenu : ZUNTask {
 				ascii_manager->__horizontal_positioning_mode = 0;
 				ascii_manager->__vertical_positioning_mode = 0;
 				for (int32_t i = 0; i < this->__int_3E4; ++i) {
-					if (this->__card_array_FEC[i]->id != NULL_CARD) {
+					if (this->cards[i]->id != NULL_CARD) {
 						int32_t j = 0;
 						if (j < this->__int_300) {
-							int32_t card_id = this->__card_array_FEC[i]->id;
+							int32_t card_id = this->cards[i]->id;
 							do {
-								if (this->__card_id_array_304[j] == card_id) goto found_id;
+								if (this->card_ids[j] == card_id) goto found_id;
 							} while (++j < this->__int_300);
 							j = 0;
 					found_id:;
@@ -40008,11 +40063,11 @@ struct AbilityMenu : ZUNTask {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
 		if (this->__int_13EC) {
 			ability_manager->card_list.for_first_N(ability_manager->card_count, [=](CardBase* card, int32_t i) {
-				this->__card_array_FEC[i] = card;
+				this->cards[i] = card;
 			});
 		} else {
 			ability_manager->card_list.for_first_N(ability_manager->card_count, [=](CardBase* card, int32_t i) {
-				this->__card_array_FEC[ability_manager->card_count - i + 1] = card;
+				this->cards[ability_manager->card_count - i + 1] = card;
 			});
 		}
 		return 0;
@@ -40055,7 +40110,7 @@ private:
 		position->x -= B;
 		for (int32_t i = 0; i < this->__int_3E4; ++i) {
 			this->__anm_id_array_3EC[i].mark_tree_for_delete();
-			AnmID id = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(position, 12, this->__card_array_FEC[i]);
+			AnmID id = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(position, 12, this->cards[i]);
 			this->__anm_id_array_3EC[i] = id;
 			if (interrupt) {
 				id.interrupt_and_run_tree(7);
@@ -40127,13 +40182,13 @@ VFO32(0x2E0,__timer_2E0)
 VFO32(0x2F8,__int_2F8)
 VFO32(0x2FC,__int_2FC)
 VFO32(0x300,__int_300)
-VFO32(0x304,__card_id_array_304)
+VFO32(0x304,card_ids)
 VFO32(0x3E4,__int_3E4)
 VFO32(0x3E8,__anm_id_3E8)
 VFO32(0x3EC,__anm_id_array_3EC)
 VFO32(0x7EC,__anm_id_array_7EC)
 VFO32(0xBEC,__anm_id_array_BEC)
-VFO32(0xFEC,__card_array_FEC)
+VFO32(0xFEC,cards)
 VFO32(0x13EC,__int_13EC)
 VFO32(0x13F0,__int_13F0)
 VFO32(0x13F4,primary_state)
@@ -52499,7 +52554,7 @@ dllexport gnu_noinline void thiscall EnemyData::anm_set_slot_impl() {
 			this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 		}
 		if (this->intangible) {
-			id.__hide_tree();
+			id.hide_tree();
 		}
 	}
 }
@@ -52516,7 +52571,7 @@ inline void thiscall EnemyData::anm_set_slot_main_impl() {
 		this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 	}
 	if (this->intangible) {
-		id.__hide_tree();
+		id.hide_tree();
 	}
 	if (slot == 0) {
 		this->__enable_anm_poses = true;
@@ -52677,7 +52732,7 @@ inline void thiscall EnemyData::anm_play_attack_impl() {
 		this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 	}
 	if (this->intangible) {
-		this->anm_vms[slot].__hide_tree();
+		this->anm_vms[slot].hide_tree();
 	}
 }
 
@@ -52697,7 +52752,7 @@ inline void thiscall EnemyData::anm_play_attack_ex_impl() {
 		this->final_sprite_size.y = vm->get_scaled_sprite_x_size();
 	}
 	if (this->intangible) {
-		this->anm_vms[slot].__hide_tree();
+		this->anm_vms[slot].hide_tree();
 	}
 }
 
@@ -54873,7 +54928,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			this->flags_low |= this->get_int_arg(0);
 			if (this->intangible) {
 				for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
-					this->anm_vms[i].__hide_tree();
+					this->anm_vms[i].hide_tree();
 				}
 			}
 			break;
@@ -54881,7 +54936,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			this->flags_low &= ~this->get_int_arg(0);
 			if (this->intangible) {
 				for (size_t i = 0; i < ENEMY_ANM_SLOTS; ++i) {
-					this->anm_vms[i].__show_tree();
+					this->anm_vms[i].show_tree();
 				}
 			}
 			break;
@@ -57161,7 +57216,7 @@ dllexport gnu_noinline void thiscall AbilityShop::cleanup() {
 						card->on_load();
 					});
 
-					PLAYER_PTR->__show_options();
+					PLAYER_PTR->show_options();
 
 					// Yes, this is called twice. No, IDK why
 					PLAYER_PTR->data.__update_option_power_levels();
@@ -57249,7 +57304,7 @@ struct HelpMenu : ZUNTask {
 						for (int32_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
 							AnmID id = this->help_anm->instantiate_vm_to_ui_list_back(i, &position);
 							this->__anm_id_array_FC[i] = id;
-							if (this->menu_select.current_selection == i) {
+							if (this->menu_select == i) {
 								id.interrupt_and_run_tree(2);
 							} else {
 								id.interrupt_and_run_tree(3);
@@ -57263,7 +57318,7 @@ struct HelpMenu : ZUNTask {
 							if (this->menu_select.update(&MenuSelect::scroll_up_and_down_inline)) {
 								SOUND_MANAGER.play_sound(10);
 								for (size_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
-									if (this->menu_select.current_selection == i) {
+									if (this->menu_select == i) {
 										this->__anm_id_array_FC[i].interrupt_and_run_tree(2);
 									} else {
 										this->__anm_id_array_FC[i].interrupt_and_run_tree(3);
@@ -57297,7 +57352,7 @@ struct HelpMenu : ZUNTask {
 						if (this->state_timer >= 20) {
 							if (
 								INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_DOWN) &&
-								this->menu_select.current_selection < 6
+								this->menu_select < 6
 							) {
 								this->change_secondary_state(5);
 								SOUND_MANAGER.play_sound(7);
@@ -57306,7 +57361,7 @@ struct HelpMenu : ZUNTask {
 							}
 							else if (
 								INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_UP) &&
-								this->menu_select.current_selection > 0
+								this->menu_select > 0
 							) {
 								this->change_secondary_state(5);
 								SOUND_MANAGER.play_sound(7);
@@ -57323,7 +57378,7 @@ struct HelpMenu : ZUNTask {
 								for (int32_t i = 0; i != countof(this->__anm_id_array_FC); ++i) {
 									AnmID id = this->help_anm->instantiate_vm_to_ui_list_back(i, &position);
 									this->__anm_id_array_FC[i] = id;
-									if (this->menu_select.current_selection == i) {
+									if (this->menu_select == i) {
 										id.interrupt_and_run_tree(2);
 									} else {
 										id.interrupt_and_run_tree(3);
@@ -57805,15 +57860,15 @@ struct PauseMenu : ZUNTask {
 			case 2: {
 				Float3 position;
 				if (this->secondary_state == 15) {
-					int32_t current_selection = this->__menu_select_34.current_selection;
+					int32_t selection = this->__menu_select_34;
 					position = { 48.0f, 64.0f, 0.0f };
 					ascii_manager->printf(&position, "            Score Ranking!!");
 					position.x = 75.0f;
-					position.y = 96.0f + current_selection * 18.0f;
+					position.y = 96.0f + selection * 18.0f;
 					if (!this->__int_200) {
 						this->__print_name_entry_and_keyboard(position);
 					} else {
-						current_selection = -1;
+						selection = -1;
 					}
 					position.x = 48.0f;
 					position.y = 96.0f;
@@ -57822,14 +57877,14 @@ struct PauseMenu : ZUNTask {
 					do {
 						ascii_manager = ASCII_MANAGER_PTR;
 						D3DCOLOR color;
-						if (current_selection == i) {
+						if (selection == i) {
 							color = COLOR3_WHITE;
 						} else {
 							color = COLOR_GREY(255, 128);
 						}
 						ascii_manager->color = color;
 						ScorefileRecord& record = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
-																	.records[GAME_MANAGER.globals.difficulty][current_selection]; // -1?
+																	.records[GAME_MANAGER.globals.difficulty][selection]; // -1?
 						if (record.time) {
 							const tm* record_time = localtime(&record.time);
 							ASCII_MANAGER_PTR->printf(
@@ -57920,7 +57975,7 @@ struct PauseMenu : ZUNTask {
 
 		for (int32_t i = 0; i < REPLAYS_PER_PAGE; ++i) {
 			D3DCOLOR color;
-			if (this->__menu_select_34.current_selection == i) {
+			if (this->__menu_select_34 == i) {
 				color = COLOR3_WHITE;
 			} else {
 				color = COLOR_GREY(255, 128);
@@ -57965,7 +58020,7 @@ struct PauseMenu : ZUNTask {
 
 		for (;;) {
 			D3DCOLOR color;
-			if (this->__menu_select_10C.current_selection == i) {
+			if (this->__menu_select_10C == i) {
 				color = COLOR3_WHITE;
 			} else {
 				color = COLOR_GREY(255, 128);
@@ -58003,10 +58058,10 @@ struct PauseMenu : ZUNTask {
 	dllexport gnu_noinline void thiscall __sub_457FD0() ASR(0x457FD0) {
 		Float3 position;
 		position.z = 0.0f;
-		int32_t current_selection = this->__menu_select_34.current_selection;
+		int32_t selection = this->__menu_select_34;
 		int32_t state_time = this->state_timer;
 		if (state_time < 10) {
-			float A = current_selection * 15.0f + 64.0f;
+			float A = selection * 15.0f + 64.0f;
 			position.y = (224.0f - A) * state_time / 10.0f + A;
 		} else {
 			position.y = 224.0f;
@@ -58016,7 +58071,7 @@ struct PauseMenu : ZUNTask {
 		position.x = 48.0f;
 		ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
 		memcpy(replay_manager->info->name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
-		replay_manager->info->__print_in_menuA(current_selection, &position);
+		replay_manager->info->__print_in_menuA(selection, &position);
 	}
 
 	// 0x458480
@@ -58085,10 +58140,10 @@ struct PauseMenu : ZUNTask {
 		WINDOW_DATA.__int_20D0 = 0;
 
 		if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
-			msg_vm->__hide_all_anms();
+			msg_vm->hide_all_anms();
 		}
-		GUI_PTR->__anm_id_114.__hide_tree();
-		__hide_spell_timer_anms();
+		GUI_PTR->__anm_id_114.hide_tree();
+		hide_spell_timer_anms();
 		if (AbilityShop* ability_shop = ABILITY_SHOP_PTR) {
 			ability_shop->delete_vms();
 			ABILITY_TEXT_DATA_PTR->delete_vms();
@@ -58111,14 +58166,14 @@ struct PauseMenu : ZUNTask {
 					}
 					if (GAME_MANAGER.globals.continues > 0) {
 						this->__menu_select_34.disable_selection(2);
-						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
+						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 7);
 						this->__vm_id_1E4.__find_child_id_with_script(121).interrupt_tree(5);
 						this->__vm_id_1E4.__find_child_id_with_script(128).interrupt_tree(5);
 						this->__vm_id_1E4.__find_child_id_with_script(141).interrupt_tree(5);
 					}
 					this->__menu_select_34.enable_wrap = true;
 					this->__menu_select_34.set_selection(0);
-					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
+					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 7);
 					this->__bool_204 = false;
 				}
 				break;
@@ -58133,7 +58188,7 @@ struct PauseMenu : ZUNTask {
 					this->__menu_select_34.disable_selection(5);
 					this->__menu_select_34.enable_wrap = true;
 					this->__menu_select_34.set_selection(1);
-					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
+					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 7);
 					this->__bool_204 = true;
 				}
 				break;
@@ -58185,7 +58240,7 @@ struct PauseMenu : ZUNTask {
 							this->__name_length = i;
 							this->__int_200 = 0;
 							this->change_secondary_state(15);
-							this->__vm_id_1E4.__hide_tree();
+							this->__vm_id_1E4.hide_tree();
 							break;
 						}
 					}
@@ -58200,12 +58255,12 @@ struct PauseMenu : ZUNTask {
 					this->__menu_select_34.disable_selection(0);
 				}
 				if (this->__menu_select_34.update(&MenuSelect::scroll_up_and_down)) {
-					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
+					this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 7);
 					SOUND_MANAGER.play_sound(10);
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 					SOUND_MANAGER.play_sound(7);
-					switch (this->__menu_select_34.current_selection) {
+					switch (this->__menu_select_34) {
 						case 0:
 							this->__vm_id_1E8.interrupt_tree(1);
 							this->__vm_id_1E4.interrupt_tree(1);
@@ -58299,14 +58354,14 @@ struct PauseMenu : ZUNTask {
 					}
 					if (this->state_timer >= 30) {
 						if (this->state_timer == 30) {
-							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
+							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 15);
 						}
 						if (this->__menu_select_34.update(&MenuSelect::scroll_up_and_down)) {
-							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
+							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 15);
 							SOUND_MANAGER.play_sound(10);
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-							switch (this->__menu_select_34.current_selection) {
+							switch (this->__menu_select_34) {
 								case 0:
 									this->__vm_id_1E4.__find_child_id_with_script(146).interrupt_tree(6);
 									this->change_secondary_state(this->secondary_state == 9 ? 10 : 8);
@@ -58321,10 +58376,10 @@ struct PauseMenu : ZUNTask {
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 							SOUND_MANAGER.play_sound(9);
-							switch (this->__menu_select_34.current_selection) {
+							switch (this->__menu_select_34) {
 								case 0: {
 									this->__menu_select_34.set_selection(1);
-									this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 15);
+									this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 15);
 									break;
 								}
 								case 1:
@@ -58347,7 +58402,7 @@ struct PauseMenu : ZUNTask {
 				break;
 			case 8:
 				if (this->state_timer >= 20) {
-					switch (this->__menu_select_34.current_selection) {
+					switch (this->__menu_select_34) {
 						case 0:
 							this->__vm_id_1E4.interrupt_tree(1);
 							this->__menu_select_34.pop_state();
@@ -58358,7 +58413,7 @@ struct PauseMenu : ZUNTask {
 							if (GAME_MANAGER.globals.continues > 0) {
 								this->__menu_select_34.disable_selection(2);
 							}
-							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
+							this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 7);
 							this->change_secondary_state(6);
 							break;
 						}
@@ -58369,7 +58424,7 @@ struct PauseMenu : ZUNTask {
 				if (this->state_timer >= 20) {
 					this->__unknown_field_pm_A = 1;
 					this->change_secondary_state(11);
-					this->__vm_id_1E4.__hide_tree();
+					this->__vm_id_1E4.hide_tree();
 					this->__menu_select_34.push_state();
 					this->__menu_select_34.initialize((MenuLength)REPLAYS_PER_PAGE, true, MenuChoice0);
 					for (int32_t i = 1; i <= REPLAYS_PER_PAGE; ++i) {
@@ -58384,7 +58439,7 @@ struct PauseMenu : ZUNTask {
 						SOUND_MANAGER.play_sound(10);
 					}
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-						key = this->__menu_select_10C.current_selection;
+						key = this->__menu_select_10C;
 						if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
 							char c = KEYBOARD_STRING[key];
 							int32_t index = this->__name_length;
@@ -58422,11 +58477,11 @@ struct PauseMenu : ZUNTask {
 								this->__unknown_field_pm_A = 1;
 								SOUND_MANAGER.play_sound(17);
 								sprintf(buffer, "th18_%.2d.rpy", this->__menu_select_34.current_selection + 1);
-								if (ReplayManager* old_replay_manager = this->replay_manager_array[this->__menu_select_34.current_selection]) {
+								if (ReplayManager* old_replay_manager = this->replay_manager_array[this->__menu_select_34]) {
 									delete_no_eh(old_replay_manager);
 								}
 								REPLAY_MANAGER_PTR->__write_to_path(buffer, this->__name_buffer, false, true);
-								this->replay_manager_array[this->__menu_select_34.current_selection] = ReplayManager::allocate_mode2(buffer);
+								this->replay_manager_array[this->__menu_select_34] = ReplayManager::allocate_mode2(buffer);
 								this->change_secondary_state(11);
 								byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
 								SOUND_MANAGER.play_sound(7);
@@ -58434,7 +58489,7 @@ struct PauseMenu : ZUNTask {
 							else {
 								SOUND_MANAGER.play_sound(7);
 								ScorefileRecord& record = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
-																	.records[GAME_MANAGER.globals.difficulty][this->__menu_select_34.current_selection];
+																	.records[GAME_MANAGER.globals.difficulty][this->__menu_select_34];
 								byteloop_strcpy(record.name, this->__name_buffer);
 								byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
 			nasty_label:
@@ -58467,7 +58522,7 @@ struct PauseMenu : ZUNTask {
 									}
 								}
 								this->__vm_id_1E4.interrupt_and_run_tree(3);
-								this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
+								this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 7);
 							}
 						}
 					}
@@ -58519,7 +58574,7 @@ struct PauseMenu : ZUNTask {
 						this->__menu_select_34.pop_state();
 						this->__menu_select_34.menu_length = 7;
 						this->__menu_select_34.enable_wrap = true;
-						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34.current_selection, 7);
+						this->__vm_id_1E4.interrupt_tree_word_offset(this->__menu_select_34, 7);
 						for (size_t i = 0; i != REPLAYS_PER_PAGE; ++i) {
 							SAFE_DELETE_NO_EH(this->replay_manager_array[i]);
 						}
@@ -58529,7 +58584,7 @@ struct PauseMenu : ZUNTask {
 						}
 						else {
 							this->change_secondary_state(6);
-							this->__vm_id_1E4.__show_tree();
+							this->__vm_id_1E4.show_tree();
 							if (GAME_MANAGER.game_type != NormalGame) {
 								this->__menu_select_34.disable_selection(0);
 								this->__menu_select_34.disable_selection(4);
@@ -58542,7 +58597,7 @@ struct PauseMenu : ZUNTask {
 			case 14: {
 				HelpMenu* help_menu;
 				if (this->state_timer == 20) {
-					this->__vm_id_1E4.__hide_tree();
+					this->__vm_id_1E4.hide_tree();
 					HelpMenu::allocate();
 					help_menu = HELP_MENU_PTR;
 					help_menu->__float_128 = 32.0f;
@@ -58555,14 +58610,14 @@ struct PauseMenu : ZUNTask {
 				) {
 					delete_no_eh(help_menu);
 					this->change_secondary_state(6);
-					this->__vm_id_1E4.__show_tree();
+					this->__vm_id_1E4.show_tree();
 				}
 				break;
 			}
 			case 16: {
 				OptionsMenu* options_menu;
 				if (this->state_timer == 20) {
-					this->__vm_id_1E4.__hide_tree();
+					this->__vm_id_1E4.hide_tree();
 					Float3 A = { 60.0f, 100.0f, 0.0f };
 					OptionsMenu::allocate(&A);
 					options_menu = OPTIONS_MENU_PTR;
@@ -58575,13 +58630,13 @@ struct PauseMenu : ZUNTask {
 					!options_menu
 				) {
 					this->change_secondary_state(6);
-					this->__vm_id_1E4.__show_tree();
+					this->__vm_id_1E4.show_tree();
 				}
 				break;
 			}
 			case 17:
 				if (this->state_timer == 20) {
-					this->__vm_id_1E4.__hide_tree();
+					this->__vm_id_1E4.hide_tree();
 					Float3 A = { 448.0f, 100.0f, 0.0f };
 					AbilityMenu::allocate(&A, 0);
 				}
@@ -58590,7 +58645,7 @@ struct PauseMenu : ZUNTask {
 					!ABILITY_MENU_PTR
 				) {
 					this->change_secondary_state(6);
-					this->__vm_id_1E4.__show_tree();
+					this->__vm_id_1E4.show_tree();
 				}
 				break;
 			case 18:
@@ -58604,10 +58659,10 @@ struct PauseMenu : ZUNTask {
 							GAME_SPEED.set(this->__float_2E0);
 							Gui* gui = GUI_PTR;
 							if (MsgVM* msg_vm = gui->msg_vm) {
-								msg_vm->__show_all_anms();
+								msg_vm->show_all_anms();
 								gui = GUI_PTR;
 							}
-							gui->__anm_id_114.__show_tree();
+							gui->__anm_id_114.show_tree();
 							WINDOW_DATA.__int_20D0 = this->__int_208;
 							break;
 						}
@@ -58620,7 +58675,7 @@ struct PauseMenu : ZUNTask {
 							GAME_SPEED.set(this->__float_2E0);
 							break;
 					}
-					switch (this->__menu_select_34.current_selection) {
+					switch (this->__menu_select_34) {
 						case 0:
 							switch (this->primary_state) {
 								case 1:
@@ -58658,7 +58713,7 @@ struct PauseMenu : ZUNTask {
 										SOUND_MANAGER.cstreaming_sound_ptr->__sub_48AF10(this->__double_2E8);
 										GAME_SPEED.set(this->__float_2E0);
 										if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
-											msg_vm->__show_all_anms();
+											msg_vm->show_all_anms();
 										}
 										__show_gui_vm_id_114();
 										WINDOW_DATA.__int_20D0 = this->__int_208;
@@ -58765,10 +58820,10 @@ dllexport gnu_noinline void __pause_menu_end_game_screen() {
 		WINDOW_DATA.__int_20D0 = 0;
 
 		if (MsgVM* msg_vm = GUI_PTR->msg_vm) {
-			msg_vm->__hide_all_anms();
+			msg_vm->hide_all_anms();
 		}
 		__hide_gui_vm_id_114();
-		__hide_spell_timer_anms();
+		hide_spell_timer_anms();
 
 		pause_menu->__unknown_flag_pm_B = false;
 		REPLAY_MANAGER_PTR->__unknown_flag_rm_A = true;
@@ -58883,7 +58938,7 @@ dllexport gnu_noinline void __pause_menu_practice_end_screen() {
 	WINDOW_DATA.__int_20D0 = 0;
 
 	if (MsgVM* msg_vm = gui->msg_vm) {
-		msg_vm->__hide_all_anms();
+		msg_vm->hide_all_anms();
 	}
 	__hide_gui_vm_id_114();
 
@@ -58945,41 +59000,41 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 									card_vm_id.interrupt_and_run_tree(3);
 								}
 							}
-							int32_t selection = this->card_choice.current_selection;
+							int32_t selection = this->card_choice;
 							if (selection + 1 < card_count) {
 								this->__anm_id_array_22C[selection + 1].interrupt_tree(21);
-								selection = this->card_choice.current_selection;
+								selection = this->card_choice;
 							}
 							this->__anm_id_array_22C[selection].interrupt_tree(20);
-							selection = this->card_choice.current_selection;
+							selection = this->card_choice;
 							if (selection > 0) {
 								this->__anm_id_array_22C[selection - 1].interrupt_tree(19);
 							}
 							if (!this->__has_blank_card_already) {
 								this->__float3_1DC = this->position;
 								this->__float3_1DC.y += 140.0f;
-								const CardData* card_data = this->card_array[this->card_choice.current_selection];
+								const CardData* card_data = this->card_array[this->card_choice];
 								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_1DC, true);
-								ABILITY_TEXT_DATA_PTR->__set_card_type_label(card_data->__card_type);
+								ABILITY_TEXT_DATA_PTR->set_card_type_label(card_data->card_type);
 								ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_1DC, card_data->id, true, true);
 							}
 						}
 						break;
 					case 2:
-						this->card_choice.previous_selection = this->card_choice.current_selection;
+						this->card_choice.previous_selection = this->card_choice;
 						if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
 							this->card_choice.move_selection(1);
-							int32_t selection = this->card_choice.current_selection;
+							int32_t selection = this->card_choice;
 							if (this->card_choice.selection_changed(selection)) {
 								if (selection + 1 < this->card_count) {
 									this->__anm_id_array_22C[selection + 1].interrupt_tree(17);
-									selection = this->card_choice.current_selection;
+									selection = this->card_choice;
 								}
 								this->__anm_id_array_22C[selection].interrupt_tree(15);
-								selection = this->card_choice.current_selection;
+								selection = this->card_choice;
 								if (selection > 0) {
 									this->__anm_id_array_22C[selection - 1].interrupt_tree(11);
-									selection = this->card_choice.current_selection;
+									selection = this->card_choice;
 								}
 								if (selection - 2 >= 0) { // selection - 1 > 0 but written weird
 									this->__anm_id_array_22C[selection - 2].interrupt_tree(13);
@@ -58988,18 +59043,18 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						}
 						if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
 							this->card_choice.move_selection(-1);
-							int32_t selection = this->card_choice.current_selection;
+							int32_t selection = this->card_choice;
 							if (this->card_choice.selection_changed(selection)) {
 								if (selection > 0) {
 									this->__anm_id_array_22C[selection - 1].interrupt_tree(18);
-									selection = this->card_choice.current_selection;
+									selection = this->card_choice;
 								}
 								this->__anm_id_array_22C[selection].interrupt_tree(16);
-								selection = this->card_choice.current_selection;
+								selection = this->card_choice;
 								int32_t card_count = this->card_count;
 								if (selection + 1 < card_count) {
 									this->__anm_id_array_22C[selection + 1].interrupt_tree(12);
-									selection = this->card_choice.current_selection;
+									selection = this->card_choice;
 									card_count = this->card_count;
 								}
 								if (selection + 2 < card_count) {
@@ -59009,21 +59064,21 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						}
 						if (this->card_choice.selection_changed()) {
 							SOUND_MANAGER.play_sound(10);
-							const CardData* card_data = this->card_array[this->card_choice.current_selection];
-							ABILITY_TEXT_DATA_PTR->__set_card_type_label(card_data->__card_type);
+							const CardData* card_data = this->card_array[this->card_choice];
+							ABILITY_TEXT_DATA_PTR->set_card_type_label(card_data->card_type);
 							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_1DC, card_data->id, true, true);
 							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(card_data->id, true);
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-							int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
+							int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice]->price_tier);
 							int32_t current_money = GAME_MANAGER.globals.current_money;
 							if (current_money >= price) {
 								SOUND_MANAGER.play_sound(7);
 								this->confirm_menu.initialize(MenuLength2, MenuChoice0, MenuWrapEnable);
-								this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, 7);
+								this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu, 7);
 								// even more weird codegen here...
 								this->change_primary_state(6);
-								ABILITY_TEXT_DATA_PTR->__hide_anms();
+								ABILITY_TEXT_DATA_PTR->hide_anms();
 							}
 							else {
 								int32_t money_plus_extra_power = GAME_MANAGER.globals.current_power - DEFAULT_POWER_PER_LEVEL;
@@ -59031,17 +59086,17 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 								if (money_plus_extra_power >= price) {
 									SOUND_MANAGER.play_sound(16);
 									this->confirm_menu.initialize(MenuLength2, MenuChoice0, MenuWrapEnable);
-									this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, 17);
+									this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu, 17);
 									// even more weird codegen here...
 									this->change_primary_state(7);
-									ABILITY_TEXT_DATA_PTR->__hide_anms();
+									ABILITY_TEXT_DATA_PTR->hide_anms();
 								}
 								else {
 									SOUND_MANAGER.play_sound(16);
 									this->__anm_id_228.interrupt_tree(37);
 									// even more weird codegen here...
 									this->change_primary_state(8);
-									ABILITY_TEXT_DATA_PTR->__hide_anms();
+									ABILITY_TEXT_DATA_PTR->hide_anms();
 								}
 							}
 						}
@@ -59049,29 +59104,29 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 					case 6: case 7:
 						if (this->confirm_menu.update(&MenuSelect::scroll_up_and_down)) {
 							SOUND_MANAGER.play_sound(10);
-							this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu.current_selection, this->primary_state == 7 ? 17 : 7);
+							this->__anm_id_228.interrupt_tree_word_offset(this->confirm_menu, this->primary_state == 7 ? 17 : 7);
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 							goto cancel_buying;
 						}
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-							switch (this->confirm_menu.current_selection) {
+							switch (this->confirm_menu) {
 								case 1: cancel_buying:
 									SOUND_MANAGER.play_sound(9);
 									this->change_primary_state(2);
 									this->__anm_id_228.interrupt_tree(27);
-									ABILITY_TEXT_DATA_PTR->__show_anms(this->card_array[this->card_choice.current_selection]->id);
-									ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_array[this->card_choice.current_selection]->id, true);
+									ABILITY_TEXT_DATA_PTR->show_anms(this->card_array[this->card_choice]->id);
+									ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_array[this->card_choice]->id, true);
 									break;
 								case 0: {
 									SOUND_MANAGER.play_sound(7);
 									this->change_primary_state(5);
 									this->__anm_id_228.__find_child_vm_with_script(6)->interrupt(6);
-									this->__purchased_card_id = this->card_array[this->card_choice.current_selection]->id;
-									ABILITY_MANAGER_PTR->allocate_new_card(this->card_array[this->card_choice.current_selection]->id, CARD_RUN_BOTH_INITS); // 2
-									__unlock_card(this->card_array[this->card_choice.current_selection]->id, false);
+									this->__purchased_card_id = this->card_array[this->card_choice]->id;
+									ABILITY_MANAGER_PTR->allocate_new_card(this->card_array[this->card_choice]->id, CARD_RUN_BOTH_INITS); // 2
+									__unlock_card(this->card_array[this->card_choice]->id, false);
 
-									int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
+									int32_t price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice]->price_tier);
 									int32_t current_money = GAME_MANAGER.globals.current_money;
 									if (current_money >= price) {
 										GAME_MANAGER.globals.current_money = current_money - price;
@@ -59091,8 +59146,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						break;
 					case 8:
 						if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL | BUTTON_LEFT | BUTTON_RIGHT)) {
-							ABILITY_TEXT_DATA_PTR->__show_anms(this->card_array[this->card_choice.current_selection]->id);
-							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_array[this->card_choice.current_selection]->id, true);
+							ABILITY_TEXT_DATA_PTR->show_anms(this->card_array[this->card_choice]->id);
+							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_array[this->card_choice]->id, true);
 							this->__anm_id_228.interrupt_tree(27);
 							SOUND_MANAGER.play_sound(9);
 							this->change_primary_state(2);
@@ -59143,8 +59198,8 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
 						vm->set_scale(this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.x, this->__anm_id_array_22C[i].get_vm_ptr_safe()->data.scale.y);
 
 						if (
-							i < this->card_choice.current_selection - 1 ||
-							i > this->card_choice.current_selection + 1
+							i < this->card_choice - 1 ||
+							i > this->card_choice + 1
 						) {
 							vm->controller.position = positionA;
 						}
@@ -59209,7 +59264,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 				ascii_manager->font_id = Font6; // 6
 				ascii_manager->__horizontal_positioning_mode = 0;
 
-				int32_t price_tier = this->card_array[this->card_choice.current_selection]->price_tier;
+				int32_t price_tier = this->card_array[this->card_choice]->price_tier;
 
 				int32_t price;
 				clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(price_tier);
@@ -59217,7 +59272,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_draw() {
 				ascii_manager->color = GAME_MANAGER.globals.current_money >= price ? CARD_PRICE_COLORS[price_tier] : COLOR(255, 96, 96, 96);
 				ascii_manager->color2 = COLOR_BLACK;
 
-				clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice.current_selection]->price_tier);
+				clang_forceinline price = ABILITY_MANAGER_PTR->get_price_for_tier(this->card_array[this->card_choice]->price_tier);
 
 				ascii_manager->printf(&position, "Cost %d", price);
 
@@ -59630,7 +59685,7 @@ struct NoticeManager : ZUNTask {
 						if (
 							this->state_timer >= 20 &&
 							INPUT_STATES->check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
-							this->menu_select.current_selection > 0
+							this->menu_select > 0
 						) {
 							this->change_primary_state(2);
 							SOUND_MANAGER.play_sound(7);
@@ -59661,7 +59716,7 @@ struct NoticeManager : ZUNTask {
 						if (
 							this->state_timer >= 240 &&
 							INPUT_STATES->check_hardware_inputs_no_repeat(BUTTON_SELECT) &&
-							this->menu_select.current_selection > 0
+							this->menu_select > 0
 						) {
 							this->change_primary_state(3);
 							SOUND_MANAGER.play_sound(7);
@@ -60245,7 +60300,7 @@ public:
 					this->__timer_5D54.set(8);
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
-					if (this->__menu_select_24.current_selection == TitleScreen::Quit) { // 9
+					if (this->__menu_select_24 == TitleScreen::Quit) { // 9
 						goto handle_quit;
 					}
 					SOUND_MANAGER.play_sound(9);
@@ -60253,7 +60308,7 @@ public:
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 					this->__timer_5D68.set(30);
-					switch (this->__menu_select_24.current_selection) {
+					switch (this->__menu_select_24) {
 						case TitleScreen::GameStart: // 0
 						case TitleScreen::ExtraStart: // 1
 						case TitleScreen::Practice: // 2
@@ -60280,7 +60335,7 @@ public:
 			case 4:
 				if (this->state_timer >= 20) {
 					int32_t difficulty;
-					switch (this->__menu_select_24.current_selection) {
+					switch (this->__menu_select_24) {
 						case TitleScreen::GameStart: // 0
 							GAME_MANAGER.set_game_type(NormalGame);
 							this->__anm_id_3B4.interrupt_and_run_tree(3);
@@ -60413,7 +60468,7 @@ public:
 					if (this->__is_not_new_record) {
 						goto done_entering_name;
 					}
-					int32_t key = this->keyboard.current_selection;
+					int32_t key = this->keyboard;
 					if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
 						char c = KEYBOARD_STRING[key];
 						int32_t index = this->__name_length;
@@ -60445,7 +60500,7 @@ public:
 					}
 					else if (key == KEYBOARD_STRING_CONFIRM) {
 						ScorefileRecord& record = SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
-													.records[GAME_MANAGER.globals.difficulty][this->__menu_select_24.current_selection];
+													.records[GAME_MANAGER.globals.difficulty][this->__menu_select_24];
 						byteloop_strcpy(record.name, this->__name_buffer);
 						byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
 				done_entering_name:
@@ -60569,8 +60624,8 @@ public:
 				}
 				break;
 			case 2:
-				this->__menu_select_24.previous_selection = this->__menu_select_24.current_selection;
-				this->__menu_select_2AC.previous_selection = this->__menu_select_2AC.current_selection;
+				this->__menu_select_24.previous_selection = this->__menu_select_24;
+				this->__menu_select_2AC.previous_selection = this->__menu_select_2AC;
 				this->__menu_select_24.scroll_up_and_down_inline();
 				this->__menu_select_2AC.scroll_left_and_right_inline();
 				if (this->__menu_select_2AC.selection_changed()) {
@@ -60585,10 +60640,10 @@ public:
 					this->__stop_loading_replays = true;
 				}
 				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-					int32_t replay_index = this->__menu_select_24.current_selection + this->__menu_select_2AC.current_selection * REPLAYS_PER_PAGE;
+					int32_t replay_index = this->__menu_select_24 + this->__menu_select_2AC * REPLAYS_PER_PAGE;
 					if (this->replay_manager_array[replay_index]) {
 						this->change_secondary_state(4);
-						this->__replay_index = this->__menu_select_24.current_selection + this->__menu_select_2AC.current_selection * REPLAYS_PER_PAGE;
+						this->__replay_index = this->__menu_select_24 + this->__menu_select_2AC * REPLAYS_PER_PAGE;
 						this->__menu_select_24.push_state();
 						SOUND_MANAGER.play_sound(7);
 						this->__menu_select_24.initialize((MenuLength)PLAYABLE_STAGE_COUNT, MenuChoice0);
@@ -60622,7 +60677,7 @@ public:
 					}
 					else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 			start_replay:
-						this->__replay_stage_number = this->__menu_select_24.current_selection;
+						this->__replay_stage_number = this->__menu_select_24;
 						this->change_secondary_state(3);
 						this->__stop_loading_replays = true;
 						SOUND_MANAGER.play_sound(50);
@@ -60711,7 +60766,7 @@ public:
 
 				const tm* replay_time = localtime(&replay_info->time);
 				
-				if (this->__menu_select_2AC.current_selection == 0) {
+				if (this->__menu_select_2AC == 0) {
 					if (!replay_info->spell_practice_mode) {
 						ASCII_MANAGER_PTR->printf(
 							&position,
@@ -60763,7 +60818,7 @@ public:
 					position.y = 128.0f;
 					nounroll for (uint32_t i = Stage1; i < STAGE_COUNT; ++i) {
 						D3DCOLOR color;
-						if (this->__menu_select_24.current_selection == i - 1) {
+						if (this->__menu_select_24 == i - 1) {
 							color = COLOR(255, 255, 255, 0);
 						} else {
 							color = COLOR_GREY(255, 128);
@@ -60815,14 +60870,14 @@ public:
 
 				ascii_manager->enable_shadows = true;
 
-				int32_t page_start_index = this->__menu_select_2AC.current_selection * REPLAYS_PER_PAGE;
+				int32_t page_start_index = this->__menu_select_2AC * REPLAYS_PER_PAGE;
 
 				for (int32_t i = page_start_index; i < page_start_index + REPLAYS_PER_PAGE; ++i) {
 					int32_t page_number = i / REPLAYS_PER_PAGE;
 					int32_t index_in_page = i - page_number * REPLAYS_PER_PAGE;
 
 					D3DCOLOR color;
-					if (this->__menu_select_24.current_selection == index_in_page) {
+					if (this->__menu_select_24 == index_in_page) {
 						color = COLOR(255, 255, 255, 0);
 					} else {
 						color = COLOR_GREY(255, 128);
@@ -60835,7 +60890,7 @@ public:
 
 						const tm* replay_time = localtime(&replay_info->time);
 
-						if (this->__menu_select_2AC.current_selection == 0) {
+						if (this->__menu_select_2AC == 0) {
 							if (!replay_info->spell_practice_mode) {
 								ASCII_MANAGER_PTR->printf(
 									&position,
@@ -60885,7 +60940,7 @@ public:
 					else {
 						ASCII_MANAGER_PTR->printf(
 							&position,
-							this->__menu_select_2AC.current_selection == 0
+							this->__menu_select_2AC == 0
 								? "No.%.2d -------- --/--/-- --:-- ------ ------- --- ---%%"
 								: "User  -------- --/--/-- --:-- ------  ------- --- ---%%",
 							i + 1
@@ -60920,8 +60975,8 @@ public:
 				this->__anm_id_540 = this->title_anm->instantiate_vm_to_world_list_back(106);
 				this->__anm_id_544 = this->title_anm->instantiate_vm_to_world_list_back(107);
 				this->__anm_id_548 = this->title_anm->instantiate_vm_to_world_list_back(108);
-				if (TrophyData::__get_title_for_trophy(this->__menu_select_24.current_selection)) {
-					trophy_index = this->__menu_select_24.current_selection;
+				if (TrophyData::__get_title_for_trophy(this->__menu_select_24)) {
+					trophy_index = this->__menu_select_24;
 					this->__int_5D4C = 0;
 					this->__trophy_index = trophy_index;
 				}
@@ -60929,14 +60984,14 @@ public:
 			case 1:
 				if (this->__menu_select_24.update(&MenuSelect::scroll_grid_inline, TROPHIES_PER_ROW)) {
 					SOUND_MANAGER.play_sound(10);
-					if (TrophyData::__get_title_for_trophy(this->__menu_select_24.current_selection)) {
-						trophy_index = this->__menu_select_24.current_selection;
+					if (TrophyData::__get_title_for_trophy(this->__menu_select_24)) {
+						trophy_index = this->__menu_select_24;
 						this->__int_5D4C = 0;
 						this->__trophy_index = trophy_index;
 					}
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-					trophy_index = this->__menu_select_24.current_selection;
+					trophy_index = this->__menu_select_24;
 					if (trophy_index <= 11) {
 						if (SCOREFILE_MANAGER_PTR->primary_file.common.trophies[trophy_index]) {
 							UNKNOWN_INT32_I = trophy_index;
@@ -60964,7 +61019,7 @@ public:
 					this->__anm_id_548.interrupt_and_orphan_tree(1);
 					this->__anm_id_458.interrupt_and_orphan_tree(1);
 				}
-				if (this->__menu_select_24.current_selection == 12) {
+				if (this->__menu_select_24 == 12) {
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL)) {
 						UNLOCK_CODE_A_CHARS_ENTERED = 0;
 						UNLOCK_CODE_A_TIMER = 0;
@@ -61022,7 +61077,7 @@ public:
 						time = this->state_timer;
 					}
 					if (time >= 40) {
-						int32_t character = this->__menu_select_24.current_selection - 12;
+						int32_t character = this->__menu_select_24 - 12;
 						UNKNOWN_INT32_C = 6;
 						GAME_MANAGER.globals.character = character;
 						GAME_MANAGER.globals.shottype = 0;
@@ -61032,14 +61087,14 @@ public:
 						GAME_MANAGER.globals.current_stage = ExtraStage;
 						GAME_MANAGER.globals.__starting_stage = ExtraStage;
 						this->change_primary_state(MainMenuState::State2); // 2
-						TROPHY_MENU_SELECTION = this->__menu_select_24.current_selection;
+						TROPHY_MENU_SELECTION = this->__menu_select_24;
 						SUPERVISOR.gamemode_switch = GameMode::Gameplay; // 7
 					}
 				}
 				break;
 			case 3:
 				if (this->state_timer >= 20) {
-					TROPHY_MENU_SELECTION = this->__menu_select_24.current_selection;
+					TROPHY_MENU_SELECTION = this->__menu_select_24;
 					this->change_primary_state(MainMenuState::PlayerData); // 10
 					this->__menu_select_24.pop_state();
 				}
@@ -61128,7 +61183,7 @@ public:
 			int32_t i = 0;
 			for (;;) {
 				D3DCOLOR color;
-				if (this->__menu_select_24.current_selection == i) {
+				if (this->__menu_select_24 == i) {
 					color = COLOR_WHITE;
 				} else {
 					color = COLOR_GREY(255, 112);
@@ -61305,7 +61360,7 @@ public:
 				buffer[length] = '\0';
 
 				D3DCOLOR color;
-				if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captured_in_spell_practice()) {
+				if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].captured_in_spell_practice()) {
 					color = COLOR3(255, 255, 128);
 				} else {
 					color = COLOR3(239, 239, 239);
@@ -61371,36 +61426,36 @@ public:
 
 	// 0x46C070
 	dllexport gnu_noinline void thiscall __sub_46C070() ASR(0x46C070) {
-		this->__menu_select_5C50.previous_selection = this->__menu_select_5C50.current_selection;
+		this->__menu_select_5C50.previous_selection = this->__menu_select_5C50;
 		if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_LEFT)) {
 			SOUND_MANAGER.play_sound(10);
-			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 37);
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50, 37);
 			this->__menu_select_5C50.move_selection(-1);
-			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 17);
-			GAME_MANAGER.globals.character = this->__menu_select_5C50.current_selection;
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50, 17);
+			GAME_MANAGER.globals.character = this->__menu_select_5C50;
 			switch (this->primary_state) {
 				case MainMenuState::State19: // 19
-					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24, this->__spell_id_array);
 					break;
 				case MainMenuState::State20: // 20
 					this->__sub_46C680(this->__spell_practice_stage, this->__int_5D2C, this->__spell_id_array);
-					this->__sub_46CCD0(this->__menu_select_24.current_selection);
+					this->__sub_46CCD0(this->__menu_select_24);
 					break;
 			}
 		}
 		if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_RIGHT)) {
 			SOUND_MANAGER.play_sound(10);
-			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 27);
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50, 27);
 			this->__menu_select_5C50.move_selection(1);
-			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
-			GAME_MANAGER.globals.character = this->__menu_select_5C50.current_selection;
+			this->__anm_id_644.interrupt_and_run_tree_word_offset(this->__menu_select_5C50, 7);
+			GAME_MANAGER.globals.character = this->__menu_select_5C50;
 			switch (this->primary_state) {
 				case MainMenuState::State19: // 19
-					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24, this->__spell_id_array);
 					break;
 				case MainMenuState::State20: // 20
 					this->__sub_46C680(this->__spell_practice_stage, this->__int_5D2C, this->__spell_id_array);
-					this->__sub_46CCD0(this->__menu_select_24.current_selection);
+					this->__sub_46CCD0(this->__menu_select_24);
 					break;
 			}
 		}
@@ -61433,10 +61488,10 @@ public:
 					MENU_SPELL_PRACTICE_STAGE_SELECTION = -1;
 					this->__menu_select_5C50.initialize(MenuWrapEnable, (MenuLength)CHARACTER_COUNT, (MenuChoice)GAME_MANAGER.globals.shottype_index());
 					this->__anm_id_570.interrupt_and_run_tree(3);
-					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_570.interrupt_and_run_tree_word_offset(this->__menu_select_24, 7);
 					this->__anm_id_570.interrupt_and_run_tree(6);
 					this->__anm_id_644.interrupt_and_run_tree(3);
-					this->__anm_id_644.interrupt_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
+					this->__anm_id_644.interrupt_tree_word_offset(this->__menu_select_5C50, 7);
 					goto label_A;
 				}
 				this->__anm_id_44C = this->title_anm->instantiate_vm_to_world_list_back(45);
@@ -61446,28 +61501,28 @@ public:
 				if (this->state_timer > 10) {
 					this->change_secondary_state(2);
 					this->__anm_id_570.interrupt_and_run_tree(3);
-					this->__anm_id_570.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_570.interrupt_tree_word_offset(this->__menu_select_24, 7);
 					this->__anm_id_644.interrupt_and_run_tree(3);
-					this->__anm_id_644.interrupt_tree_word_offset(this->__menu_select_5C50.current_selection, 7);
+					this->__anm_id_644.interrupt_tree_word_offset(this->__menu_select_5C50, 7);
 				}
 				break;
 			case 2:
 				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
 					SOUND_MANAGER.play_sound(10);
 					this->__anm_id_570.interrupt_and_run_tree(3);
-					this->__anm_id_570.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_570.interrupt_tree_word_offset(this->__menu_select_24, 7);
 				}
 				this->__sub_46C070();
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 					this->change_secondary_state(4);
 					SOUND_MANAGER.play_sound(9);
-					MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+					MENU_STAGE_SELECTION = this->__menu_select_24;
 				}
 				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 					this->__anm_id_570.interrupt_tree(6);
 					this->change_secondary_state(3);
 					SOUND_MANAGER.play_sound(7);
-					MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+					MENU_STAGE_SELECTION = this->__menu_select_24;
 				}
 				break;
 			case 3:
@@ -61475,7 +61530,7 @@ public:
 			label_A:
 					this->__anm_id_44C.interrupt_and_orphan_tree(1);
 					this->change_primary_state(MainMenuState::State19); // 19
-					this->__spell_practice_stage = this->__menu_select_24.current_selection;
+					this->__spell_practice_stage = this->__menu_select_24;
 					this->__menu_select_24.push_state();
 					this->__menu_select_24.set_selection(0);
 				}
@@ -61510,31 +61565,31 @@ public:
 				AnmID id = this->title_anm->instantiate_vm_to_world_list_back(i);
 				this->anms[i] = id;
 				id.interrupt_and_run_tree(3);
-				this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 13);
+				this->anms[i].interrupt_tree_word_offset(this->__menu_select_24, 13);
 				if (UNKNOWN_INT32_C == 4) {
 					this->__menu_select_24.set_selection(GAME_MANAGER.globals.difficulty);
 					this->anms[i].interrupt_and_run_tree(3);
-					this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
-					this->anms[i].__find_child_id_with_script(49 + this->__menu_select_24.current_selection).interrupt_tree(2);
+					this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24, 7);
+					this->anms[i].__find_child_id_with_script(49 + this->__menu_select_24).interrupt_tree(2);
 				} else {
 					this->__anm_id_42C = this->title_anm->instantiate_vm_to_world_list_back(37);
 					this->change_secondary_state(1);
 					if (GAME_MANAGER.globals.difficulty < EXTRA) {
 						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(EASY)) {
-							this->anms[i].__find_child_id_with_script(27).__hide_tree();
+							this->anms[i].__find_child_id_with_script(27).hide_tree();
 						}
 						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(NORMAL)) {
-							this->anms[i].__find_child_id_with_script(28).__hide_tree();
+							this->anms[i].__find_child_id_with_script(28).hide_tree();
 						}
 						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(HARD)) {
-							this->anms[i].__find_child_id_with_script(29).__hide_tree();
+							this->anms[i].__find_child_id_with_script(29).hide_tree();
 						}
 						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(LUNATIC)) {
-							this->anms[i].__find_child_id_with_script(30).__hide_tree();
+							this->anms[i].__find_child_id_with_script(30).hide_tree();
 						}
 					} else {
 						if (!SCOREFILE_MANAGER_PTR->primary_file.has_any_1cc_clear_for_difficulty(EXTRA)) {
-							this->anms[i].__find_child_id_with_script(31).__hide_tree();
+							this->anms[i].__find_child_id_with_script(31).hide_tree();
 						}
 					}
 				}
@@ -61550,7 +61605,7 @@ public:
 					if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_lr_alias)) {
 						SOUND_MANAGER.play_sound(10);
 						this->anms[i].interrupt_and_run_tree(3);
-						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24, 7);
 					}
 				}
 				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_CANCEL)) {
@@ -61561,7 +61616,7 @@ public:
 				else if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_SELECT)) {
 					this->anms[i].interrupt_tree(6);
 					if (GAME_MANAGER.globals.difficulty < EXTRA) {
-						this->__find_indexed_child_id_with_script(i, 49 + this->__menu_select_24.current_selection).interrupt_tree(2);
+						this->__find_indexed_child_id_with_script(i, 49 + this->__menu_select_24).interrupt_tree(2);
 					} else {
 						this->anms[i].__find_child_id_with_script(53).interrupt_tree(2);
 					}
@@ -61574,7 +61629,7 @@ public:
 					this->__anm_id_42C.interrupt_and_orphan_tree(1);
 					this->change_primary_state(MainMenuState::CharacterSelect); // 6
 					if (GAME_MANAGER.globals.difficulty < EXTRA) {
-						difficulty = this->__menu_select_24.current_selection;
+						difficulty = this->__menu_select_24;
 						GAME_MANAGER.globals.difficulty = difficulty;
 						MENU_DIFFICULTY_SELECTION = difficulty;
 					}
@@ -61590,7 +61645,7 @@ public:
 				if (this->state_timer >= 6) {
 					this->__anm_id_42C.interrupt_and_orphan_tree(1);
 					if (GAME_MANAGER.game_type != NormalGame) {
-						difficulty = this->__menu_select_24.current_selection;
+						difficulty = this->__menu_select_24;
 						MENU_DIFFICULTY_SELECTION = difficulty;
 						GAME_MANAGER.globals.difficulty = difficulty;
 						this->change_primary_state(MainMenuState::TitleScreen); // 1
@@ -61599,8 +61654,8 @@ public:
 						this->__menu_select_24.pop_state();
 					} else if (GAME_MANAGER.globals.difficulty < EXTRA) {
 						this->change_primary_state(MainMenuState::TitleScreen); // 1
-						GAME_MANAGER.globals.difficulty = this->__menu_select_24.current_selection;
-						MENU_DIFFICULTY_SELECTION = this->__menu_select_24.current_selection;
+						GAME_MANAGER.globals.difficulty = this->__menu_select_24;
+						MENU_DIFFICULTY_SELECTION = this->__menu_select_24;
 						this->__menu_select_24.pop_state();
 					} else {
 						difficulty = MENU_DIFFICULTY_SELECTION;
@@ -61646,7 +61701,7 @@ public:
 				this->__menu_select_FC.menu_length = 2;
 				if (GAME_MANAGER.globals.difficulty == EXTRA) {
 					ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
-					if (!scorefile_manager->primary_file.has_1cc_clear(this->__menu_select_24.current_selection)) {
+					if (!scorefile_manager->primary_file.has_1cc_clear(this->__menu_select_24)) {
 						int32_t character_with_1cc = scorefile_manager->primary_file.first_character_with_any_1cc_clear();
 						if (!(character_with_1cc < 0)) {
 							this->__menu_select_24.set_selection(character_with_1cc);
@@ -61667,31 +61722,31 @@ public:
 					AnmID id = this->title_anm->instantiate_vm_to_world_list_back(i);
 					this->anms[i] = id;
 					id.interrupt_and_run_tree(3);
-					this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->anms[i].interrupt_tree_word_offset(this->__menu_select_24, 7);
 				}
 				else {
 					this->anms[i].interrupt_and_run_tree(3);
-					this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->anms[i].interrupt_tree_word_offset(this->__menu_select_24, 7);
 				}
 				clang_forceinline this->change_secondary_state(1);
 				ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 				difficulty = GAME_MANAGER.globals.difficulty;
 				for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
 					if (!scorefile_manager->primary_file.has_1cc_clear_for_character_difficulty(j, difficulty)) {
-						this->anms[i].__find_child_id_with_script(23 + j).__hide_tree();
+						this->anms[i].__find_child_id_with_script(23 + j).hide_tree();
 						difficulty = GAME_MANAGER.globals.difficulty;
 					}
 				}
 			}
 				if (UNKNOWN_INT32_C == 4) {
 					this->__menu_select_24.set_selection(GAME_MANAGER.globals.character);
-					this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
-					this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24.current_selection).interrupt_tree(6);
-					this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24.current_selection).interrupt_tree(6);
+					this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24, 7);
+					this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24).interrupt_tree(6);
 					this->anms[i].__find_child_id_with_script(5).interrupt_tree(6);
 					this->anms[i].__find_child_id_with_script(6).interrupt_tree(6);
 			label_A:
-					character = this->__menu_select_24.current_selection;
+					character = this->__menu_select_24;
 					GAME_MANAGER.globals.character = character;
 					MENU_CHARACTER_SELECTION = character;
 					clang_forceinline this->__menu_select_24.push_state();
@@ -61699,7 +61754,7 @@ public:
 					this->change_primary_state(MainMenuState::PracticeStageSelect); // 8
 			label_B:
 					if (this->state_timer >= 40) {
-						character = this->__menu_select_24.current_selection;
+						character = this->__menu_select_24;
 						GAME_MANAGER.globals.character = character;
 						MENU_CHARACTER_SELECTION = character;
 						clang_forceinline this->__menu_select_24.push_state();
@@ -61732,24 +61787,24 @@ public:
 				}
 				break;
 			case 2:
-				this->__menu_select_24.previous_selection = this->__menu_select_24.current_selection;
-				if (this->__menu_select_FC.current_selection == 0) {
+				this->__menu_select_24.previous_selection = this->__menu_select_24;
+				if (this->__menu_select_FC == 0) {
 					if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
 						SOUND_MANAGER.play_sound(10);
-						this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 25);
+						this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24, 25);
 						this->__menu_select_24.move_selection(-1);
-						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 13);
+						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24, 13);
 					}
 					if (check_hardware_inputs_repeating(BUTTON_RIGHT)) {
 						SOUND_MANAGER.play_sound(10);
-						this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 19);
+						this->anms[i].interrupt_and_run_tree_word_offset(this->__menu_select_24, 19);
 						this->__menu_select_24.move_selection(1);
-						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24, 7);
 					}
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-					this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24.current_selection).interrupt_tree(6);
-					this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24.current_selection).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24).interrupt_tree(6);
+					this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24).interrupt_tree(6);
 					this->anms[i].__find_child_id_with_script(5).interrupt_tree(6);
 					this->anms[i].__find_child_id_with_script(6).interrupt_tree(6);
 					SOUND_MANAGER.play_sound(7);
@@ -61763,16 +61818,16 @@ public:
 			label_C:
 					if (this->__menu_select_FC.update(&MenuSelect::scroll_up_and_down)) {
 						SOUND_MANAGER.play_sound(10);
-						if (this->__menu_select_FC.current_selection == 0) {
+						if (this->__menu_select_FC == 0) {
 							this->anms[i].interrupt_and_run_tree(4);
 							ABILITY_MENU_PTR->__sub_464920();
 							difficulty = GAME_MANAGER.globals.difficulty;
 							ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
 								if (!scorefile_manager->primary_file.has_1cc_clear_for_character_difficulty(j, difficulty)) {
-									this->anms[i].__find_child_id_with_script(23 + j).__hide_tree();
+									this->anms[i].__find_child_id_with_script(23 + j).hide_tree();
 								} else {
-									this->anms[i].__find_child_id_with_script(23 + j).__show_tree();
+									this->anms[i].__find_child_id_with_script(23 + j).show_tree();
 								}
 								difficulty = GAME_MANAGER.globals.difficulty;
 							}
@@ -61781,7 +61836,7 @@ public:
 							this->anms[i].interrupt_and_run_tree(5);
 							ABILITY_MENU_PTR->__sub_4134D0();
 							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
-								this->anms[i].__find_child_id_with_script(23 + j).__hide_tree();
+								this->anms[i].__find_child_id_with_script(23 + j).hide_tree();
 							}
 						}
 					}
@@ -61809,7 +61864,7 @@ public:
 					this->anms[i].interrupt_and_orphan_tree(1);
 					this->__anm_id_430.interrupt_and_orphan_tree(1);
 					this->change_primary_state(MainMenuState::DifficultySelect); // 5
-					GAME_MANAGER.globals.character = this->__menu_select_24.current_selection;
+					GAME_MANAGER.globals.character = this->__menu_select_24;
 					clang_forceinline this->__menu_select_24.pop_state();
 					MENU_CHARACTER_SELECTION = GAME_MANAGER.globals.character;
 					if (AbilityMenu* ability_menu = ABILITY_MENU_PTR) {
@@ -61854,12 +61909,12 @@ public:
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 					this->change_secondary_state(4);
 					SOUND_MANAGER.play_sound(9);
-					MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+					MENU_STAGE_SELECTION = this->__menu_select_24;
 				}
 				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 					if (
 						!SCOREFILE_MANAGER_PTR->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
-							.practice[GAME_MANAGER.globals.difficulty][this->__menu_select_24.current_selection + 1].unlocked
+							.practice[GAME_MANAGER.globals.difficulty][this->__menu_select_24 + 1].unlocked
 					) {
 						SOUND_MANAGER.play_sound(16);
 					}
@@ -61867,7 +61922,7 @@ public:
 						this->change_secondary_state(3);
 						SOUND_MANAGER.play_sound(7);
 						SOUND_MANAGER.play_sound(50);
-						MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+						MENU_STAGE_SELECTION = this->__menu_select_24;
 
 						int32_t life_override = 0;
 						switch (DINPUT_KEYS_A.get_state()) {
@@ -61917,7 +61972,7 @@ public:
 					if (time >= 40) {
 						this->__menu_select_24.push_state();
 						this->change_primary_state(MainMenuState::State2); // 2
-						int32_t stage_number = this->__menu_select_24.current_selection + Stage1;
+						int32_t stage_number = this->__menu_select_24 + Stage1;
 						SUPERVISOR.gamemode_switch = GameMode::Gameplay; // 7
 						GAME_MANAGER.globals.current_stage = stage_number;
 						GAME_MANAGER.globals.__starting_stage = stage_number;
@@ -61925,7 +61980,7 @@ public:
 						ACHIEVEMENT_MODE_STATE = -1;
 						UNKNOWN_INT32_C = 4;
 						STAGE_DATA_PTR = &STAGE_DATA[stage_number];
-						MENU_STAGE_SELECTION = this->__menu_select_24.current_selection;
+						MENU_STAGE_SELECTION = this->__menu_select_24;
 						delete ability_menu;
 					}
 				}
@@ -61957,7 +62012,7 @@ public:
 
 					for (int32_t i = Stage1; i < MAIN_GAME_STAGE_COUNT + 1; ++i) {
 						ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
-						if (this->__menu_select_24.current_selection != i - 1) {
+						if (this->__menu_select_24 != i - 1) {
 							ascii_manager->color = COLOR_GREY(255, 128);
 						} else if (
 							!scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
@@ -62103,24 +62158,24 @@ public:
 						}
 						int32_t scroll = this->__music_room_scroll_index;
 						if (i >= scroll && i < scroll + SONGS_PER_PAGE) {
-							vm->__show_tree();
+							vm->show_tree();
 						} else {
-							vm->__hide_tree();
+							vm->hide_tree();
 						}
 
-						if (i == this->__menu_select_24.current_selection) {
+						if (i == this->__menu_select_24) {
 							target.x -= 8.0; // yes this is a double
 						}
 
 						vm->initialize_position_interp(4, Linear, vm->data.position, target);
 
-						int32_t current_selection = this->__menu_select_24.current_selection;
-						if (i == current_selection) {
+						int32_t selection = this->__menu_select_24;
+						if (i == selection) {
 							target.x += 8.0; // yes this is a double
 						}
 						target.y += 40.0f;
 
-						vm->interrupt(i == current_selection ? 2 : 3);
+						vm->interrupt(i == selection ? 2 : 3);
 
 						A = this->state_timer * 2;
 					} while (++i < A);
@@ -62196,13 +62251,13 @@ public:
 				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
 					SOUND_MANAGER.play_sound(10);
 
-					int32_t current_selection = this->__menu_select_24.current_selection;
+					int32_t selection = this->__menu_select_24;
 					int32_t scroll = this->__music_room_scroll_index;
-					if (current_selection < scroll) {
-						this->__music_room_scroll_index = current_selection;
-						scroll = current_selection;
-					} else if (current_selection >= scroll + SONGS_PER_PAGE) {
-						scroll = current_selection - (SONGS_PER_PAGE - 1);
+					if (selection < scroll) {
+						this->__music_room_scroll_index = selection;
+						scroll = selection;
+					} else if (selection >= scroll + SONGS_PER_PAGE) {
+						scroll = selection - (SONGS_PER_PAGE - 1);
 						this->__music_room_scroll_index = scroll;
 					}
 					
@@ -62216,12 +62271,12 @@ public:
 
 						scroll = this->__music_room_scroll_index;
 						if (i >= scroll && i < scroll + SONGS_PER_PAGE) {
-							vm->__show_tree();
+							vm->show_tree();
 						} else {
-							vm->__hide_tree();
+							vm->hide_tree();
 						}
 
-						if (i == this->__menu_select_24.current_selection) {
+						if (i == this->__menu_select_24) {
 							target.x -= 8.0; // yes this is a double
 						}
 
@@ -62232,13 +62287,13 @@ public:
 							vm->data.position = target;
 						}
 						
-						current_selection = this->__menu_select_24.current_selection;
-						if (i == current_selection) {
+						selection = this->__menu_select_24;
+						if (i == selection) {
 							target.x += 8.0; // yes this is a double
 						}
 						target.y += 40.0f;
 
-						vm->interrupt(i == current_selection ? 2 : 3);
+						vm->interrupt(i == selection ? 2 : 3);
 					}
 
 					if (this->__musiccmt_line_index >= MUSICCMT_TEXT_LINES) {
@@ -62250,7 +62305,7 @@ public:
 						this->musiccmt_line_vms[i].interrupt_tree(3);
 					}
 					this->__musiccmt_line_index = 0;
-					this->__music_index = this->__menu_select_24.current_selection;
+					this->__music_index = this->__menu_select_24;
 					this->state_timer.reset();
 
 					int32_t i = this->__music_index;
@@ -62262,7 +62317,7 @@ public:
 						this->__music_room_force_unlock = true;
 					}
 					else {
-						SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, this->__musiccmt_titlesA[this->__menu_select_24.current_selection]);
+						SOUND_MANAGER.__load_and_play_music_with_unlock(0, 0, this->__musiccmt_titlesA[this->__menu_select_24]);
 						this->__music_room_force_unlock = false;
 					}
 				}
@@ -62315,28 +62370,28 @@ public:
 				if (A >= 0) {
 					this->__menu_select_24.set_selection(A);
 					UNKNOWN_INT32_E = -1;
-					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24, this->__spell_id_array);
 					this->__anm_id_574.interrupt_and_run_tree(3);
-					this->__anm_id_574.interrupt_and_run_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_574.interrupt_and_run_tree_word_offset(this->__menu_select_24, 7);
 					this->__anm_id_574.interrupt_and_run_tree(6);
 					goto label_A;
 				}
-				this->__sub_46C680(stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+				this->__sub_46C680(stage, this->__menu_select_24, this->__spell_id_array);
 			}
 				[[fallthrough]];
 			case 1:
 				if (this->state_timer > 10) {
 					this->change_secondary_state(2);
 					this->__anm_id_574.interrupt_and_run_tree(2);
-					this->__anm_id_574.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_574.interrupt_tree_word_offset(this->__menu_select_24, 7);
 				}
 				break;
 			case 2:
 				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
 					SOUND_MANAGER.play_sound(10);
 					this->__anm_id_574.interrupt_and_run_tree(3);
-					this->__anm_id_574.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
-					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24.current_selection, this->__spell_id_array);
+					this->__anm_id_574.interrupt_tree_word_offset(this->__menu_select_24, 7);
+					this->__sub_46C680(this->__spell_practice_stage, this->__menu_select_24, this->__spell_id_array);
 				}
 				this->__sub_46C070();
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
@@ -62346,7 +62401,7 @@ public:
 				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 					ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 					// this feels like an inlined scorefile manager
-					const int32_t* spell_ids = &SPELL_ID_TABLE[this->__spell_practice_stage][this->__menu_select_24.current_selection][0];
+					const int32_t* spell_ids = &SPELL_ID_TABLE[this->__spell_practice_stage][this->__menu_select_24][0];
 					nounroll for (int32_t i = 0; i < SPELL_DIFFICULTY_VARIANTS; ++i) {
 						int32_t spell_id = spell_ids[i];
 						if (spell_id < 0) {
@@ -62367,7 +62422,7 @@ public:
 				if (this->state_timer >= 14) {
 			label_A:
 					this->change_primary_state(MainMenuState::State20); // 20
-					this->__int_5D2C = this->__menu_select_24.current_selection;
+					this->__int_5D2C = this->__menu_select_24;
 					clang_forceinline this->__menu_select_24.push_state();
 					this->__anm_id_434.interrupt_and_orphan_tree(1);
 					this->__menu_select_24.set_selection(0);
@@ -62409,7 +62464,7 @@ public:
 					this->__menu_select_24.set_selection(A);
 					UNKNOWN_INT32_F = -1;
 				}
-				this->__sub_46CCD0(this->__menu_select_24.current_selection);
+				this->__sub_46CCD0(this->__menu_select_24);
 				clang_forceinline this->change_secondary_state(1);
 			}
 				[[fallthrough]];
@@ -62421,7 +62476,7 @@ public:
 			case 2:
 				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_inline)) {
 					SOUND_MANAGER.play_sound(10);
-					this->__sub_46CCD0(this->__menu_select_24.current_selection);
+					this->__sub_46CCD0(this->__menu_select_24);
 				}
 				this->__sub_46C070();
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
@@ -62429,7 +62484,7 @@ public:
 					SOUND_MANAGER.play_sound(9);
 				}
 				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-					this->__anm_id_array_654[this->__menu_select_24.current_selection].interrupt_tree(6);
+					this->__anm_id_array_654[this->__menu_select_24].interrupt_tree(6);
 					this->change_secondary_state(3);
 					SOUND_MANAGER.play_sound(7);
 					SOUND_MANAGER.__queue_fade_out(0.05f);
@@ -62457,14 +62512,14 @@ public:
 						GAME_MANAGER.globals.current_stage = stage_number;
 						GAME_MANAGER.globals.__starting_stage = stage_number;
 						STAGE_DATA_PTR = &STAGE_DATA[stage_number];
-						GAME_MANAGER.globals.spell_practice_id = this->__spell_id_array[this->__menu_select_24.current_selection];
-						GAME_MANAGER.globals.character = this->__menu_select_5C50.current_selection;
+						GAME_MANAGER.globals.spell_practice_id = this->__spell_id_array[this->__menu_select_24];
+						GAME_MANAGER.globals.character = this->__menu_select_5C50;
 						GAME_MANAGER.globals.shottype = 0;
 						SUPERVISOR.gamemode_switch = GameMode::Gameplay; // 7
-						GAME_MANAGER.globals.difficulty = SPELL_DIFFICULTY_TABLE[this->__spell_id_array[this->__menu_select_24.current_selection]];
+						GAME_MANAGER.globals.difficulty = SPELL_DIFFICULTY_TABLE[this->__spell_id_array[this->__menu_select_24]];
 						MENU_SPELL_PRACTICE_STAGE_SELECTION = this->__spell_practice_stage;
 						UNKNOWN_INT32_E = this->__int_5D2C;
-						UNKNOWN_INT32_F = this->__menu_select_24.current_selection;
+						UNKNOWN_INT32_F = this->__menu_select_24;
 					}
 				}
 				break;
@@ -62500,13 +62555,13 @@ public:
 
 							D3DCOLOR color;
 							if (this->primary_state == MainMenuState::State20) { // 20
-								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captured_in_spell_practice()) {
+								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].captured_in_spell_practice()) {
 									color = COLOR(255, 144, 208, 255);
 								} else {
 									color = COLOR(255, 176, 176, 176);
 								}
 							} else {
-								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captured_in_spell_practice()) {
+								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].captured_in_spell_practice()) {
 									color = COLOR(255, 96, 160, 192);
 								} else {
 									color = COLOR(255, 64, 64, 64);
@@ -62522,16 +62577,16 @@ public:
 								ascii_manager->printf(
 									&position,
 									"SCORE %8d0  %4d/%4d",
-									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].spell_practice_score,
-									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captures[1],
-									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].attempts[1]
+									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].spell_practice_score,
+									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].captures[1],
+									scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].attempts[1]
 								);
 								ascii_manager = ASCII_MANAGER_PTR;
 								scorefile_manager = SCOREFILE_MANAGER_PTR;
 
 								position.y += 10.0f;
 
-								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].unlocked_in_spell_practice()) {
+								if (scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].unlocked_in_spell_practice()) {
 									color = COLOR(255, 32, 96, 96);
 								} else {
 									color = COLOR(255, 64, 64, 64);
@@ -62542,8 +62597,8 @@ public:
 									ascii_manager->printf(
 										&position,
 										"GAME MODE        %4d/%4d",
-										scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].captures[0],
-										scorefile_manager->primary_file.shottypes[this->__menu_select_5C50.current_selection].spells[spell_id].attempts[0]
+										scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].captures[0],
+										scorefile_manager->primary_file.shottypes[this->__menu_select_5C50].spells[spell_id].attempts[0]
 									);
 									ascii_manager = ASCII_MANAGER_PTR;
 									scorefile_manager = SCOREFILE_MANAGER_PTR;
@@ -62575,7 +62630,7 @@ public:
 				AnmID id = this->title_anm->instantiate_vm_to_world_list_back(109);
 				this->__anm_id_54C = id;
 				id.interrupt_and_run_tree(3);
-				this->__anm_id_54C.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+				this->__anm_id_54C.interrupt_tree_word_offset(this->__menu_select_24, 7);
 				this->__anm_id_454 = this->title_anm->instantiate_vm_to_world_list_back(47);
 				this->change_secondary_state(1);
 			}
@@ -62589,7 +62644,7 @@ public:
 				if (this->__menu_select_24.update(&MenuSelect::scroll_up_and_down_lr_alias_half_inline)) {
 					SOUND_MANAGER.play_sound(10);
 					this->__anm_id_54C.interrupt_and_run_tree(3);
-					this->__anm_id_54C.interrupt_tree_word_offset(this->__menu_select_24.current_selection, 7);
+					this->__anm_id_54C.interrupt_tree_word_offset(this->__menu_select_24, 7);
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 					this->change_secondary_state(4);
@@ -62599,7 +62654,7 @@ public:
 				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
 					this->__anm_id_54C.interrupt_tree(6);
 					if (GAME_MANAGER.globals.difficulty < EXTRA) {
-						this->__find_indexed_child_id_with_script(109, 49 + this->__menu_select_24.current_selection).interrupt_tree(2);
+						this->__find_indexed_child_id_with_script(109, 49 + this->__menu_select_24).interrupt_tree(2);
 					} else {
 						this->__anm_id_54C.__find_child_id_with_script(53).interrupt_tree(2);
 					}
@@ -62610,7 +62665,7 @@ public:
 			case 3:
 				if (this->state_timer >= 14) {
 					this->__anm_id_454.interrupt_and_orphan_tree(1);
-					switch (this->__menu_select_24.current_selection) {
+					switch (this->__menu_select_24) {
 						default:
 							this->change_primary_state(MainMenuState::RecordsList); // 11
 							break;
@@ -62641,10 +62696,10 @@ public:
 		int32_t i;
 		switch (this->secondary_state) {
 			case 0: {
-				int32_t record_type = this->__menu_select_24.current_selection;
+				int32_t record_type = this->__menu_select_24;
 				this->__record_type = record_type;
 				if (record_type == 1) {
-					int32_t spell_count = count_spells_for_difficulty(this->__menu_select_1D4.current_selection);
+					int32_t spell_count = count_spells_for_difficulty(this->__menu_select_1D4);
 					int32_t spell_pages = (spell_count + (RECORDS_PER_PAGE - 1)) / RECORDS_PER_PAGE;
 					this->__menu_select_2AC.initialize((MenuLength)spell_pages, MenuChoice0, MenuWrapEnable);
 				}
@@ -62657,9 +62712,9 @@ public:
 					// this->__sub_4694A0(); // TODO
 				}
 				clang_forceinline this->change_secondary_state(1);
-				i = 61 + this->__menu_select_24.current_selection;
+				i = 61 + this->__menu_select_24;
 				this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
-				i = 65 + this->__menu_select_1D4.current_selection;
+				i = 65 + this->__menu_select_1D4;
 				this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
 				this->__anm_id_4BC = this->title_anm->instantiate_vm_to_world_list_back(73);
 				this->__anm_id_4C0 = this->title_anm->instantiate_vm_to_world_list_back(74);
@@ -62677,9 +62732,9 @@ public:
 				}
 				break;
 			case 2:
-				this->__menu_select_24.previous_selection = this->__menu_select_24.current_selection;
-				this->__menu_select_1D4.previous_selection = this->__menu_select_1D4.current_selection;
-				this->__menu_select_2AC.previous_selection = this->__menu_select_2AC.current_selection;
+				this->__menu_select_24.previous_selection = this->__menu_select_24;
+				this->__menu_select_1D4.previous_selection = this->__menu_select_1D4;
+				this->__menu_select_2AC.previous_selection = this->__menu_select_2AC;
 				if (INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP)) {
 					this->__menu_select_1D4.move_selection(-1);
 					this->__anm_id_4C4.interrupt_and_run_tree(2);
@@ -62690,14 +62745,14 @@ public:
 				}
 				if (this->__menu_select_1D4.selection_changed()) {
 					SOUND_MANAGER.play_sound(10);
-					this->__anm_id_array_49C[this->__menu_select_1D4.current_selection].interrupt_and_orphan_tree(1);
-					i = 65 + this->__menu_select_1D4.current_selection;
+					this->__anm_id_array_49C[this->__menu_select_1D4].interrupt_and_orphan_tree(1);
+					i = 65 + this->__menu_select_1D4;
 					this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
 					if (this->__record_type == 1) {
 						this->__menu_select_2AC.set_selection(0);
 						// this->__sub_4694A0(); // TODO
 					}
-					int32_t spell_count = count_spells_for_difficulty(this->__menu_select_1D4.current_selection);
+					int32_t spell_count = count_spells_for_difficulty(this->__menu_select_1D4);
 					int32_t spell_pages = (spell_count + (RECORDS_PER_PAGE - 1)) / RECORDS_PER_PAGE;
 					this->__menu_select_2AC.menu_length = spell_pages;
 				}
@@ -62711,8 +62766,8 @@ public:
 				}
 				if (this->__menu_select_24.selection_changed()) {
 					SOUND_MANAGER.play_sound(10);
-					this->__anm_id_array_48C[this->__menu_select_24.current_selection].interrupt_and_orphan_tree(1);
-					i = 61 + this->__menu_select_24.current_selection;
+					this->__anm_id_array_48C[this->__menu_select_24].interrupt_and_orphan_tree(1);
+					i = 61 + this->__menu_select_24;
 					this->anms[i] = this->title_anm->instantiate_vm_to_world_list_back(i);
 					if (this->__record_type == 1) {
 						// this->__sub_4694A0(); // TODO
@@ -62726,8 +62781,8 @@ public:
 					}
 				}
 				if (
-					this->__menu_select_1D4.current_selection == LUNATIC &&
-					this->__menu_select_24.current_selection == 8 // YoumuOtter from WBaWC
+					this->__menu_select_1D4 == LUNATIC &&
+					this->__menu_select_24 == 8 // YoumuOtter from WBaWC
 				) {
 					// Super dead code, there is no shottype 8
 					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL)) {
@@ -62775,8 +62830,8 @@ public:
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
 					this->change_secondary_state(3);
 					SOUND_MANAGER.play_sound(9);
-					this->__anm_id_array_49C[this->__menu_select_1D4.current_selection].interrupt_and_orphan_tree(1);
-					this->__anm_id_array_48C[this->__menu_select_24.current_selection].interrupt_and_orphan_tree(1);
+					this->__anm_id_array_49C[this->__menu_select_1D4].interrupt_and_orphan_tree(1);
+					this->__anm_id_array_48C[this->__menu_select_24].interrupt_and_orphan_tree(1);
 					this->__anm_id_4BC.interrupt_and_orphan_tree(1);
 					this->__anm_id_4C0.interrupt_and_orphan_tree(1);
 					this->__anm_id_4C4.interrupt_and_orphan_tree(1);
@@ -62841,7 +62896,7 @@ public:
 					SOUND_MANAGER.play_sound(9);
 				}
 				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-					this->__replay_index = this->__menu_select_24.current_selection;
+					this->__replay_index = this->__menu_select_24;
 					this->keyboard.initialize(MenuChoice0, (MenuLength)KEYBOARD_STRING_TOTAL_KEY_COUNT, MenuWrapEnable);
 					byteloop_strcpy(this->__name_buffer, SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name);
 					if (strcmp_asm(this->__name_buffer, DEFAULT_RECORD_NAME)) {
@@ -62859,7 +62914,7 @@ public:
 					SOUND_MANAGER.play_sound(10);
 				}
 				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-					int32_t key = this->keyboard.current_selection;
+					int32_t key = this->keyboard;
 					if (key <= KEYBOARD_STRING_NORMAL_KEY_COUNT) {
 						char c = KEYBOARD_STRING[key];
 						int32_t index = this->__name_length;
@@ -62892,9 +62947,9 @@ public:
 					else if (key == KEYBOARD_STRING_CONFIRM) {
 						SOUND_MANAGER.play_sound(17);
 						sprintf(buffer, "th18_%.2d.rpy", this->__menu_select_24.current_selection + 1);
-						delete_no_eh(this->replay_manager_array[this->__menu_select_24.current_selection]);
+						delete_no_eh(this->replay_manager_array[this->__menu_select_24]);
 						REPLAY_MANAGER_PTR->__write_to_path(buffer, this->__name_buffer, true, false);
-						this->replay_manager_array[this->__menu_select_24.current_selection] = ReplayManager::allocate_mode2(buffer);
+						this->replay_manager_array[this->__menu_select_24] = ReplayManager::allocate_mode2(buffer);
 						byteloop_strcpy(SCOREFILE_MANAGER_PTR->primary_file.common.__recent_name, this->__name_buffer);
 						this->change_secondary_state(2);
 					}
@@ -63370,7 +63425,7 @@ dllexport gnu_noinline void Gui::__allocate_hud() {
 		AnmVM** spell_timer_vms = gui_ptr->spell_timer_vms;
 		nounroll do {
 			gui_ptr->spell_timer_vm_ids[i] = ASCII_MANAGER_PTR->ascii_anm->instantiate_vm_to_world_list_back(2 + i, &zero, spell_timer_vms);
-			(*spell_timer_vms)->__hide_tree();
+			(*spell_timer_vms)->hide_tree();
 			(*spell_timer_vms)->data.origin_mode = OriginWindow; // 0
 			++spell_timer_vms;
 		} while (++i < countof(gui_ptr->spell_timer_vms));
@@ -63482,7 +63537,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 		!this->msg_vm &&
 		!GAME_THREAD_PTR->__unknown_flag_gt_F
 	) {
-		this->__show_spell_timer_anms();
+		this->show_spell_timer_anms();
 
 		int32_t state = this->__unknown_field_gu_B;
 		if (state == 0) {
@@ -63545,7 +63600,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 		this->__prev_spell_timer_seconds = spell_seconds;
 	}
 	else {
-		this->__hide_spell_timer_anms();
+		this->hide_spell_timer_anms();
 	}
 
 	enemy_manager = ENEMY_MANAGER_PTR;
@@ -63622,7 +63677,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 							!(marker_position == 0.0f) &&
 							!(marker_position >= lifebar.bar_value)
 						) {
-							marker_vm->__show_tree();
+							marker_vm->show_tree();
 
 							float angle = reduce_angle(NPI_f - markers->bar_position * TWO_PI_f);
 							marker_vm->set_z_rotation(angle);
@@ -63632,7 +63687,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 							marker_vm->controller.position = position + offset.rotate_around_origin(angle);
 						}
 						else {
-							marker_vm->__hide_tree();
+							marker_vm->hide_tree();
 						}
 					}
 
@@ -63695,7 +63750,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			!boss->data.disable_hitbox
 		) {
 			AnmVM* vm = this->boss_indicator.get_vm_ptr();
-			vm->__show_tree();
+			vm->show_tree();
 
 			int32_t state = this->boss_indicator_state;
 			if (SPELLCARD_PTR->spell_active) {
@@ -63785,7 +63840,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall Gui::on_tick() {
 			}
 		}
 		else {
-			this->boss_indicator.__hide_tree();
+			this->boss_indicator.hide_tree();
 		}
 	}
 
@@ -65178,7 +65233,7 @@ dllexport gnu_noinline ZUNResult thiscall GameThread::end_stage() {
 			gui->__timer_198.reset();
 		}
 
-		PLAYER_PTR->__hide_options();
+		PLAYER_PTR->hide_options();
 
 		// TODO: ask about whether this needs bug notes
 		BOMB_PTR->cleanup_if_active();
@@ -65464,7 +65519,7 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 			replay_mode == ReplayRecording &&
 			this->__int_D4 > 380
 		) {
-			ABILITY_MANAGER_PTR->__hide_card_anms();
+			ABILITY_MANAGER_PTR->hide_card_anms();
 			ABILITY_MANAGER_PTR->__sub_407DA0(true);
 
 			GameMode mode;
@@ -65957,7 +66012,7 @@ inline unsigned GameThread::thread_start_impl() {
 			!ABILITY_MANAGER_PTR->card_equipped<CardMagatama>()
 		) {
 			ABILITY_MANAGER_PTR->allocate_new_card(MAGATAMA2_CARD, CARD_RUN_INIT_A_ONLY); // 0
-			ABILITY_MANAGER_PTR->__hide_card_anms();
+			ABILITY_MANAGER_PTR->hide_card_anms();
 		}
 		MOMOYO_CARD_COUNTER = 0;
 	}
