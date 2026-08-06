@@ -4778,9 +4778,7 @@ union AnmID {
 		return this->get_vm_ptr(anm_manager);
 	}
 
-	inline int32_t run_vm_safe();
-
-	inline Float3* get_render_position_safe(Float3* out);
+	forceinline void run_anm();
 
 	inline void set_sprite(int32_t sprite_id);
 
@@ -4889,6 +4887,8 @@ union AnmID {
 
 	// 0x4892F0
 	dllexport void thiscall set_color1(D3DCOLOR color) ASR(0x4892F0);
+
+	forceinline uint8_t get_alpha_safe();
 
 	// 0x489230
 	dllexport gnu_noinline AnmVM* thiscall __find_child_vm_with_script(int32_t script, uint32_t minimum_hierarchy_depth = 0) ASR(0x489230);
@@ -8530,6 +8530,67 @@ static inline constexpr size_t INTERNAL_CARD_COUNT = ENUM_VALUE_COUNT(CardId);
 static inline constexpr size_t CARD_COUNT = INTERNAL_CARD_COUNT - 1; // ignore back card
 static inline constexpr size_t USABLE_CARD_COUNT = CARD_COUNT - 1; // ignore null card
 
+// 0x4B3600
+static inline constexpr CardId UNKNOWN_CARD_ID_TABLE[] = {
+	BLANK_CARD,
+	EXTEND_CARD,
+	BOMB_CARD,
+	EXTEND2_CARD,
+	BOMB2_CARD,
+	PENDULUM_CARD,
+	DANGO_CARD,
+	MOKOU_CARD,
+	REIMU_OP_CARD,
+	REIMU_OP2_CARD,
+	MARISA_OP_CARD,
+	MARISA_OP2_CARD,
+	SAKUYA_OP_CARD,
+	SAKUYA_OP2_CARD,
+	SANAE_OP_CARD,
+	SANAE_OP2_CARD,
+	YOUMU_OP_CARD,
+	ALICE_OP_CARD,
+	CIRNO_OP_CARD,
+	OKINA_OP_CARD,
+	NUE_OP_CARD,
+	MAGATAMA_CARD, // out of order
+	ITEM_CATCH_CARD,
+	ITEM_LINE_CARD,
+	AUTOBOMB_CARD,
+	DBOMBEXTEND_CARD,
+	MAINSHOT_PU_CARD,
+	MAGICSCROLL_CARD,
+	KOISHI_CARD,
+	MAINSHOT_SP_CARD,
+	SPEEDQUEEN_CARD,
+	OPTION_BR_CARD,
+	DEAD_SPELL_CARD,
+	POWERMAX_CARD,
+	YUYUKO_CARD,
+	MONEY_CARD,
+	ROKUMON_CARD,
+	NARUMI_CARD,
+	PACHE_CARD,
+	MANEKI_CARD,
+	YAMAWARO_CARD,
+	KISERU_CARD,
+	MUKADE_CARD, // out of order
+	WARP_CARD,
+	KOZUCHI_CARD,
+	KANAME_CARD,
+	MOON_CARD,
+	MIKOFLASH_CARD,
+	VAMPIRE_CARD,
+	SUN_CARD,
+	LILY_CARD,
+	BASSDRUM_CARD,
+	PSYCO_CARD,
+	CYLINDER_CARD,
+	RICEBALL_CARD,
+	MAGATAMA2_CARD,
+	NULL_CARD
+};
+
 enum PriceTier : int32_t {
 	FreeTier = 0,
 	CheapTier1 = 1,
@@ -9121,6 +9182,7 @@ static inline constexpr uint16_t SCOREFILE_COMMON_SECTION_MAGIC = PackUInt16('S'
 static inline constexpr uint16_t SCOREFILE_COMMON_SECTION_VERSION_NUMBER = 6;
 
 static inline constexpr int32_t TROPHY_COUNT = 30;
+static inline constexpr uint32_t TROPHIES_PER_ROW = 10;
 
 // Actual number is 18
 static inline constexpr int32_t MUSIC_COUNT = 32;
@@ -26086,6 +26148,12 @@ inline AnmVM* AnmID::get_vm_ptr_safe() {
 	return vm;
 }
 
+forceinline void AnmID::run_anm() {
+	if (AnmVM* vm = this->get_vm_ptr()) {
+		vm->run_anm();
+	}
+}
+
 inline void AnmID::set_sprite(int32_t sprite_id) {
 	AnmManager* anm_manager = ANM_MANAGER_PTR;
 	if (AnmVM* vm = anm_manager->get_vm_with_id(*this)) {
@@ -26307,6 +26375,15 @@ inline void AnmID::set_sprite_size(float value) {
 dllexport void thiscall AnmID::set_color1(D3DCOLOR color) {
 	// Branch originally predicted false
 	if (AnmVM* vm = this->get_vm_ptr()) vm->data.color1 = color;
+}
+
+forceinline uint8_t AnmID::get_alpha_safe() {
+	// Branch originally predicted false
+	if (AnmVM* vm = this->get_vm_ptr()) {
+		return ALPHA(vm->data.color1);
+	} else {
+		return 0;
+	}
 }
 
 // 0x488FD0
@@ -37570,14 +37647,34 @@ public:
 	}
 
 private:
+	// 0x409030
+	dllexport gnu_noinline static AnmID& stdcall instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardBase* card) ASR(0x409030) {
+		AnmLoaded* abcard_anm = ABILITY_MANAGER_PTR->abcard_anm;
+
+		const CardData& card_data = *card->data;
+
+		out = NULL;
+		out = abcard_anm->instantiate_vm_to_ui_list_front(script, position);
+		out.get_vm_ptr()->run_anm();
+		out.set_sprite(card_data.sprite_large);
+		return out;
+	}
+
+public:
+	forceinline static AnmID instantiate_large_card_sprite_vm(Float3* position, int32_t script, const CardBase* card) {
+		AnmID dummy{ GARBAGE_VALUE(int) };
+		return instantiate_large_card_sprite_vm(dummy, position, script, card);
+	}
+
+private:
 	// 0x4091A0
 	dllexport gnu_noinline static AnmID& stdcall instantiate_large_card_sprite_vm(AnmID& out, Float3* position, int32_t script, const CardData* card_data) ASR(0x4091A0) {
 		AnmLoaded* abcard_anm = ABILITY_MANAGER_PTR->abcard_anm;
 
 		out = NULL;
 		out = abcard_anm->instantiate_vm_to_ui_list_front(script, position);
-		out.get_vm_ptr_safe()->run_anm();
-		out.set_sprite_unsafe(card_data->sprite_large);
+		out.get_vm_ptr()->run_anm();
+		out.set_sprite(card_data->sprite_large);
 		return out;
 	}
 
@@ -39570,28 +39667,38 @@ VFO32(0xE38, primary_state);
 VSS32(0xE3C);
 #undef VTYPE
 
+extern "C" {
+// 0x5704BC
+externcg int32_t UNKNOWN_INT32_A cgasm("_UNKNOWN_INT32_A");
+}
+
 // size: 0x13FC
 struct AbilityMenu : ZUNTask {
 	// ZUNTask base; // 0x0
 	MenuSelect __menu_select_C; // 0xC
 	MenuSelect __menu_select_E4; // 0xE4
 	MenuSelect __menu_select_1BC; // 0x1BC
-	Timer __timer_294; // 0x294
+	Timer state_timer; // 0x294
 	Float3 __float3_2A8; // 0x2A8
-	unknown_fields(0x18); // 0x2B4
+	Float3 __float3_2B4; // 0x2B4
+	Float3 __float3_2C0; // 0x2C0
 	Timer __timer_2CC; // 0x2CC
 	Timer __timer_2E0; // 0x2E0
-	unknown_fields(0xF0); // 0x2F4
+	unknown_fields(0x4); // 0x2F4
+	int __int_2F8; // 0x2F8
+	int __int_2FC; // 0x2FC
+	int32_t __int_300; // 0x300
+	CardId __card_id_array_304[USABLE_CARD_COUNT]; // 0x304
 	int32_t __int_3E4; // 0x3E4
 	AnmID __anm_id_3E8; // 0x3E8
 	AnmID __anm_id_array_3EC[256]; // 0x3EC
 	AnmID __anm_id_array_7EC[256]; // 0x7EC
 	AnmID __anm_id_array_BEC[256]; // 0xBEC
-	unknown_fields(0x400); // 0xFEC
+	CardBase* __card_array_FEC[256]; // 0xFEC
 	int __int_13EC; // 0x13EC
 	int __int_13F0; // 0x13F0
-	int __int_13F4; // 0x13F4
-	unknown_fields(0x4); // 0x13F8
+	int32_t primary_state; // 0x13F4
+	int32_t previous_primary_state; // 0x13F8
 	// 0x13FC
 
 	inline void zero_contents() {
@@ -39625,15 +39732,277 @@ struct AbilityMenu : ZUNTask {
 		}
 	}
 
+	// 0x413470
+	dllexport gnu_noinline void thiscall change_primary_state(int32_t new_state) ASR(0x413470) {
+		this->previous_primary_state = this->primary_state;
+		this->primary_state = new_state;
+		this->state_timer.reset();
+	}
+
 	// 0x413AF0
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x413AF0) {
-		// TODO
+		// THIS IS POTENTIALLY THE WORST MENU FUNCTION IN THE GAME
+		// I cannot emphasize just how disgustingly bad it is just from a comment
+		UNKNOWN_INT32_A = this->__int_13EC ? 10 : 7;
+		if (ABILITY_MANAGER_PTR->__ability_data_loaded) {
+			switch (this->primary_state) {
+				case 17: {
+					this->__anm_id_3E8.mark_tree_for_delete();
+					this->__anm_id_3E8 = ABILITY_MANAGER_PTR->ability_anm->instantiate_vm_to_world_list_back(15, &ZERO_FLOAT3, 0.0f, -1, NULL);
+					this->__fill_card_array();
+					Float3 position = { 340.0f, 690.0f, 0.0f };
+					this->__sub_415CB0(&position, 512.0f, 80.0f, false);
+					if (this->previous_primary_state == 14) {
+						this->__sub_4134D0();
+						size_t i = 10;
+						do {
+							this->__anm_id_3E8.get_vm_ptr()->run_anm();
+							for (int32_t j = 0; j < this->__int_3E4; ++j) {
+								this->__anm_id_array_3EC[j].get_vm_ptr_safe()->run_anm();
+							}
+						} while (--i);
+					}
+					this->change_primary_state(12);
+				}
+				case 12:
+					if (this->state_timer > 6) {
+						this->change_primary_state(13);
+					}
+					break;
+				case 0: {
+					this->__anm_id_3E8.mark_tree_for_delete();
+					AnmID id = ABILITY_MANAGER_PTR->ability_anm->instantiate_vm_to_world_list_back(15, &this->__float3_2A8, 0.0f, -1, NULL);
+					this->__anm_id_3E8 = id;
+					id.interrupt_tree_word_offset(this->__menu_select_C.current_selection, 7);
+					if (this->__int_13EC) {
+						//this->__anm_id_3E8.__find_child_vm_with_script(1)->set_sprite(15);
+					}
+					this->__fill_card_array();
+					Float3 position = { 0.0f, 230.0f, 0.0f };
+					this->__sub_415CB0(&position, 512.0f, 100.0f, false);
+					if (this->__int_13EC) {
+						for (int32_t i = 0; i < this->__int_3E4; ++i) {
+							this->__anm_id_array_3EC[i].interrupt_and_run_tree(22);
+						}
+					}
+					this->change_primary_state(1);
+				}
+				case 1:
+					if (this->state_timer > 6) {
+						this->change_primary_state(2);
+					}
+					break;
+				case 2:
+					if (this->__menu_select_C.update(&MenuSelect::scroll_up_and_down)) {
+						SOUND_MANAGER.play_sound(10);
+						this->__timer_2CC.set(8);
+						this->__anm_id_3E8.interrupt_tree_word_offset(this->__menu_select_C.current_selection, 7);
+					}
+					if (
+						INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) ||
+						(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE)) ||
+						!INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)
+					) {
+						switch (this->__menu_select_C.current_selection) {
+							case 0:
+								SOUND_MANAGER.play_sound(7);
+								this->change_primary_state(3);
+								//this->__anm_id_3E8.__find_child_vm_with_script(1)->interrupt(6);
+								goto end;
+							case 1:
+								SOUND_MANAGER.play_sound(7);
+								this->change_primary_state(3);
+								//this->__anm_id_3E8.__find_child_vm_with_script(2)->interrupt(6);
+								goto end;
+							default:
+								goto end;
+							case 2:
+								break;
+						}
+					}
+					SOUND_MANAGER.play_sound(9);
+					if (this->previous_primary_state != 2) {
+						this->change_primary_state(10);
+					} else {
+						this->change_primary_state(14);
+					}
+					break;
+				case 3:
+					if (this->state_timer > 30) {
+						switch (this->__menu_select_C.current_selection) {
+							case 0:
+								this->__anm_id_3E8.interrupt_tree(1);
+								// TODO: branch goto
+								this->change_primary_state(5);
+								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2A8, false);
+								ABILITY_TEXT_DATA_PTR->__hide_anms();
+								if (this->previous_primary_state != 0) {
+									this->change_primary_state(8);
+								}
+								break;
+							case 1: {
+								this->__anm_id_3E8.interrupt_tree(1);
+
+								int32_t A = UNKNOWN_INT32_A;
+								int32_t B;
+								if (this->__menu_select_1BC.current_selection < A * 3) {
+									B = 0;
+								} else {
+									B = (this->__menu_select_1BC.current_selection / A) - 1;
+								}
+								float offset = 90.0f;
+								this->__int_2F8 = B;
+								float C = A;
+								this->__int_2FC = B;
+								Float3 positionA = this->__float3_2A8 + Float3(0.0f, 150.0f, 0.0f);
+								this->__float3_2C0 = positionA;
+								Float3 positionB = {
+									this->__float3_2A8.x + (0.0f - C * offset * 0.5f) + 48.0f,
+									this->__float3_2A8.y + 500.0f,
+									0.0f
+								};
+								Float3 positionC = positionB;
+
+								this->__int_300 = USABLE_CARD_COUNT;
+								this->__menu_select_1BC.menu_length = USABLE_CARD_COUNT;
+
+								for (int32_t i = 0; i < countof(UNKNOWN_CARD_ID_TABLE); ++i) {
+									this->__anm_id_array_3EC[i].mark_tree_for_delete();
+									this->__anm_id_array_BEC[i].mark_tree_for_delete();
+									this->__anm_id_array_7EC[i].mark_tree_for_delete();
+									CardId card_id = UNKNOWN_CARD_ID_TABLE[i];
+									if (SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[card_id]) {
+										this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 13, &find_id_in_card_data(card_id));
+										this->__anm_id_array_BEC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 12, &find_id_in_card_data(card_id));
+									} else {
+										this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 13, &find_id_in_card_data(BACK_CARD));
+										this->__anm_id_array_BEC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&positionA, 12, &find_id_in_card_data(BACK_CARD));
+									}
+									this->__anm_id_array_7EC[i].set_controller_position(&positionB);
+									this->__anm_id_array_BEC[i].set_controller_position(&positionC);
+									this->__anm_id_array_BEC[i].interrupt_and_run_tree(8);
+									this->__anm_id_array_BEC[i].interrupt_and_run_tree(this->previous_primary_state ? 20 : 21);
+									A = UNKNOWN_INT32_A;
+									positionC.x += offset;
+									if (i % A == A - 1) {
+										positionC.y += 120.0f;
+										positionC.x -= A * countof(UNKNOWN_CARD_ID_TABLE);
+									}
+									this->__card_id_array_304[i] = card_id;
+								}
+								this->__sub_415B70();
+								const CardData& card_data = find_id_in_card_data(UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC.current_selection]);
+								this->__float3_2B4 = this->__float3_2A8;
+								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2B4, true);
+								ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC.current_selection], false, false);
+								ABILITY_TEXT_DATA_PTR->__set_card_type_label(card_data.__card_type);
+								ABILITY_TEXT_DATA_PTR->__hide_card_type_label();
+								this->__anm_id_array_3EC[this->__menu_select_1BC.current_selection].interrupt_and_run_tree(2);
+								this->__anm_id_array_7EC[this->__menu_select_1BC.current_selection].interrupt_and_run_tree(10);
+								this->__anm_id_array_BEC[this->__menu_select_1BC.current_selection].interrupt_and_run_tree(2);
+								this->change_primary_state(6);
+								break;
+							}
+						}
+					}
+					break;
+				case 4: case 8: {
+					// TODO: input handling and copy/paste the entire above case 1
+					break;
+				}
+				case 6: case 9: {
+					// TODO: TON of input handling
+					break;
+				}
+				case 7: {
+					// TODO: input handling
+					break;
+				}
+				case 5:
+					if (
+						INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT | BUTTON_CANCEL) ||
+						(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE))
+					) {
+						SOUND_MANAGER.play_sound(9);
+						this->change_primary_state(0);
+						for (int32_t i = 0; i < ABILITY_MANAGER_PTR->card_count; ++i) {
+							this->__anm_id_array_3EC[i].mark_tree_for_delete();
+							this->__anm_id_array_7EC[i].mark_tree_for_delete();
+						}
+						ABILITY_TEXT_DATA_PTR->delete_vms();
+					}
+					break;
+				case 10:
+					if (this->state_timer >= 10) {
+						delete_no_eh(this);
+						return UpdateFuncNext;
+					}
+					break;
+				case 14:
+					if (this->state_timer >= 10) {
+						this->change_primary_state(11);
+					}
+					break;
+			}
+		end:
+			++this->state_timer;
+			if (this->__timer_2CC > 0) {
+				--this->__timer_2CC;
+			}
+			if (this->__timer_2E0 > 0) {
+				--this->__timer_2E0;
+			}
+		}
 		return UpdateFuncNext;
 	}
 
 	// 0x415E00
 	dllexport gnu_noinline UpdateFuncRet thiscall on_draw() ASR(0x415E00) {
-		// TODO
+		AsciiManager* ascii_manager;
+		Float3 position;
+		switch (this->primary_state) {
+			default:
+				return UpdateFuncNext;
+			case 9:
+				ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->font_id = Font6;
+				ascii_manager->__horizontal_positioning_mode = 0;
+				ascii_manager->__vertical_positioning_mode = 0;
+				for (int32_t i = 0; i < this->__int_3E4; ++i) {
+					if (this->__card_array_FEC[i]->id != NULL_CARD) {
+						int32_t j = 0;
+						if (j < this->__int_300) {
+							int32_t card_id = this->__card_array_FEC[i]->id;
+							do {
+								if (this->__card_id_array_304[j] == card_id) goto found_id;
+							} while (++j < this->__int_300);
+							j = 0;
+					found_id:;
+						}
+						ascii_manager->color = COLOR(255, 255, 255, 0);
+						ascii_manager->color2 = COLOR_BLACK;
+						ascii_manager->set_alpha(this->__anm_id_array_BEC[j].get_alpha_safe());
+						ascii_manager->set_alpha2(this->__anm_id_array_BEC[j].get_alpha_safe());
+						ascii_manager->scale = { 1.0f, 1.0f };
+						position = this->__anm_id_array_BEC[j].get_vm_ptr_safe()->get_render_position();
+						ASCII_MANAGER_PTR->printf(&position, "Slot %d", i + 1);
+						ascii_manager = ASCII_MANAGER_PTR;
+					}
+				}
+				ascii_manager->set_defaults();
+				break;
+			case 8:
+				ascii_manager = ASCII_MANAGER_PTR;
+				break;
+		}
+		position = (this->__float3_2A8 + Float3(0.0f, 360.0f, 0.0f)) * 0.5f;
+		ascii_manager->font_id = Font6;
+		ascii_manager->__horizontal_positioning_mode = 0;
+		ascii_manager->__vertical_positioning_mode = 1;
+		ascii_manager->color = COLOR(255, 255, 255, 0);
+		ascii_manager->color2 = COLOR_BLACK;
+		ascii_manager->printf(&position, "Slot %d", this->__menu_select_E4.current_selection + 1);
+		ascii_manager->set_defaults();
 		return UpdateFuncNext;
 	}
 
@@ -39647,6 +40016,72 @@ struct AbilityMenu : ZUNTask {
 		return ((AbilityMenu*)ptr)->on_draw();
 	}
 
+	// 0x415AF0
+	dllexport gnu_noinline int thiscall __fill_card_array() ASR(0x415AF0) {
+		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
+		if (this->__int_13EC) {
+			ability_manager->card_list.for_first_N(ability_manager->card_count, [=](CardBase* card, int32_t i) {
+				this->__card_array_FEC[i] = card;
+			});
+		} else {
+			ability_manager->card_list.for_first_N(ability_manager->card_count, [=](CardBase* card, int32_t i) {
+				this->__card_array_FEC[ability_manager->card_count - i + 1] = card;
+			});
+		}
+		return 0;
+	}
+
+	// 0x4134D0
+	dllexport gnu_noinline void thiscall __sub_4134D0() ASR(0x4134D0) {
+		this->__anm_id_3E8.interrupt_tree(2);
+		for (int32_t i = 0; i < this->__int_3E4; ++i) {
+			this->__anm_id_array_3EC[i].interrupt_tree(4);
+		}
+	}
+
+	// 0x464920
+	dllexport gnu_noinline static void __sub_464920() ASR(0x464920) {
+		AbilityMenu* ability_menu = ABILITY_MENU_PTR;
+		ability_menu->__anm_id_3E8.interrupt_tree(3);
+		for (int32_t i = 0; i < ability_menu->__int_3E4; ++i) {
+			ability_menu->__anm_id_array_3EC[i].interrupt_tree(5);
+		}
+	}
+
+	// 0x415B70
+	dllexport gnu_noinline int thiscall __sub_415B70() ASR(0x415B70) {
+		// TODO
+		return 0;
+	}
+
+private:
+	// 0x415CB0
+	dllexport gnu_noinline int vectorcall __sub_415CB0(int, float, float, Float3* position, float arg2, float offset, BOOL interrupt) ASR(0x415CB0) {
+		*position -= this->__float3_2A8;
+		float A = this->__int_3E4 - 1;
+		float B = A * offset;
+		if (B > arg2) {
+			B = arg2;
+			offset = arg2 / A;
+		}
+		B *= 0.5f;
+		position->x -= B;
+		for (int32_t i = 0; i < this->__int_3E4; ++i) {
+			this->__anm_id_array_3EC[i].mark_tree_for_delete();
+			AnmID id = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(position, 12, this->__card_array_FEC[i]);
+			this->__anm_id_array_3EC[i] = id;
+			if (interrupt) {
+				id.interrupt_and_run_tree(7);
+			}
+			position->x += offset;
+		}
+		return 0;
+	}
+public:
+	inline int __sub_415CB0(Float3* position, float arg2, float offset, BOOL interrupt) {
+		return this->__sub_415CB0(UNUSED_DWORD, UNUSED_FLOAT, UNUSED_FLOAT, position, arg2, offset, interrupt);
+	}
+
 	// 0x413650
 	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1, int arg2) ASR(0x413650) {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
@@ -39658,7 +40093,7 @@ struct AbilityMenu : ZUNTask {
 
 		this->enable_funcs_unsafe();
 
-		this->__timer_294.reset();
+		this->state_timer.reset();
 		this->__timer_2CC.reset();
 		this->__timer_2E0.reset();
 
@@ -39673,7 +40108,7 @@ struct AbilityMenu : ZUNTask {
 		arg2 = this->__int_13EC;
 
 		this->__int_13F0 = !arg2;
-		this->__int_13F4 = arg2 == 2 ? 0 : 11;
+		this->primary_state = arg2 == 2 ? 0 : 11;
 
 		return ZUN_SUCCESS;
 	}
@@ -39696,18 +40131,25 @@ VFO32(0x8, on_draw_func);
 VFO32(0xC, __menu_select_C);
 VFO32(0xE4, __menu_select_E4);
 VFO32(0x1BC, __menu_select_1BC);
-VFO32(0x294, __timer_294);
+VFO32(0x294, state_timer);
 VFO32(0x2A8, __float3_2A8);
+VFO32(0x2B4, __float3_2B4);
+VFO32(0x2C0, __float3_2C0);
 VFO32(0x2CC, __timer_2CC);
 VFO32(0x2E0, __timer_2E0);
+VFO32(0x2F8, __int_2F8);
+VFO32(0x2FC, __int_2FC);
+VFO32(0x300, __int_300);
+VFO32(0x304, __card_id_array_304);
 VFO32(0x3E4, __int_3E4);
 VFO32(0x3E8, __anm_id_3E8);
 VFO32(0x3EC, __anm_id_array_3EC);
 VFO32(0x7EC, __anm_id_array_7EC);
 VFO32(0xBEC, __anm_id_array_BEC);
+VFO32(0xFEC, __card_array_FEC);
 VFO32(0x13EC, __int_13EC);
 VFO32(0x13F0, __int_13F0);
-VFO32(0x13F4, __int_13F4);
+VFO32(0x13F4, primary_state);
 VSS32(0x13FC);
 #undef VTYPE
 
@@ -57553,11 +57995,7 @@ struct PauseMenu : ZUNTask {
 
 	// 0x457BF0
 	dllexport gnu_noinline void thiscall __print_name_entry_and_keyboard(Float3 name_position) ASR(0x457BF0) {
-		ASCII_MANAGER_PTR->printf(
-			&name_position,
-			"%s",
-			this->__name_buffer
-		);
+		ASCII_MANAGER_PTR->printf(&name_position, "%s", this->__name_buffer);
 		int32_t name_length = this->__name_length;
 		name_position.x += name_length * 9;
 		if (name_length == MAX_RECORD_NAME_LENGTH) {
@@ -57566,10 +58004,7 @@ struct PauseMenu : ZUNTask {
 
 		AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
 		ascii_manager->color = COLOR3_WHITE;
-		ascii_manager->printf(
-			&name_position,
-			"_"
-		);
+		ascii_manager->printf(&name_position, "_");
 
 		ascii_manager = ASCII_MANAGER_PTR;
 		ascii_manager->color = COLOR_WHITE;
@@ -57600,11 +58035,7 @@ struct PauseMenu : ZUNTask {
 					c = 128;
 					break;
 			}
-			ascii_manager->printf(
-				&position,
-				"%c",
-				c
-			);
+			ascii_manager->printf(&position, "%c", c);
 			if (i % KEYBOARD_KEYS_PER_ROW == KEYBOARD_KEYS_PER_ROW - 1) {
 				position.x = 112.0f;
 				position.y += 16.0f;
@@ -60031,7 +60462,7 @@ public:
 				break;
 			case 2:
 				if (!this->__is_not_new_record) {
-					if (this->keyboard.update(&MenuSelect::scroll_grid, 13)) {
+					if (this->keyboard.update(&MenuSelect::scroll_grid, KEYBOARD_KEYS_PER_ROW)) {
 						SOUND_MANAGER.play_sound(10);
 					}
 				}
@@ -60115,7 +60546,7 @@ public:
 	// 0x46A260
 	dllexport gnu_noinline int thiscall __record_entry_draw() ASR(0x46A260) {
 		if (this->secondary_state == 2) {
-			// TODO
+			// TODO: paste a bunch of code from __print_name_entry_and_keyboard
 		}
 		return 1;
 	}
@@ -60553,7 +60984,7 @@ public:
 				}
 				break;
 			case 1:
-				if (this->__menu_select_24.update(&MenuSelect::scroll_grid_inline, 10)) {
+				if (this->__menu_select_24.update(&MenuSelect::scroll_grid_inline, TROPHIES_PER_ROW)) {
 					SOUND_MANAGER.play_sound(10);
 					if (TrophyData::__get_title_for_trophy(this->__menu_select_24.current_selection)) {
 						trophy_index = this->__menu_select_24.current_selection;
@@ -60744,9 +61175,48 @@ public:
 
 	// 0x46DE90
 	dllexport gnu_noinline int thiscall __trophy_menu_draw() ASR(0x46DE90) {
-		switch (this->secondary_state) {
-			case 1:
-				// TODO
+		if (this->secondary_state == 1) {
+			AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+			ascii_manager->font_id = Font4;
+			ascii_manager->enable_shadows = true;
+
+			Float3 position = { 130.0f, 100.0f, 0.0f };
+
+			int32_t i = 0;
+			for (;;) {
+				D3DCOLOR color;
+				if (this->__menu_select_24.current_selection == i) {
+					color = COLOR_WHITE;
+				} else {
+					color = COLOR_GREY(255, 112);
+				}
+				ascii_manager->color = color;
+
+				const char* format;
+				if (SCOREFILE_MANAGER_PTR->primary_file.common.trophies[i]) {
+					format = "%2d";
+				} else {
+					format = "--";
+				}
+				ascii_manager->printf(
+					&position,
+					format,
+					i + 1
+				);
+
+				if (i % TROPHIES_PER_ROW == TROPHIES_PER_ROW - 1) {
+					position.x = 130.0f;
+					position.y += 34.0f;
+				} else {
+					position.x += 38.0f;
+				}
+
+				if (++i >= TROPHY_COUNT) break;
+				ascii_manager = ASCII_MANAGER_PTR;
+			}
+			ascii_manager = ASCII_MANAGER_PTR;
+			ascii_manager->font_id = Font0;
+			ascii_manager->enable_shadows = false;
 		}
 		return 1;
 	}
@@ -61227,8 +61697,7 @@ public:
 					AbilityMenu::allocate(&A, 2);
 				}
 				else {
-					// TODO
-					//ability_menu->__sub_464920();
+					ability_menu->__sub_464920();
 				}
 				this->__menu_select_FC.set_selection(0);
 				this->__menu_select_FC.menu_length = 2;
@@ -61353,7 +61822,7 @@ public:
 						SOUND_MANAGER.play_sound(10);
 						if (this->__menu_select_FC.current_selection == 0) {
 							this->anms[i].interrupt_and_run_tree(4);
-							// ABILITY_MENU_PTR->__sub_464920(); // TODO
+							ABILITY_MENU_PTR->__sub_464920();
 							difficulty = GAME_MANAGER.globals.difficulty;
 							ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
@@ -61367,7 +61836,7 @@ public:
 						}
 						else {
 							this->anms[i].interrupt_and_run_tree(5);
-							// ABILITY_MENU_PTR->__sub_4134D0(); // TODO
+							ABILITY_MENU_PTR->__sub_4134D0();
 							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
 								this->anms[i].__find_child_id_with_script(23 + j).__hide_tree();
 							}
@@ -61406,7 +61875,7 @@ public:
 				}
 				break;
 			case 5:
-				if (ABILITY_MENU_PTR->__int_13F4 >= 11) {
+				if (ABILITY_MENU_PTR->primary_state >= 11) {
 					this->change_secondary_state(2);
 					if (!this->__anm_id_430.has_live_vm()) {
 						this->__anm_id_430 = this->title_anm->instantiate_vm_to_world_list_back(38);
@@ -61531,10 +62000,71 @@ public:
 	}
 
 	// 0x467790
-	dllexport gnu_noinline int thiscall __draw_state_8() ASR(0x467790) {
+	dllexport gnu_noinline int thiscall draw_practice_stage_select() ASR(0x467790) {
 		switch (this->secondary_state) {
-			case 2: case 3:
-				// TODO
+			case 2: case 3: {
+				AsciiManager* ascii_manager = ASCII_MANAGER_PTR;
+				ascii_manager->font_id = Font7;
+
+				Float3 position = { 80.0f, 80.0f, 0.0f };
+
+				if (this->state_timer >= 10 || this->secondary_state == 3) {
+					position.x = 40.0f;
+					position.y = 170.0f;
+
+					for (int32_t i = Stage1; i < MAIN_GAME_STAGE_COUNT + 1; ++i) {
+						ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+						if (this->__menu_select_24.current_selection != i - 1) {
+							ascii_manager->color = COLOR_GREY(255, 128);
+						} else if (
+							!scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+								.practice[GAME_MANAGER.globals.difficulty][i].unlocked
+						) {
+							ascii_manager->color = COLOR_GREY(255, 223);
+						} else if (this->secondary_state != 3 || this->state_timer % 4 < 2) {
+							ascii_manager->color = COLOR(255, 255, 255, 0);
+						} else {
+							ascii_manager->color = COLOR_BLACK;
+						}
+
+						if (
+							!scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+								.practice[GAME_MANAGER.globals.difficulty][i].unlocked
+						) {
+							ascii_manager->printf(
+								&position,
+								"%s",
+								SEVEN_LETTER_STAGE_NAMES[i]
+							);
+							position.x += 144.0f;
+							ASCII_MANAGER_PTR->printf(
+								&position,
+								"---------"
+							);
+						} else {
+							ascii_manager->printf(
+								&position,
+								"%s",
+								SEVEN_LETTER_STAGE_NAMES[i]
+							);
+							position.x += 144.0f;
+							ASCII_MANAGER_PTR->printf(
+								&position,
+								"%.7d0",
+								scorefile_manager->primary_file.shottypes[GAME_MANAGER.globals.shottype_index()]
+									.practice[GAME_MANAGER.globals.difficulty][i].score
+							);
+						}
+						position.x -= 144.0f;
+						ascii_manager = ASCII_MANAGER_PTR;
+						position.y += 34.0f;
+					}
+				}
+
+				ascii_manager->color = COLOR_WHITE;
+				ascii_manager->enable_shadows = false;
+				ascii_manager->font_id = Font0;
+			}
 		}
 		return 1;
 	}
@@ -62771,7 +63301,7 @@ public:
 					this->__draw_state_16();
 					break;
 				case MainMenuState::PracticeStageSelect: // 8
-					this->__draw_state_8();
+					this->draw_practice_stage_select();
 					break;
 				case MainMenuState::State19: // 19
 				case MainMenuState::State20: // 20

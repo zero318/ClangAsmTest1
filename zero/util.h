@@ -1245,6 +1245,18 @@ protected:
             }
         }
     }
+    template <typename I, typename L>
+    static inline void for_first_N_impl(const I& count, const L& lambda, N* node) {
+        for (I i = 0; i < count; ++i) {
+            T* data = node->data;
+            if constexpr (std::is_invocable_v<L, T*, I>) {
+                lambda(data, i);
+            } else {
+                lambda(data);
+            }
+            node = node->next;
+        }
+    }
     template <typename L>
     static inline bool do_while_impl(const L& lambda, N* node) {
         for (; node; node = node->next) {
@@ -1392,6 +1404,10 @@ public:
     inline void for_each_safe_saved(N*& next_node, const L& lambda) {
         return for_each_safe_saved_impl(next_node, lambda, (N*)this);
     }
+    template <typename I, typename L>
+    inline void for_first_N(const I& count, const L& lambda) {
+        return for_first_N_impl(count, lambda, (N*)this);
+    }
     template <typename L>
     inline bool do_while(const L& lambda) {
         return do_while_impl(lambda, (N*)this);
@@ -1499,6 +1515,10 @@ struct ZUNListHeadBase : ZUNListBase<T, has_idk> {
     template <typename L>
     inline void for_each_safe_saved(N*& next_node, const L& lambda) {
         return for_each_safe_saved_impl(next_node, lambda, this->next);
+    }
+    template <typename I, typename L>
+    inline void for_first_N(const I& count, const L& lambda) {
+        return for_first_N_impl(count, lambda, this->next);
     }
     template <typename L>
     inline bool do_while(const L& lambda) {
