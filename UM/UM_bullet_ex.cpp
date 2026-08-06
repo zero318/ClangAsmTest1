@@ -871,19 +871,6 @@ inline void CriticalSectionManager::enter_section_volatile(CriticalSectionIndex 
 	}
 }
 
-template<CriticalSectionIndex index>
-struct ScopedCriticalSection {
-	inline ScopedCriticalSection() {
-		CRITICAL_SECTION_MANAGER.enter_section(index);
-	}
-	inline ~ScopedCriticalSection() {
-		CRITICAL_SECTION_MANAGER.leave_section(index);
-	}
-};
-
-#define UniqueCriticalSectionLock(index) auto unique_name(critical_section_scope_guard_) = ScopedCriticalSection<index>()
-#define CriticalSectionBlock(index) switch (UniqueCriticalSectionLock(index); 0) default:
-
 #if !INCLUDE_EXTRA_DEBUG_STUFF
 #define DEBUG_PRINT(fmt, ...) 0
 #define DEBUG_VPRINT(fmt)
@@ -12807,7 +12794,6 @@ public:
 
 	// 0x48DC20
 	dllexport gnu_noinline int32_t thiscall set_context_to_sub(const char* sub_name) ASR(0x48DC20) {
-		//ZDEBUG_PRINT("Setting context to sub %s\n", sub_name);
 		this->locate_sub(sub_name);
 		this->current_context->location.instruction_offset = 0;
 		this->current_context->time = 0.0f;
@@ -40311,7 +40297,6 @@ struct EnemyManager : ZUNTask {
 
 	// 0x42D7D0
 	dllexport gnu_noinline Enemy* thiscall allocate_new_enemy(const char* sub_name, EnemyInitData* data, int32_t = UNUSED_DWORD) ASR(0x42D7D0) {
-		//ZDEBUG_PRINT("Creating enemy with sub %s\n", sub_name);
 		Enemy* enemy = new_no_eh<Enemy>(sub_name);
 		enemy->data.motion.absolute.position = data->position;
 		enemy->data.score = data->score;
@@ -43559,41 +43544,6 @@ dllexport gnu_noinline UpdateFuncRet thiscall Player::on_tick() {
 				if (!is_replay()) {
 #if !DEBUG_NO_GAME_OVER
 					__pause_menu_game_over_screen();
-#else
-#if TESTING_FEATURES
-					int32_t continue_credits = GAME_MANAGER.continue_credits;
-					switch (Zmboxf(
-						"YOU DIED\n\nContinues: %d", NULL,
-						MB_TOPMOST | MB_ICONWARNING | (continue_credits ? MB_CANCELTRYCONTINUE | MB_DEFBUTTON3 : MB_RETRYCANCEL)
-						, continue_credits
-					)) {
-						case IDRETRY:
-						case IDTRYAGAIN:
-							APPLY_DEBUG_CONFIG();
-							return UpdateFuncRestart;
-							
-						case IDCONTINUE:
-							if (!GAME_MANAGER.continue_credits) {
-						case IDCANCEL:
-								exit(-1);
-							}
-							// this is just copy/pasted from the pause menu code
-							GAME_MANAGER.globals.life_stocks = DEFAULT_LIFE_STOCKS;
-							GAME_MANAGER.globals.life_fragments = 0;
-							GAME_MANAGER.globals.set_bombs(DEFAULT_BOMB_STOCKS);
-							GAME_MANAGER.globals.bomb_fragments = 0;
-							GAME_MANAGER.globals.set_power(0);
-							GAME_MANAGER.globals.add_power(GAME_MANAGER.globals.power_per_level * DEFAULT_MAX_POWER_LEVEL);
-							PLAYER_PTR->data.__update_option_power_levels();
-							__update_life_ui_unsafe();
-							__update_bomb_ui_unsafe();
-							int32_t continues_used = GAME_MANAGER.globals.continues + 1;
-							GAME_MANAGER.globals.score = 0;
-							GAME_MANAGER.continue_credits = continue_credits - 1;
-							GAME_MANAGER.globals.continues = __min(continues_used, MAX_CONTINUES);
-							break;
-					}
-#endif
 #endif
 				}
 				this->data.state_timer++;
@@ -53483,7 +53433,6 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 						this->stack.pointer = this->stack.pop<int32_t>();
 						current_instruction = this->get_current_instruction();
 						if (this->location.instruction_offset >= 0) {
-							//ZDEBUG_PRINT("Returning from sub\n");
 							break;
 						}
 					}
@@ -66207,7 +66156,7 @@ dllexport gnu_noinline ZUNResult WindowData::__save_properties_and_configure_pat
 		if (char* final_slash = strrchr(exe_path, '\\')) {
 			*final_slash = '\0';
 		}
-		DebugLogger::__debug_log_stub_11("%d\n", exe_path);
+		DebugLogger::__debug_log_stub_11("%d\n", exe_path); // ???
 #if OVERRIDE_PATH_CHECKS
 		if (DEBUG_PATH) {
 			strcpy(this->exe_path, DEBUG_PATH);
@@ -67673,12 +67622,6 @@ extern "C" {
 // EH frame (terminate)
 dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE;
 dllexport gnu_noinline int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR pCmdLine, int nCmdShow) EH_TERMINATE ASR(0x471270) {
-
-	//MXCSR mxcsr;
-	//store_mxcsr(mxcsr);
-	//mxcsr.misaligned_exception_mask = true;
-	//load_mxcsr(mxcsr);
-
 #if TESTING_FEATURES
 	AddVectoredExceptionHandler(0, exception_filter);
 #if DEBUG_FAST_FORWARD
