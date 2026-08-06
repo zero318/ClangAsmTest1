@@ -25815,6 +25815,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 	{
 		this->__counter_134++;
 		AnmVM* vm = AnmManager::allocate_new_vm();
+		this->__copy_data_to_vm(vm, script_index);
 		vm->data.rand_mode = NormalRNG;
 		vm->controller.position.safe_copy(position);
 		vm->data.rotation.z = z_rotation;
@@ -25832,6 +25833,7 @@ inline AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& out, 
 	{
 		this->__counter_134++;
 		AnmVM* vm = AnmManager::allocate_new_vm();
+		this->__copy_data_to_vm(vm, script_index);
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
@@ -25859,6 +25861,7 @@ dllexport AnmID& thiscall AnmLoaded::instantiate_vm_to_world_list_back(AnmID& ou
 		if (raw_out) {
 			*raw_out = vm;
 		}
+		this->__copy_data_to_vm(vm, script_index);
 		vm->data.rand_mode = NormalRNG;
 		if (layer >= 0) {
 			vm->data.layer = layer;
@@ -39732,7 +39735,7 @@ struct AbilityMenu : ZUNTask {
 			switch (this->primary_state) {
 				case 17: {
 					this->__anm_id_3E8.mark_tree_for_delete();
-					this->__anm_id_3E8 = ABILITY_MANAGER_PTR->ability_anm->instantiate_vm_to_world_list_back(15, &ZERO_FLOAT3, 0.0f, -1, NULL);
+					this->__anm_id_3E8 = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(15, &ZERO_FLOAT3, 0.0f, -1, NULL);
 					this->__fill_card_array();
 					Float3 position = { 340.0f, 690.0f, 0.0f };
 					this->__sub_415CB0(&position, 512.0f, 80.0f, false);
@@ -39755,11 +39758,11 @@ struct AbilityMenu : ZUNTask {
 					break;
 				case 0: {
 					this->__anm_id_3E8.mark_tree_for_delete();
-					AnmID id = ABILITY_MANAGER_PTR->ability_anm->instantiate_vm_to_world_list_back(15, &this->__float3_2A8, 0.0f, -1, NULL);
+					AnmID id = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(4, &this->__float3_2A8, 0.0f, -1, NULL);
 					this->__anm_id_3E8 = id;
 					id.interrupt_tree_word_offset(this->__menu_select_C.current_selection, 7);
 					if (this->__int_13EC) {
-						//this->__anm_id_3E8.__find_child_vm_with_script(1)->set_sprite(15);
+						this->__anm_id_3E8.__find_child_vm_with_script(1)->set_sprite(15);
 					}
 					this->__fill_card_array();
 					Float3 position = { 0.0f, 230.0f, 0.0f };
@@ -39791,12 +39794,12 @@ struct AbilityMenu : ZUNTask {
 							case 0:
 								SOUND_MANAGER.play_sound(7);
 								this->change_primary_state(3);
-								//this->__anm_id_3E8.__find_child_vm_with_script(1)->interrupt(6);
+								this->__anm_id_3E8.__find_child_vm_with_script(1)->interrupt(6);
 								goto end;
 							case 1:
 								SOUND_MANAGER.play_sound(7);
 								this->change_primary_state(3);
-								//this->__anm_id_3E8.__find_child_vm_with_script(2)->interrupt(6);
+								this->__anm_id_3E8.__find_child_vm_with_script(2)->interrupt(6);
 								goto end;
 							default:
 								goto end;
