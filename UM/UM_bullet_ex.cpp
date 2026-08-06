@@ -73,8 +73,6 @@
 #endif
 
 // Debug toggles
-#define ALLOW_FORCE_CLOSING_SHOP 1
-
 #define LOG_DEBUG_TO_FILE 0
 #define FORCE_DEBUG_LOGGING 1
 #define INCLUDE_SOUND_DEBUG 0
@@ -58942,13 +58940,6 @@ dllexport gnu_noinline void __pause_menu_practice_end_screen() {
 
 // 0x417CC0
 dllexport gnu_noinline UpdateFuncRet thiscall AbilityShop::on_tick() {
-
-#if ALLOW_FORCE_CLOSING_SHOP
-	if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_RESTART)) {
-		goto delete_break;
-	}
-#endif
-
 	int32_t achievement_state = ACHIEVEMENT_MODE_STATE;
 	int32_t state_time = this->state_timer;
 	if (
