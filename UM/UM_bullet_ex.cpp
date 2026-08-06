@@ -39357,6 +39357,57 @@ struct AbilityMenu : ZUNTask {
 		this->state_timer.reset();
 	}
 
+	// 0x415B70
+	dllexport gnu_noinline int thiscall __sub_415B70() ASR(0x415B70) {
+		int32_t A, B, C, D, S;
+		C = UNKNOWN_INT32_A;
+		A = this->__menu_select_1BC / C;
+		this->__int_2FC = 0;
+		this->__int_2F8 = B = A - 1;
+		if (B < 0) {
+			D = this->__int_300;
+			this->__int_2F8 = C = A = 0;
+		} else {
+			S = this->__int_300;
+			A = S / C;
+			C = B;
+			D = A - 1;
+			if (B > D) {
+				this->__int_2F8 = A = C = D;
+			} else {
+				A = C;
+				D = S;
+			}
+		}
+		if (D > 0) {
+			int32_t i = 0;
+			do {
+				if (i / UNKNOWN_INT32_A < C) {
+					this->__anm_id_array_BEC[i].interrupt_and_run_tree(16);
+					C = this->__int_2F8;
+				}
+			} while (++i < this->__int_300);
+			A = C;
+		}
+		if (A > 0) {
+			int32_t i = 0;
+			do {
+				for (int32_t j = 0; j < this->__int_300; ++j) {
+					this->__anm_id_array_BEC[j].interrupt_and_run_tree(9);
+					C = j / UNKNOWN_INT32_A;
+					if (C == this->__int_2FC) {
+						this->__anm_id_array_BEC[j].interrupt_and_run_tree(11);
+					} else if (C == this->__int_2F8 + 2) {
+						this->__anm_id_array_BEC[j].interrupt_and_run_tree(12);
+					}
+				}
+				A = this->__int_2F8;
+			} while (++i < A);
+		}
+		this->__int_2FC = A;
+		return 0;
+	}
+
 	// 0x413AF0
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x413AF0) {
 		// THIS IS POTENTIALLY THE WORST MENU FUNCTION IN THE GAME
@@ -40088,12 +40139,6 @@ struct AbilityMenu : ZUNTask {
 		for (int32_t i = 0; i < ability_menu->__int_3E4; ++i) {
 			ability_menu->__anm_id_array_3EC[i].interrupt_tree(5);
 		}
-	}
-
-	// 0x415B70
-	dllexport gnu_noinline int thiscall __sub_415B70() ASR(0x415B70) {
-		// TODO
-		return 0;
 	}
 
 private:
