@@ -40128,7 +40128,7 @@ struct AbilityMenu : ZUNTask {
 			});
 		} else {
 			ability_manager->card_list.for_first_N(ability_manager->card_count, [=](CardBase* card, int32_t i) {
-				this->cards[ability_manager->card_count - i] = card;
+				this->cards[ability_manager->card_count - i - 1] = card;
 			});
 		}
 		this->__card_count = ability_manager->card_count;
