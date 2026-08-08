@@ -39287,8 +39287,14 @@ VSS32(0xE3C)
 
 extern "C" {
 // 0x5704BC
-externcg int32_t UNKNOWN_INT32_A cgasm("_UNKNOWN_INT32_A");
+externcg int32_t CARDS_PER_ROW cgasm("_CARDS_PER_ROW");
 }
+
+enum class AbilityMenuType : int32_t {
+	PauseMenu = 0,
+	MainMenu = 1,
+	CharacterSelect = 2
+};
 
 // size: 0x13FC
 struct AbilityMenu : ZUNTask {
@@ -39297,7 +39303,7 @@ struct AbilityMenu : ZUNTask {
 	MenuSelect __menu_select_E4; // 0xE4
 	MenuSelect __menu_select_1BC; // 0x1BC
 	Timer state_timer; // 0x294
-	Float3 __float3_2A8; // 0x2A8
+	Float3 base_position; // 0x2A8
 	Float3 __float3_2B4; // 0x2B4
 	Float3 __float3_2C0; // 0x2C0
 	Timer __timer_2CC; // 0x2CC
@@ -39307,14 +39313,14 @@ struct AbilityMenu : ZUNTask {
 	int32_t __int_2FC; // 0x2FC
 	int32_t __int_300; // 0x300
 	int32_t card_ids[USABLE_CARD_COUNT]; // 0x304
-	int32_t __int_3E4; // 0x3E4
+	int32_t __card_count; // 0x3E4
 	AnmID __anm_id_3E8; // 0x3E8
 	AnmID __anm_id_array_3EC[MAX_EQUIPPED_CARDS]; // 0x3EC
 	AnmID __anm_id_array_7EC[MAX_EQUIPPED_CARDS]; // 0x7EC
 	AnmID __anm_id_array_BEC[MAX_EQUIPPED_CARDS]; // 0xBEC
 	CardBase* cards[MAX_EQUIPPED_CARDS]; // 0xFEC
-	int __int_13EC; // 0x13EC
-	int __int_13F0; // 0x13F0
+	AbilityMenuType menu_type; // 0x13EC
+	BOOL __is_pause_menu; // 0x13F0
 	int32_t primary_state; // 0x13F4
 	int32_t previous_primary_state; // 0x13F8
 	// 0x13FC
@@ -39360,7 +39366,7 @@ struct AbilityMenu : ZUNTask {
 	// 0x415B70
 	dllexport gnu_noinline int thiscall __sub_415B70() ASR(0x415B70) {
 		int32_t A, B, C, D, S;
-		C = UNKNOWN_INT32_A;
+		C = CARDS_PER_ROW;
 		A = this->__menu_select_1BC / C;
 		this->__int_2FC = 0;
 		this->__int_2F8 = B = A - 1;
@@ -39382,7 +39388,7 @@ struct AbilityMenu : ZUNTask {
 		if (D > 0) {
 			int32_t i = 0;
 			do {
-				if (i / UNKNOWN_INT32_A < C) {
+				if (i / CARDS_PER_ROW < C) {
 					this->__anm_id_array_BEC[i].interrupt_and_run_tree(16);
 					C = this->__int_2F8;
 				}
@@ -39394,7 +39400,7 @@ struct AbilityMenu : ZUNTask {
 			do {
 				for (int32_t j = 0; j < this->__int_300; ++j) {
 					this->__anm_id_array_BEC[j].interrupt_and_run_tree(9);
-					C = j / UNKNOWN_INT32_A;
+					C = j / CARDS_PER_ROW;
 					if (C == this->__int_2FC) {
 						this->__anm_id_array_BEC[j].interrupt_and_run_tree(11);
 					} else if (C == this->__int_2F8 + 2) {
@@ -39412,13 +39418,13 @@ struct AbilityMenu : ZUNTask {
 	dllexport gnu_noinline UpdateFuncRet thiscall on_tick() ASR(0x413AF0) {
 		// THIS IS POTENTIALLY THE WORST MENU FUNCTION IN THE GAME
 		// I cannot emphasize just how disgustingly bad it is just from a comment
-		UNKNOWN_INT32_A = this->__int_13EC ? 10 : 7;
+		CARDS_PER_ROW = this->menu_type != AbilityMenuType::PauseMenu ? 10 : 7;
 		if (ABILITY_MANAGER_PTR->__ability_data_loaded) {
-			int32_t A;
+			int32_t row_width;
 			int32_t selection;
 			Float3 position;
 			switch (this->primary_state) {
-				case 17: {
+				case 11: {
 					this->__anm_id_3E8.mark_tree_for_delete();
 					this->__anm_id_3E8 = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(15, &ZERO_FLOAT3, 0.0f, -1, NULL);
 					this->__fill_card_array();
@@ -39429,7 +39435,7 @@ struct AbilityMenu : ZUNTask {
 						size_t i = 10;
 						do {
 							this->__anm_id_3E8.get_vm_ptr()->run_anm();
-							for (int32_t j = 0; j < this->__int_3E4; ++j) {
+							for (int32_t j = 0; j < this->__card_count; ++j) {
 								this->__anm_id_array_3EC[j].get_vm_ptr_safe()->run_anm();
 							}
 						} while (--i);
@@ -39443,17 +39449,17 @@ struct AbilityMenu : ZUNTask {
 					break;
 				case 0: {
 					this->__anm_id_3E8.mark_tree_for_delete();
-					AnmID id = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(4, &this->__float3_2A8, 0.0f, -1, NULL);
+					AnmID id = ABILITY_MANAGER_PTR->abmenu_anm->instantiate_vm_to_world_list_back(4, &this->base_position, 0.0f, -1, NULL);
 					this->__anm_id_3E8 = id;
 					id.interrupt_tree_word_offset(this->__menu_select_C, 7);
-					if (this->__int_13EC) {
+					if (this->menu_type != AbilityMenuType::PauseMenu) {
 						this->__anm_id_3E8.__find_child_vm_with_script(1)->set_sprite(15);
 					}
 					this->__fill_card_array();
 					position = { 0.0f, 230.0f, 0.0f };
 					this->__sub_415CB0(&position, 512.0f, 100.0f, false);
-					if (this->__int_13EC) {
-						for (int32_t i = 0; i < this->__int_3E4; ++i) {
+					if (this->menu_type != AbilityMenuType::PauseMenu) {
+						for (int32_t i = 0; i < this->__card_count; ++i) {
 							this->__anm_id_array_3EC[i].interrupt_and_run_tree(22);
 						}
 					}
@@ -39471,10 +39477,12 @@ struct AbilityMenu : ZUNTask {
 						this->__anm_id_3E8.interrupt_tree_word_offset(this->__menu_select_C, 7);
 					}
 					if (
-						INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) ||
-						(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE)) ||
-						!INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)
+						!INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) &&
+						(this->state_timer.previous == 0 || !INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE))
 					) {
+						if (!INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+							break;
+						}
 						switch (this->__menu_select_C) {
 							case 0:
 								SOUND_MANAGER.play_sound(7);
@@ -39493,7 +39501,7 @@ struct AbilityMenu : ZUNTask {
 						}
 					}
 					SOUND_MANAGER.play_sound(9);
-					if (this->previous_primary_state != 2) {
+					if (this->menu_type != AbilityMenuType::CharacterSelect) {
 						this->change_primary_state(10);
 					} else {
 						this->change_primary_state(14);
@@ -39508,31 +39516,31 @@ struct AbilityMenu : ZUNTask {
 									goto sprite_set_loop_A;
 								}
 								this->change_primary_state(5);
-								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2A8, false);
+								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->base_position, false);
 								ABILITY_TEXT_DATA_PTR->hide_anms();
-								if (this->previous_primary_state != 0) {
+								if (this->menu_type != AbilityMenuType::PauseMenu) {
 									this->change_primary_state(8);
 								}
 								break;
 							case 1: {
 								this->__anm_id_3E8.interrupt_tree(1);
 
-								A = UNKNOWN_INT32_A;
+								row_width = CARDS_PER_ROW;
 								int32_t B;
-								if (this->__menu_select_1BC < A * 3) {
+								if (this->__menu_select_1BC < row_width * 3) {
 									B = 0;
 								} else {
-									B = (this->__menu_select_1BC / A) - 1;
+									B = (this->__menu_select_1BC / row_width) - 1;
 								}
 								float offset = 90.0f;
 								this->__int_2F8 = B;
-								float C = A;
+								float C = row_width;
 								this->__int_2FC = B;
-								position = this->__float3_2A8 + Float3(0.0f, 150.0f, 0.0f);
+								position = this->base_position + Float3(0.0f, 150.0f, 0.0f);
 								this->__float3_2C0 = position;
 								Float3 positionB = {
-									this->__float3_2A8.x + (0.0f - C * offset * 0.5f) + 48.0f,
-									this->__float3_2A8.y + 500.0f,
+									this->base_position.x + (0.0f - C * offset * 0.5f) + 48.0f,
+									this->base_position.y + 500.0f,
 									0.0f
 								};
 								Float3 positionC = positionB;
@@ -39555,18 +39563,18 @@ struct AbilityMenu : ZUNTask {
 									this->__anm_id_array_7EC[i].set_controller_position(&positionB);
 									this->__anm_id_array_BEC[i].set_controller_position(&positionC);
 									this->__anm_id_array_BEC[i].interrupt_and_run_tree(8);
-									this->__anm_id_array_BEC[i].interrupt_and_run_tree(this->previous_primary_state ? 20 : 21);
-									A = UNKNOWN_INT32_A;
+									this->__anm_id_array_BEC[i].interrupt_and_run_tree(this->menu_type != AbilityMenuType::PauseMenu ? 22 : 23);
+									row_width = CARDS_PER_ROW;
 									positionC.x += offset;
-									if (i % A == A - 1) {
+									if (i % row_width == row_width - 1) {
 										positionC.y += 120.0f;
-										positionC.x -= A * 90;
+										positionC.x -= row_width * 90;
 									}
 									this->card_ids[i] = card_id;
 								}
 								this->__sub_415B70();
 								const CardData& card_data = find_id_in_card_data(UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC]);
-								this->__float3_2B4 = this->__float3_2A8;
+								this->__float3_2B4 = this->base_position;
 								ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2B4, true);
 								ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC], false, false);
 								ABILITY_TEXT_DATA_PTR->set_card_type_label(card_data.card_type);
@@ -39590,7 +39598,7 @@ struct AbilityMenu : ZUNTask {
 							this->__anm_id_array_3EC[this->__menu_select_E4].interrupt_tree(2);
 							selection = this->__menu_select_E4;
 							if (this->__menu_select_E4.previous_selection != selection) {
-								if (selection + 1 < this->__int_3E4) {
+								if (selection + 1 < this->__card_count) {
 									this->__anm_id_array_7EC[selection + 1].interrupt_tree(17);
 									selection = this->__menu_select_E4;
 								}
@@ -39617,14 +39625,14 @@ struct AbilityMenu : ZUNTask {
 								}
 								this->__anm_id_array_7EC[selection].interrupt_tree(16);
 								selection = this->__menu_select_E4;
-								int32_t B = this->__int_3E4;
-								if (selection + 1 < B) {
+								int32_t card_count = this->__card_count;
+								if (selection + 1 < card_count) {
 									this->__anm_id_array_7EC[selection + 1].interrupt_tree(12);
 									selection = this->__menu_select_E4;
-									B = this->__int_3E4;
+									card_count = this->__card_count;
 								}
-								if (selection + 2 < B) {
-									this->__anm_id_array_7EC[selection + 2].interrupt_tree(15);
+								if (selection + 2 < card_count) {
+									this->__anm_id_array_7EC[selection + 2].interrupt_tree(14);
 								}
 							}
 						}
@@ -39636,21 +39644,23 @@ struct AbilityMenu : ZUNTask {
 						}
 						if (
 							this->primary_state == 8 &&
-							INPUT_P1.check_hardware_inputs(BUTTON_SELECT)
+							INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)
 						) {
+							this->primary_state = 9; // Because why would we ever want to call change_primary_state? *sigh*
 							SOUND_MANAGER.play_sound(7);
+							this->__menu_select_1BC.disabled_selections_count = 0;
 
-							position = this->__float3_2A8 + Float3(0.0f, 224.0f, 0.0f);
+							position = this->base_position + Float3(0.0f, 224.0f, 0.0f);
 							this->__float3_2C0 = position;
 							Float3 positionB = {
-								this->__float3_2A8.x + (0.0f - UNKNOWN_INT32_A * 90.0f * 0.5f) + 48.0f,
-								this->__float3_2A8.y + 564.0f,
-								this->__float3_2A8.z + 0.0f
+								this->base_position.x + (0.0f - CARDS_PER_ROW * 90.0f * 0.5f) + 48.0f,
+								this->base_position.y + 564.0f,
+								this->base_position.z + 0.0f
 							};
 
 							for (size_t i = 0; i != MAX_EQUIPPED_CARDS; ++i) {
-								this->__anm_id_array_3EC[i].mark_tree_for_delete();
 								this->__anm_id_array_7EC[i].mark_tree_for_delete();
+								this->__anm_id_array_BEC[i].mark_tree_for_delete();
 							}
 
 							int32_t card_count = 0;
@@ -39667,14 +39677,14 @@ struct AbilityMenu : ZUNTask {
 									this->__anm_id_array_BEC[card_count] = id;
 									id.set_controller_position(&positionB);
 									this->__anm_id_array_BEC[card_count].interrupt_and_run_tree(8);
-									if (this->__int_13EC) {
+									if (this->menu_type != AbilityMenuType::PauseMenu) {
 										this->__anm_id_array_BEC[card_count].interrupt_and_run_tree(22);
 									}
-									A = UNKNOWN_INT32_A;
+									row_width = CARDS_PER_ROW;
 									positionB.x += 90.0f;
-									if (i % A == A - 1) {
+									if (card_count % row_width == row_width - 1) {
 										positionB.y += 120.0f;
-										positionB.x -= A * 90;
+										positionB.x -= row_width * 90;
 									}
 									this->card_ids[card_count] = card_id;
 									++card_count;
@@ -39701,11 +39711,11 @@ struct AbilityMenu : ZUNTask {
 							ABILITY_TEXT_DATA_PTR->hide_card_type_label();
 							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], false, false);
 						} else if (
-							INPUT_P1.check_hardware_inputs(BUTTON_CANCEL) ||
-							!(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs(BUTTON_PAUSE))
+							INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) ||
+							(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE))
 						) {
 							SOUND_MANAGER.play_sound(9);
-							this->change_primary_state(this->__int_13EC != 2 ? 0 : 14);
+							this->change_primary_state(this->menu_type != AbilityMenuType::CharacterSelect ? 0 : 14);
 							for (size_t i = 0; i != MAX_EQUIPPED_CARDS; ++i) {
 								this->__anm_id_array_3EC[i].mark_tree_for_delete();
 								this->__anm_id_array_7EC[i].mark_tree_for_delete();
@@ -39721,14 +39731,14 @@ struct AbilityMenu : ZUNTask {
 					if (check_hardware_inputs_repeating(BUTTON_LEFT)) {
 						this->__anm_id_array_7EC[selection].interrupt_and_run_tree(7);
 						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(3);
-						A = UNKNOWN_INT32_A;
-						int32_t B = this->__menu_select_1BC / A;
-						if (!(this->__menu_select_1BC % A)) {
+						row_width = CARDS_PER_ROW;
+						int32_t B = this->__menu_select_1BC / row_width;
+						if (this->__menu_select_1BC % row_width != 0) {
 							this->__menu_select_1BC.move_selection(-1);
-						} else if (B >= this->__int_300 / A) {
+						} else if (B >= this->__int_300 / row_width) {
 							this->__menu_select_1BC.set_selection(this->__int_300 - 1);
 						} else {
-							this->__menu_select_1BC.move_selection(A - 1);
+							this->__menu_select_1BC.move_selection(row_width - 1);
 						}
 						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(9);
 						this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(2);
@@ -39739,13 +39749,13 @@ struct AbilityMenu : ZUNTask {
 						int32_t B = this->__int_300;
 						selection = this->__menu_select_1BC;
 						if (selection >= B - 1) {
-							this->__menu_select_1BC.set_selection(B / UNKNOWN_INT32_A * UNKNOWN_INT32_A);
+							this->__menu_select_1BC.set_selection(B / CARDS_PER_ROW * CARDS_PER_ROW);
 						} else {
-							A = UNKNOWN_INT32_A;
-							if (selection % A != A - 1) {
+							row_width = CARDS_PER_ROW;
+							if (selection % row_width != row_width - 1) {
 								this->__menu_select_1BC.move_selection(1);
 							} else {
-								this->__menu_select_1BC.move_selection(1 - A);
+								this->__menu_select_1BC.move_selection(1 - row_width);
 							}
 						}
 						this->__anm_id_array_7EC[this->__menu_select_1BC].interrupt_and_run_tree(10);
@@ -39753,7 +39763,7 @@ struct AbilityMenu : ZUNTask {
 					}
 					if (check_hardware_inputs_repeating(BUTTON_UP)) {
 						selection = this->__menu_select_1BC;
-						int32_t B = selection - UNKNOWN_INT32_A;
+						int32_t B = selection - CARDS_PER_ROW;
 						if (B >= 0) {
 							this->__anm_id_array_7EC[selection].interrupt_and_run_tree(7);
 							this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(3);
@@ -39763,9 +39773,9 @@ struct AbilityMenu : ZUNTask {
 						}
 					}
 					if (check_hardware_inputs_repeating(BUTTON_DOWN)) {
-						A = UNKNOWN_INT32_A;
+						row_width = CARDS_PER_ROW;
 						selection = this->__menu_select_1BC;
-						int32_t B = A + selection;
+						int32_t B = row_width + selection;
 						if (B < this->__int_300) {
 							this->__anm_id_array_7EC[selection].interrupt_tree(8);
 							this->__anm_id_array_BEC[this->__menu_select_1BC].interrupt_and_run_tree(3);
@@ -39778,7 +39788,7 @@ struct AbilityMenu : ZUNTask {
 						SOUND_MANAGER.play_sound(10);
 						ABILITY_TEXT_DATA_PTR->set_card_type_label(find_id_in_card_data(this->card_ids[this->__menu_select_1BC]).card_type);
 						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], false, false);
-						int32_t B = this->__menu_select_1BC / UNKNOWN_INT32_A;
+						int32_t B = this->__menu_select_1BC / CARDS_PER_ROW;
 						int32_t i = this->__int_2F8;
 						if (B < i + 1) {
 							this->__int_2F8 = i = B - 1;
@@ -39787,7 +39797,7 @@ struct AbilityMenu : ZUNTask {
 							}
 						} else if (B >= i + 2) {
 							this->__int_2F8 = B - 1;
-							int32_t C = this->__int_300 / UNKNOWN_INT32_A + 2;
+							int32_t C = this->__int_300 / CARDS_PER_ROW + 2;
 							i = B - 1;
 							if (i > C) {
 								this->__int_2F8 = i = C;
@@ -39799,7 +39809,7 @@ struct AbilityMenu : ZUNTask {
 								do {
 									if (this->__int_2FC < this->__int_2F8) {
 										this->__anm_id_array_BEC[i].interrupt_and_run_tree(9);
-										int32_t C = i / UNKNOWN_INT32_A;
+										int32_t C = i / CARDS_PER_ROW;
 										if (C == this->__int_2FC) {
 											this->__anm_id_array_BEC[i].interrupt_and_run_tree(11);
 										} else if (C == this->__int_2F8 + 2) {
@@ -39807,7 +39817,7 @@ struct AbilityMenu : ZUNTask {
 										}
 									} else {
 										this->__anm_id_array_BEC[i].interrupt_and_run_tree(10);
-										if (i / UNKNOWN_INT32_A == this->__int_2F8) {
+										if (i / CARDS_PER_ROW == this->__int_2F8) {
 											this->__anm_id_array_BEC[i].interrupt_and_run_tree(12);
 										}
 									}
@@ -39860,13 +39870,13 @@ struct AbilityMenu : ZUNTask {
 						for (int32_t i = 0; i < this->__int_300; ++i) {
 							this->__anm_id_array_BEC[i].hide_tree();
 						}
-						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], false, false);
+						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], true, false);
 						ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_ids[this->__menu_select_1BC], false);
 					}
 			check_buttons_1:
 					if (
 						INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL) ||
-						(!this->state_timer.previous && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE))
+						(this->state_timer.previous != 0 && INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_PAUSE))
 					) {
 						SOUND_MANAGER.play_sound(9);
 						if (this->primary_state == 9) {
@@ -39879,8 +39889,8 @@ struct AbilityMenu : ZUNTask {
 							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->card_ids[this->__menu_select_1BC], true, false);
 							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_ids[this->__menu_select_1BC], false);
 				sprite_set_loop_A:
-							position = this->__float3_2A8 + Float3(0.0f, 224.0f, 0.0f);
-							for (int32_t i = 0; i < this->__int_3E4; ++i) {
+							position = this->base_position + Float3(0.0f, 224.0f, 0.0f);
+							for (int32_t i = 0; i < this->__card_count; ++i) {
 								this->__anm_id_array_7EC[i].mark_tree_for_delete();
 								this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 13, this->cards[i]);
 							}
@@ -39898,14 +39908,14 @@ struct AbilityMenu : ZUNTask {
 							position = { 0.0f, 16.0f, 0.0f };
 							this->__sub_415CB0(&position, 512.0f, 100.0f, true);
 							this->__anm_id_array_3EC[this->__menu_select_E4].interrupt_and_run_tree(2);
-							if (this->__int_13EC) {
-								for (int32_t i = 0; i < this->__int_3E4; ++i) {
+							if (this->menu_type != AbilityMenuType::PauseMenu) {
+								for (int32_t i = 0; i < this->__card_count; ++i) {
 									this->__anm_id_array_3EC[i].interrupt_and_run_tree(22);
 									this->__anm_id_array_7EC[i].interrupt_and_run_tree(22);
 								}
 							}
 							const CardData& card_data = *this->cards[this->__menu_select_E4]->data;
-							this->__float3_2B4 = this->__float3_2A8;
+							this->__float3_2B4 = this->base_position;
 							this->__float3_2B4.y += 92.0f;
 							ABILITY_TEXT_DATA_PTR->delete_vms();
 							ABILITY_TEXT_DATA_PTR->__sub_4162B0(&this->__float3_2B4, true);
@@ -39913,7 +39923,7 @@ struct AbilityMenu : ZUNTask {
 							ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, this->cards[this->__menu_select_E4]->id, true, false);
 							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->cards[this->__menu_select_E4]->id, false);
 							this->change_primary_state(4);
-							if (this->__int_13EC) {
+							if (this->menu_type != AbilityMenuType::PauseMenu) {
 								this->change_primary_state(8);
 							}
 						} else {
@@ -39959,7 +39969,7 @@ struct AbilityMenu : ZUNTask {
 						ABILITY_TEXT_DATA_PTR->__sub_416540(&this->__float3_2B4, card_id, true, false);
 						ABILITY_TEXT_DATA_PTR->set_card_type_label(card_data.card_type);
 						ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(UNKNOWN_CARD_ID_TABLE[this->__menu_select_1BC], false);
-						int32_t B = this->__menu_select_1BC / UNKNOWN_INT32_A;
+						int32_t B = this->__menu_select_1BC / CARDS_PER_ROW;
 						int32_t C = this->__int_2F8;
 						if (B < C + 1) {
 							this->__int_2F8 = C = B - 1;
@@ -39968,7 +39978,7 @@ struct AbilityMenu : ZUNTask {
 							}
 						} else if (B >= C + 2) {
 							this->__int_2F8 = B - 1;
-							int32_t D = USABLE_CARD_COUNT / UNKNOWN_INT32_A - 2;
+							int32_t D = USABLE_CARD_COUNT / CARDS_PER_ROW - 2;
 							C = B - 1;
 							if (C > D) {
 								this->__int_2F8 = C = D;
@@ -39978,7 +39988,7 @@ struct AbilityMenu : ZUNTask {
 							for (int32_t i = 0; i < USABLE_CARD_COUNT; ++i) {
 								if (this->__int_2FC < this->__int_2F8) {
 									this->__anm_id_array_BEC[i].interrupt_and_run_tree(9);
-									int32_t D = i / UNKNOWN_INT32_A;
+									int32_t D = i / CARDS_PER_ROW;
 									if (D == this->__int_2FC) {
 										this->__anm_id_array_BEC[i].interrupt_and_run_tree(11);
 									} else if (D == this->__int_2F8 + 2) {
@@ -39986,7 +39996,7 @@ struct AbilityMenu : ZUNTask {
 									}
 								} else {
 									this->__anm_id_array_BEC[i].interrupt_and_run_tree(10);
-									int32_t D = i / UNKNOWN_INT32_A;
+									int32_t D = i / CARDS_PER_ROW;
 									if (D == this->__int_2FC + 2) {
 										this->__anm_id_array_BEC[i].interrupt_and_run_tree(11);
 									} else if (D == this->__int_2F8) {
@@ -40061,7 +40071,7 @@ struct AbilityMenu : ZUNTask {
 				ascii_manager->font_id = Font6;
 				ascii_manager->__horizontal_positioning_mode = 0;
 				ascii_manager->__vertical_positioning_mode = 0;
-				for (int32_t i = 0; i < this->__int_3E4; ++i) {
+				for (int32_t i = 0; i < this->__card_count; ++i) {
 					if (this->cards[i]->id != NULL_CARD) {
 						int32_t j = 0;
 						if (j < this->__int_300) {
@@ -40088,7 +40098,7 @@ struct AbilityMenu : ZUNTask {
 				ascii_manager = ASCII_MANAGER_PTR;
 				break;
 		}
-		position = (this->__float3_2A8 + Float3(0.0f, 360.0f, 0.0f)) * 0.5f;
+		position = (this->base_position + Float3(0.0f, 360.0f, 0.0f)) * 0.5f;
 		ascii_manager->font_id = Font6;
 		ascii_manager->__horizontal_positioning_mode = 0;
 		ascii_manager->__vertical_positioning_mode = 1;
@@ -40112,22 +40122,23 @@ struct AbilityMenu : ZUNTask {
 	// 0x415AF0
 	dllexport gnu_noinline int thiscall __fill_card_array() ASR(0x415AF0) {
 		AbilityManager* ability_manager = ABILITY_MANAGER_PTR;
-		if (this->__int_13EC) {
+		if (this->menu_type != AbilityMenuType::PauseMenu) {
 			ability_manager->card_list.for_first_N(ability_manager->card_count, [=](CardBase* card, int32_t i) {
 				this->cards[i] = card;
 			});
 		} else {
 			ability_manager->card_list.for_first_N(ability_manager->card_count, [=](CardBase* card, int32_t i) {
-				this->cards[ability_manager->card_count - i + 1] = card;
+				this->cards[ability_manager->card_count - i] = card;
 			});
 		}
+		this->__card_count = ability_manager->card_count;
 		return 0;
 	}
 
 	// 0x4134D0
 	dllexport gnu_noinline void thiscall __sub_4134D0() ASR(0x4134D0) {
 		this->__anm_id_3E8.interrupt_tree(2);
-		for (int32_t i = 0; i < this->__int_3E4; ++i) {
+		for (int32_t i = 0; i < this->__card_count; ++i) {
 			this->__anm_id_array_3EC[i].interrupt_tree(4);
 		}
 	}
@@ -40136,7 +40147,7 @@ struct AbilityMenu : ZUNTask {
 	dllexport gnu_noinline static void __sub_464920() ASR(0x464920) {
 		AbilityMenu* ability_menu = ABILITY_MENU_PTR;
 		ability_menu->__anm_id_3E8.interrupt_tree(3);
-		for (int32_t i = 0; i < ability_menu->__int_3E4; ++i) {
+		for (int32_t i = 0; i < ability_menu->__card_count; ++i) {
 			ability_menu->__anm_id_array_3EC[i].interrupt_tree(5);
 		}
 	}
@@ -40144,8 +40155,8 @@ struct AbilityMenu : ZUNTask {
 private:
 	// 0x415CB0
 	dllexport gnu_noinline int vectorcall __sub_415CB0(int, float, float, Float3* position, float arg2, float offset, BOOL interrupt) ASR(0x415CB0) {
-		*position -= this->__float3_2A8;
-		float A = this->__int_3E4 - 1;
+		*position += this->base_position;
+		float A = this->__card_count - 1;
 		float B = A * offset;
 		if (B > arg2) {
 			B = arg2;
@@ -40153,7 +40164,7 @@ private:
 		}
 		B *= 0.5f;
 		position->x -= B;
-		for (int32_t i = 0; i < this->__int_3E4; ++i) {
+		for (int32_t i = 0; i < this->__card_count; ++i) {
 			this->__anm_id_array_3EC[i].mark_tree_for_delete();
 			AnmID id = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(position, 12, this->cards[i]);
 			this->__anm_id_array_3EC[i] = id;
@@ -40170,7 +40181,7 @@ public:
 	}
 
 	// 0x413650
-	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* arg1, int arg2) ASR(0x413650) {
+	dllexport gnu_noinline ZUNResult thiscall initialize(Float3* position, AbilityMenuType menu_type) ASR(0x413650) {
 		UpdateFunc* update_func = new UpdateFunc(&on_tick, true, this);
 		UpdateFuncRegistry::register_on_tick(update_func, TickPriority::AbilityMenu); // 7
 		this->on_tick_func = update_func;
@@ -40184,26 +40195,26 @@ public:
 		this->__timer_2CC.reset();
 		this->__timer_2E0.reset();
 
-		this->__float3_2A8 = *arg1;
+		this->base_position = *position;
 
-		this->__int_13EC = arg2;
+		this->menu_type = menu_type;
 		
 		this->__menu_select_C.initialize(MenuLength3, MenuChoice0, MenuWrapEnable);
 		this->__menu_select_E4.initialize((MenuLength)ABILITY_MANAGER_PTR->card_count, MenuChoice0, MenuWrapDisable);
 		this->__menu_select_1BC.initialize((MenuLength)USABLE_CARD_COUNT, MenuChoice0, MenuWrapDisable);
 
-		arg2 = this->__int_13EC;
+		menu_type = this->menu_type;
 
-		this->__int_13F0 = !arg2;
-		this->primary_state = arg2 == 2 ? 0 : 11;
+		this->__is_pause_menu = menu_type == AbilityMenuType::PauseMenu;
+		this->primary_state = menu_type == AbilityMenuType::CharacterSelect ? 11 : 0;
 
 		return ZUN_SUCCESS;
 	}
 
 	// 0x413810
-	dllexport gnu_noinline static AbilityMenu* fastcall allocate(Float3* arg1, int arg2) ASR(0x413810) {
+	dllexport gnu_noinline static AbilityMenu* fastcall allocate(Float3* position, AbilityMenuType menu_type) ASR(0x413810) {
 		AbilityMenu* ability_menu = new AbilityMenu();
-		if (ZUN_FAILED(ability_menu->initialize(arg1, arg2))) {
+		if (ZUN_FAILED(ability_menu->initialize(position, menu_type))) {
 			delete ability_menu;
 			return NULL;
 		}
@@ -40219,7 +40230,7 @@ VFO32(0xC,__menu_select_C)
 VFO32(0xE4,__menu_select_E4)
 VFO32(0x1BC,__menu_select_1BC)
 VFO32(0x294,state_timer)
-VFO32(0x2A8,__float3_2A8)
+VFO32(0x2A8,base_position)
 VFO32(0x2B4,__float3_2B4)
 VFO32(0x2C0,__float3_2C0)
 VFO32(0x2CC,__timer_2CC)
@@ -40228,14 +40239,14 @@ VFO32(0x2F8,__int_2F8)
 VFO32(0x2FC,__int_2FC)
 VFO32(0x300,__int_300)
 VFO32(0x304,card_ids)
-VFO32(0x3E4,__int_3E4)
+VFO32(0x3E4,__card_count)
 VFO32(0x3E8,__anm_id_3E8)
 VFO32(0x3EC,__anm_id_array_3EC)
 VFO32(0x7EC,__anm_id_array_7EC)
 VFO32(0xBEC,__anm_id_array_BEC)
 VFO32(0xFEC,cards)
-VFO32(0x13EC,__int_13EC)
-VFO32(0x13F0,__int_13F0)
+VFO32(0x13EC,menu_type)
+VFO32(0x13F0,__is_pause_menu)
 VFO32(0x13F4,primary_state)
 VSS32(0x13FC)
 #undef V
@@ -58683,7 +58694,7 @@ struct PauseMenu : ZUNTask {
 				if (this->state_timer == 20) {
 					this->__vm_id_1E4.hide_tree();
 					Float3 A = { 448.0f, 100.0f, 0.0f };
-					AbilityMenu::allocate(&A, 0);
+					AbilityMenu::allocate(&A, AbilityMenuType::PauseMenu); // 0
 				}
 				if (
 					this->state_timer > 20 &&
@@ -61736,8 +61747,8 @@ public:
 				ability_manager->__sub_407DA0(true);
 				AbilityMenu* ability_menu = ABILITY_MENU_PTR;
 				if (!ability_menu) {
-					Float3 A = { 640.0f, 70.0f, 0.0f };
-					AbilityMenu::allocate(&A, 2);
+					Float3 position = { 640.0f, 70.0f, 0.0f };
+					AbilityMenu::allocate(&position, AbilityMenuType::CharacterSelect); // 2
 				}
 				else {
 					ability_menu->__sub_464920();
@@ -61846,43 +61857,58 @@ public:
 						this->__menu_select_24.move_selection(1);
 						this->anms[i].interrupt_tree_word_offset(this->__menu_select_24, 7);
 					}
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+						this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24).interrupt_tree(6);
+						this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24).interrupt_tree(6);
+						this->anms[i].__find_child_id_with_script(5).interrupt_tree(6);
+						this->anms[i].__find_child_id_with_script(6).interrupt_tree(6);
+						SOUND_MANAGER.play_sound(7);
+						this->change_secondary_state(3);
+						break;
+					}
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+						this->change_secondary_state(4);
+						SOUND_MANAGER.play_sound(9);
+						break;
+					}
+				} else {
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
+						SOUND_MANAGER.play_sound(7);
+						AbilityMenu* ability_menu = ABILITY_MENU_PTR;
+						ability_menu->change_primary_state(3);
+						ability_menu->__menu_select_C.set_selection(0);
+						ability_menu->state_timer.set(31);
+						this->change_secondary_state(5);
+						this->__anm_id_430.interrupt_and_orphan_tree(1);
+						break;
+					}
+					if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
+						this->__menu_select_FC.move_selection(-1);
+						goto selection_changed;
+					}
 				}
-				if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_SELECT)) {
-					this->anms[i].__find_child_id_with_script(9 + this->__menu_select_24).interrupt_tree(6);
-					this->anms[i].__find_child_id_with_script(13 + this->__menu_select_24).interrupt_tree(6);
-					this->anms[i].__find_child_id_with_script(5).interrupt_tree(6);
-					this->anms[i].__find_child_id_with_script(6).interrupt_tree(6);
-					SOUND_MANAGER.play_sound(7);
-					this->change_secondary_state(3);
-				}
-				else if (INPUT_P1.check_hardware_inputs_no_repeat(BUTTON_CANCEL)) {
-					this->change_secondary_state(4);
-					SOUND_MANAGER.play_sound(9);
-				}
-				else {
-			label_C:
-					if (this->__menu_select_FC.update(&MenuSelect::scroll_up_and_down)) {
-						SOUND_MANAGER.play_sound(10);
-						if (this->__menu_select_FC == 0) {
-							this->anms[i].interrupt_and_run_tree(4);
-							ABILITY_MENU_PTR->__sub_464920();
-							difficulty = GAME_MANAGER.globals.difficulty;
-							ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
-							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
-								if (!scorefile_manager->primary_file.has_1cc_clear_for_character_difficulty(j, difficulty)) {
-									this->anms[i].__find_child_id_with_script(23 + j).hide_tree();
-								} else {
-									this->anms[i].__find_child_id_with_script(23 + j).show_tree();
-								}
-								difficulty = GAME_MANAGER.globals.difficulty;
-							}
-						}
-						else {
-							this->anms[i].interrupt_and_run_tree(5);
-							ABILITY_MENU_PTR->__sub_4134D0();
-							for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
+				if (this->__menu_select_FC.update(&MenuSelect::scroll_up_and_down)) {
+			selection_changed:
+					SOUND_MANAGER.play_sound(10);
+					if (this->__menu_select_FC == 0) {
+						this->anms[i].interrupt_and_run_tree(4);
+						ABILITY_MENU_PTR->__sub_464920();
+						difficulty = GAME_MANAGER.globals.difficulty;
+						ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
+						for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
+							if (!scorefile_manager->primary_file.has_1cc_clear_for_character_difficulty(j, difficulty)) {
 								this->anms[i].__find_child_id_with_script(23 + j).hide_tree();
+							} else {
+								this->anms[i].__find_child_id_with_script(23 + j).show_tree();
 							}
+							difficulty = GAME_MANAGER.globals.difficulty;
+						}
+					}
+					else {
+						this->anms[i].interrupt_and_run_tree(5);
+						ABILITY_MENU_PTR->__sub_4134D0();
+						for (size_t j = 0; j != CHARACTER_COUNT; ++j) {
+							this->anms[i].__find_child_id_with_script(23 + j).hide_tree();
 						}
 					}
 				}
@@ -63277,7 +63303,7 @@ public:
 							break;
 						case 0:
 							if (ABILITY_MANAGER_PTR->__ability_data_loaded) {
-								AbilityMenu::allocate(&position, 1);
+								AbilityMenu::allocate(&position, AbilityMenuType::MainMenu); // 1
 							}
 							clang_forceinline this->change_secondary_state(1);
 							break;

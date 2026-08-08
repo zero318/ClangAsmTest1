@@ -55,6 +55,7 @@ using FloatT = Float3;
 #endif
 
 /*
+    SSE2
 Variant A1: Scalar
 Variant A2: Scalar [load then store]
 Variant B1: Split vector PS (low2 + high)
@@ -72,9 +73,29 @@ Variant F1: Half vector PS (low2 + high)
 Variant F2: Half vector SD (low2 + high)
 Variant G1: Half vector PS (low + high2)
 Variant H1: Direct vector PS (low + high2)
+Variant K1: Half pair vector PS (low2 + high2)
+Variant K2: Half pair vector PD (low2 + high2)
+Variant K3: Half pair vector SP (low2 + high2)
+Variant K4: Half pair vector SD (low2 + high2)
 
-Variant 
+    SSE3
+Variant L1: DDup vector PS
+Variant L2: DDup vector PD
 
+    SSE4.1
+Variant I1: Insert PS L2H
+Variant I2: Insert SD L2H
+Variant I3: Insert Extract PS
+Variant I4: Insert Extract SD
+
+    AVX
+Variant J1: Masked load PS
+Variant J2: Masked load SD
+Variant J3: Masked load extract PS
+Variant J4: Masked load extract SD
+Variant J5: Masked LS
+
+    AVX512
 Variant R1: Masked vector MMA
 Variant R2: Masked vector MA
 */
@@ -96,7 +117,15 @@ __VA_ARGS__(E1) \
 __VA_ARGS__(F1) \
 __VA_ARGS__(F2) \
 __VA_ARGS__(G1) \
-__VA_ARGS__(H1)
+__VA_ARGS__(H1) \
+__VA_ARGS__(K1) \
+__VA_ARGS__(K2) \
+__VA_ARGS__(K3) \
+__VA_ARGS__(K4)
+
+#define for_each_vec_type_sse3(...) \
+__VA_ARGS__(L1) \
+__VA_ARGS__(L2)
 
 #define for_each_vec_type_sse41(...) \
 __VA_ARGS__(I1) \
@@ -117,6 +146,7 @@ __VA_ARGS__(R2)
 
 #define for_each_vec_type(...) \
 for_each_vec_type_no_avx512(__VA_ARGS__) \
+for_each_vec_type_sse3(__VA_ARGS__) \
 for_each_vec_type_sse41(__VA_ARGS__) \
 for_each_vec_type_avx(__VA_ARGS__) \
 for_each_vec_type_avx512(__VA_ARGS__)
@@ -796,6 +826,132 @@ test_export test_inline uint128_t regcall test_vec3_H1(Float3* out, const Float3
 #define setup_H1
 #define cleanup_H1
 
+// Variant K1 : Half pair vector PS (low2 + high2)
+test_export test_inline uint128_t regcall test_vec3_K1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVLPS %[lhsX], %%XMM0 \n"
+        "MOVHPS %[lhsYZ], %%XMM0 \n"
+        "MOVLPS %[rhsX], %%XMM1 \n"
+        "MOVHPS %[rhsYZ], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outX] \n"
+        "MOVHPS %%XMM1, %[outYZ] \n"
+        : [outX] "=m"(out->x), [outYZ]"=m"(*(double*)&out->y)
+        : [lhsX] "m"(*(double*)&lhs->x), [lhsYZ]"m"(*(double*)&lhs->y),
+        [rhsX]"m"(*(double*)&rhs->x), [rhsYZ]"m"(*(double*)&rhs->y)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_K1
+#define setup_K1
+#define cleanup_K1
+
+// Variant K2 : Half pair vector PD (low2 + high2)
+test_export test_inline uint128_t regcall test_vec3_K2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVLPD %[lhsX], %%XMM0 \n"
+        "MOVHPD %[lhsYZ], %%XMM0 \n"
+        "MOVLPD %[rhsX], %%XMM1 \n"
+        "MOVHPD %[rhsYZ], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outX] \n"
+        "MOVHPS %%XMM1, %[outYZ] \n"
+        : [outX] "=m"(out->x), [outYZ]"=m"(*(double*)&out->y)
+        : [lhsX] "m"(*(double*)&lhs->x), [lhsYZ]"m"(*(double*)&lhs->y),
+        [rhsX]"m"(*(double*)&rhs->x), [rhsYZ]"m"(*(double*)&rhs->y)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_K2
+#define setup_K2
+#define cleanup_K2
+
+// Variant K3 : Half pair vector SP (low2 + high2)
+test_export test_inline uint128_t regcall test_vec3_K3(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVSD %[lhsX], %%XMM0 \n"
+        "MOVHPS %[lhsYZ], %%XMM0 \n"
+        "MOVSD %[rhsX], %%XMM1 \n"
+        "MOVHPS %[rhsYZ], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outX] \n"
+        "MOVHPS %%XMM1, %[outYZ] \n"
+        : [outX] "=m"(out->x), [outYZ]"=m"(*(double*)&out->y)
+        : [lhsX] "m"(*(double*)&lhs->x), [lhsYZ]"m"(*(double*)&lhs->y),
+        [rhsX]"m"(*(double*)&rhs->x), [rhsYZ]"m"(*(double*)&rhs->y)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_K3
+#define setup_K3
+#define cleanup_K3
+
+// Variant K4 : Half pair vector SD (low2 + high2)
+test_export test_inline uint128_t regcall test_vec3_K4(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVSD %[lhsX], %%XMM0 \n"
+        "MOVHPD %[lhsYZ], %%XMM0 \n"
+        "MOVSD %[rhsX], %%XMM1 \n"
+        "MOVHPD %[rhsYZ], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outX] \n"
+        "MOVHPS %%XMM1, %[outYZ] \n"
+        : [outX] "=m"(out->x), [outYZ]"=m"(*(double*)&out->y)
+        : [lhsX] "m"(*(double*)&lhs->x), [lhsYZ]"m"(*(double*)&lhs->y),
+        [rhsX]"m"(*(double*)&rhs->x), [rhsYZ]"m"(*(double*)&rhs->y)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_K4
+#define setup_K4
+#define cleanup_K4
+
+// Variant L1 : DDup vector PS
+test_export test_inline uint128_t regcall test_vec3_L1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVDDUP %[lhsX], %%XMM0 \n"
+        "MOVHPS %[lhsYZ], %%XMM0 \n"
+        "MOVDDUP %[rhsX], %%XMM1 \n"
+        "MOVHPS %[rhsYZ], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outX] \n"
+        "MOVHPS %%XMM1, %[outYZ] \n"
+        : [outX] "=m"(out->x), [outYZ]"=m"(*(double*)&out->y)
+        : [lhsX] "m"(*(double*)&lhs->x), [lhsYZ]"m"(*(double*)&lhs->y),
+        [rhsX]"m"(*(double*)&rhs->x), [rhsYZ]"m"(*(double*)&rhs->y)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_L1
+#define setup_L1
+#define cleanup_L1
+
+// Variant L2 : DDup vector PD
+test_export test_inline uint128_t regcall test_vec3_L2(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
+    __asm__(
+        "MOVDDUP %[lhsX], %%XMM0 \n"
+        "MOVHPD %[lhsYZ], %%XMM0 \n"
+        "MOVDDUP %[rhsX], %%XMM1 \n"
+        "MOVHPD %[rhsYZ], %%XMM1 \n"
+        "ADDPS %%XMM0, %%XMM1 \n"
+        "MOVSS %%XMM1, %[outX] \n"
+        "MOVHPS %%XMM1, %[outYZ] \n"
+        : [outX] "=m"(out->x), [outYZ]"=m"(*(double*)&out->y)
+        : [lhsX] "m"(*(double*)&lhs->x), [lhsYZ]"m"(*(double*)&lhs->y),
+        [rhsX]"m"(*(double*)&rhs->x), [rhsYZ]"m"(*(double*)&rhs->y)
+        : clobber_list("xmm0", "xmm1")
+    );
+    PACK_RETURNS;
+}
+#define args_L2
+#define setup_L2
+#define cleanup_L2
+
 // Variant I1: Insert PS L2H
 test_export test_inline uint128_t regcall test_vec3_I1(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
     __asm__(
@@ -1054,7 +1210,7 @@ test_export test_inline uint128_t regcall test_vec3_J4(Float3* out, const Float3
 #define setup_J4
 #define cleanup_J4
 
-// Variant J5: Masked load extract SD
+// Variant J5: Maskmove LS
 test_export test_inline uint128_t regcall test_vec3_J5(Float3* out, const Float3* lhs, const Float3* rhs, size_t i = GARBAGE_ARG(uint32_t)) {
     __asm__(
         LOAD_MASK_VEC
@@ -1700,6 +1856,7 @@ int main(int argc, char* argv[]) {
 
     get_cpuid(1, eax, ebx, ecx, edx);
 
+    bool can_test_sse3 = edx & 1 << 0;
     bool can_test_sse41 = edx & 1 << 19;
     bool can_test_avx = edx & 1 << 28;
 
@@ -1733,11 +1890,13 @@ int main(int argc, char* argv[]) {
             "Brand:      Intel\n"
             "Model:      %u.0x%X.0x%X.0x%X\n"
             "CacheLine:  %u\n"
+            "SSE3:       %s\n"
             "SSE4.1:     %s\n"
             "AVX:        %s\n"
             "AVX512:     %s\n"
             , family, extended_model, model, stepping
             , cache_line_size
+            , bool_str(can_test_sse3)
             , bool_str(can_test_sse41)
             , bool_str(can_test_avx)
             , bool_str(can_test_avx512)
@@ -1752,11 +1911,13 @@ int main(int argc, char* argv[]) {
             "Brand:      AMD\n"
             "Model:      0x%X.0x%X.0x%X.0x%X\n"
             "CacheLine:  %u\n"
+            "SSE3:       %s\n"
             "SSE4.1:     %s\n"
             "AVX:        %s\n"
             "AVX512:     %s\n"
             , family, extended_model, model, stepping
             , cache_line_size
+            , bool_str(can_test_sse3)
             , bool_str(can_test_sse41)
             , bool_str(can_test_avx)
             , bool_str(can_test_avx512)
@@ -1767,12 +1928,14 @@ int main(int argc, char* argv[]) {
             "Brand:      %.12s\n"
             "Model:      0x%X.0x%X.0x%X.0x%X\n"
             "CacheLine:  %u\n"
+            "SSE3:       %s\n"
             "SSE4.1:     %s\n"
             "AVX:        %s\n"
             "AVX512:     %s\n"
             , manufacturer
             , family, extended_model, model, stepping
             , cache_line_size
+            , bool_str(can_test_sse3)
             , bool_str(can_test_sse41)
             , bool_str(can_test_avx)
             , bool_str(can_test_avx512)
@@ -1837,6 +2000,10 @@ int main(int argc, char* argv[]) {
     for_each_vec_type_control(test_vec3);
 #endif
     for_each_vec_type_no_avx512(test_vec3);
+
+    if (expect(can_test_sse3, true)) {
+        for_each_vec_type_sse3(test_vec3);
+    }
 
     if (expect(can_test_sse41, true)) {
         for_each_vec_type_sse41(test_vec3);
@@ -1964,6 +2131,13 @@ int main(int argc, char* argv[]) {
 #define desc_F2 "Half vector SD L2H:      "
 #define desc_G1 "Half vector PS LH2:      "
 #define desc_H1 "Direct vector PS LH2:    "
+#define desc_K1 "Half pair vector PS:     "
+#define desc_K2 "Half pair vector PD:     "
+#define desc_K3 "Half pair vector SP:     "
+#define desc_K4 "Half pair vector SD:     "
+
+#define desc_L1 "Dup pair vector PS:      "
+#define desc_L2 "Dup pair vector PD:      "
 
 #define desc_I1 "Insert half PS:          "
 #define desc_I2 "Insert half SD:          "
@@ -2006,6 +2180,13 @@ int main(int argc, char* argv[]) {
         print_time_estimate
 #endif
         for_each_vec_type_no_avx512(print_vec3_time)
+    );
+
+    if (can_test_sse3)
+    printf(
+        ""
+        for_each_vec_type_sse3(vec3_format_str)
+        for_each_vec_type_sse3(print_vec3_time)
     );
 
     if (can_test_sse41)

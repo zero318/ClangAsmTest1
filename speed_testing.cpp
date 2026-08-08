@@ -9,8 +9,8 @@
 
 #include "zero/util.h"
 
-#define NO_WOW64 1
-#define OLD_WINDOWS_COMPAT 1
+#define NO_WOW64 0
+#define OLD_WINDOWS_COMPAT 0
 
 alignas(4096) uint8_t PAGE_BUFFER[32];
 
