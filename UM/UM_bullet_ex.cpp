@@ -213,6 +213,7 @@ static inline constexpr GUID GUID_NULL = {};
 #define clang_forceinline
 #endif
 
+#ifndef __x86_64__
 extern "C" {
 	// This is the mangled name of the global operator delete.
 	// By default delete is supposed to *always* be noexcept,
@@ -221,14 +222,14 @@ extern "C" {
 	// instance of delete and almost always makes an EH frame
 	// without this terrible hack to trick it into thinking
 	// delete is an arbitrary function. Yuck.
-#ifndef __x86_64__
 	void __cdecl delete_no_eh_impl(void* ptr) asm("??3@YAXPAX@Z");
-#else
-	static forceinline void delete_no_eh_impl(void* ptr) {
-		delete ptr;
-	}
-#endif
 }
+#else
+template<typename T>
+static forceinline void delete_no_eh_impl(T* ptr) {
+	delete ptr;
+}
+#endif
 
 template <typename T>
 static inline constexpr void destroy_at_without_noexcept(T* p) {
@@ -249,7 +250,7 @@ static forceinline T* new_no_eh(Args&&... args) {
 template <typename T>
 static forceinline void delete_no_eh_nonnull(T* ptr) noexcept(false) {
 	destroy_at_without_noexcept(ptr);
-	delete_no_eh_impl((void*)ptr);
+	delete_no_eh_impl((unsigned char*)ptr);
 }
 template <typename T>
 static forceinline void delete_no_eh(T* ptr) noexcept(false) {
@@ -1192,7 +1193,7 @@ namespace Pbg {
 						file_offset = this->get_file_pointer();
 						if (this->set_file_pointer(file_offset, FILE_BEGIN)) {
 							if (!this->read_file_to_buffer(buffer, file_size)) {
-								// Yes, this free is misplaced and can leak memory
+								// BUG: Yes, this free is misplaced and can leak memory
 								free(buffer);
 							} else {
 								this->set_file_pointer(file_offset, FILE_BEGIN);
@@ -8359,7 +8360,7 @@ static CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] = {
 
 template <typename L>
 static inline constexpr const CardData& find_in_card_data(const L& lambda) {
-	for (int32_t i = 0; i < countof(CARD_DATA_TABLE); ++i) {
+	nounroll for (int32_t i = 0; i < countof(CARD_DATA_TABLE); ++i) {
 		if (lambda(CARD_DATA_TABLE[i])) {
 			return CARD_DATA_TABLE[i];
 		}
@@ -12091,9 +12092,9 @@ struct EclSubHeader {
 };
 // EclSubHeader Validation
 #define V EclSubHeader
-VFO(0x0,name)
-VFO(0x4,data)
-VSS(0x8)
+VFO32(0x0,name)
+VFO32(0x4,data)
+VSS32(0x8)
 #undef V
 
 // size: 0x8
@@ -23012,7 +23013,7 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC Supervisor::on_draw_B(void* pt
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ONE);
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
-		SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
+		SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
 		SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
 
 		PrimitiveVertex verts[4];
@@ -24484,7 +24485,7 @@ struct ScreenEffect : ZUNTask {
 			int32_t duration = self->duration;
 			if (duration) {
 				if (self->timer < duration) {
-					int32_t alpha = 255.0f - self->timer * 255.0f / duration;
+					int32_t alpha = self->timer * 255.0f / duration;
 					self->alpha = alpha;
 					if (alpha < 0) {
 						self->alpha = 0;
@@ -24543,7 +24544,7 @@ struct ScreenEffect : ZUNTask {
 
 		if (!self->__dword_28) {
 			int32_t duration = self->__int_18;
-			if (self->timer <= duration) {
+			if (duration && self->timer <= duration) {
 				self->alpha = 128 - (int32_t)(self->timer * 128.0f / duration);
 			}
 		}
@@ -24688,9 +24689,12 @@ struct ScreenEffect : ZUNTask {
 
 		D3DCOLOR color = self->alpha << 24 | self->color2 & 0x00FFFFFF;
 
+		Float2 position = { WINDOW_DATA.__screen_start_x, WINDOW_DATA.__screen_start_y };
+		Float2 size = { WINDOW_DATA.__screen_width_current, WINDOW_DATA.__screen_height_current };
+
 		Float2 coords[2] = {
-			{ WINDOW_DATA.__screen_start_x, WINDOW_DATA.__screen_start_y },
-			{ WINDOW_DATA.__screen_width_current, WINDOW_DATA.__screen_height_current }
+			position,
+			position + size
 		};
 
 		ANM_MANAGER_PTR->__render_simple_polygon(coords, color);
@@ -41307,7 +41311,7 @@ dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataA(AnmVM* vm) {
 				SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
 				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
 				SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
-				SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLEND_ZERO);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
 
 				AnmManager* anm_manager_ptr = ANM_MANAGER_PTR;
 
@@ -41344,8 +41348,8 @@ dllexport gnu_noinline int fastcall AnmVM::on_draw_special_dataA(AnmVM* vm) {
 				SUPERVISOR.d3d_device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
 
 				ANM_MANAGER_PTR->current_blend_mode = BlendHardcoded; // 11
-				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
-				SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_SRCALPHA);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_SRCALPHA);
+				SUPERVISOR.d3d_device->SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ONE);
 				SUPERVISOR.d3d_device->SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
 			}
 			break;

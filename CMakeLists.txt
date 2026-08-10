@@ -10,6 +10,24 @@ set(CMAKE_IS_BROKEN TRUE)
 
 #set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
+# SSE, SSE2
+set(ENABLE_SSE2 TRUE)
+# SSE3, SSSE3, SSE4.1, SSE4.2, POPCNT, LZCNT
+set(ENABLE_SSE4 FALSE)
+# AVX, BMI, FMA
+set(ENABLE_AVX_BMI FALSE)
+# AVX2, BMI2
+set(ENABLE_AVX2_BMI2 FALSE)
+# SSE4A
+set(ENABLE_SSE4A FALSE)
+# XOP, TBM, FMA4
+set(ENABLE_XOP_TBM_FMA4 FALSE)
+# SAHF
+set(ENABLE_LAHF_SAHF_ON_X64 TRUE)
+# Preferred vector width
+set(YMM_IS_SLOW FALSE)
+set(ZMM_IS_SLOW FALSE)
+
 #if(CMAKE_IS_BROKEN)
 #set(MY_CXX_CLANG_TIDY "${CLANG_TIDY_COMMAND};--extra-arg-before=--driver-mode=cl;--extra-arg=/clang:-std=c++2b;--format-style=none;"
 #"--extra-arg=-IF:\\MyCodeLibs\\asmlib -imsvc ..\\..\\..\\zero_include;"
@@ -339,22 +357,63 @@ target_compile_definitions(${EXE} PRIVATE
 )
 
 # CPU Feature flags
+if (NOT ENABLE_SSE2)
+target_compile_options(${EXE} PRIVATE
+	"-mno-sse"
+	"-mno-sse2"
+)
+endif()
+if (NOT ENABLE_SSE4)
+target_compile_options(${EXE} PRIVATE
+	"-mno-sse3"
+	"-mno-ssse3"
+	"-mno-sse4.1"
+	"-mno-sse4.2"
+	"-mno-lzcnt"
+	"-mno-popcnt"
+)
+endif()
+if (NOT ENABLE_AVX_BMI)
 target_compile_options(${EXE} PRIVATE
 	"-mno-avx"
+	"-mno-fma"
 	"-mno-bmi"
-	#"-msse4.1"
-	"-mno-sse4.1"
-	"-mno-ssse3"
-	"-mno-sse3"
-	"-mno-lzcnt"
-
+)
+endif()
+if (NOT ENABLE_AVX2_BMI2)
+target_compile_options(${EXE} PRIVATE
+	"-mno-avx2"
+	"-mno-bmi2"
+)
+endif()
+if (NOT ENABLE_SSE4A)
+target_compile_options(${EXE} PRIVATE
+	"-mno-sse4a"
+)
+endif()
+if (NOT ENABLE_XOP_TBM_FMA4)
+target_compile_options(${EXE} PRIVATE
 	"-mno-xop"
 	"-mno-tbm"
-	"-mno-sse4a"
 	"-mno-fma4"
-	"-mno-fma"
-	#"SHELL:-Xclang -mprefer-vector-width=128"
 )
+endif()
+if (IS_X64 AND ENABLE_LAHF_SAHF_ON_X64)
+target_compile_options(${EXE} PRIVATE
+	"-msahf"
+)
+endif()
+if (ZMM_IS_SLOW)
+if (YMM_IS_SLOW)
+target_compile_options(${EXE} PRIVATE
+	"SHELL:-Xclang -mprefer-vector-width=128"
+)
+else()
+target_compile_options(${EXE} PRIVATE
+	"SHELL:-Xclang -mprefer-vector-width=256"
+)
+endif()
+endif()
 
 # Warning Suppression
 target_compile_options(${EXE} PRIVATE
@@ -687,8 +746,8 @@ target_compile_options(${EXE} PRIVATE
 	"SHELL:-Xclang -fdata-sections"
 	"SHELL:-Xclang -ffunction-sections"
 	
-	#/fp:fast
-	#"SHELL:-Xclang -ffast-math"
+	/fp:fast
+	"SHELL:-Xclang -ffast-math"
 	${SLASH_CLANG_ARG}-fno-math-errno
 	"SHELL:-Xclang -fapprox-func"
 	"SHELL:-Xclang -freciprocal-math"
@@ -741,8 +800,8 @@ target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-mno-seses
 	${SLASH_CLANG_ARG}-mno-speculative-load-hardening
 	#${SLASH_CLANG_ARG}-ffinite-math-only
-	#${SLASH_CLANG_ARG}-fno-honor-nans
-	#${SLASH_CLANG_ARG}-fno-honor-infinities
+	${SLASH_CLANG_ARG}-fno-honor-nans
+	${SLASH_CLANG_ARG}-fno-honor-infinities
 	"SHELL:-Xclang -mconstructor-aliases"
 	"SHELL:-Xclang -fno-lifetime-dse"
 	"SHELL:-mllvm -post-RA-scheduler=false"
@@ -982,7 +1041,6 @@ if(IS_X64)
 target_compile_options(ntoskrnl_tests PRIVATE
 	-march=x86-64
 	-mprfchw
-	-msahf
 )
 else()
 target_compile_options(ntoskrnl_tests PRIVATE
@@ -1005,7 +1063,6 @@ if(IS_X64)
 target_compile_options(winload_tests PRIVATE
 	-march=x86-64
 	-mprfchw
-	-msahf
 )
 else()
 target_compile_options(winload_tests PRIVATE
@@ -1110,13 +1167,13 @@ target_compile_definitions(UMTest1 PRIVATE
 	#ZUNListIdkDefault=true
 )
 target_compile_options(UMTest1 PRIVATE
-	"-mno-avx"
-	"-mno-bmi"
-	"-mno-xop"
-	"-mno-tbm"
-	"-mno-sse4a"
-	"-mno-fma4"
-	"-mno-sse3"
+	#"-mno-avx"
+	#"-mno-bmi"
+	#"-mno-xop"
+	#"-mno-tbm"
+	#"-mno-sse4a"
+	#"-mno-fma4"
+	#"-mno-sse3"
 	#-Rpass=.*vectorize.*
 	#-Rpass-missed=.*vectorize.*
 	#-Rpass-analysis=.*vectorize.*
@@ -1767,7 +1824,7 @@ target_compile_definitions(x64_injector PRIVATE
 	STOP_LINKING_DEFAULT_LIB_PLZ
 )
 target_link_options(x64_injector PRIVATE
-	/ENTRY:entry	
+	/ENTRY:entry
 	${NOSTDLIB_LINK}
 )
 
@@ -1924,7 +1981,6 @@ if(IS_X64)
 target_compile_options(z86_emulator PRIVATE
 	"-fno-pic"
 	"-fno-pie"
-	"-msahf"
 )
 endif()
 
@@ -1949,7 +2005,6 @@ target_compile_definitions(ttt_no_mem PRIVATE
 target_compile_options(ttt_no_mem PRIVATE
 	"-fno-pic"
 	"-fno-pie"
-	"-msahf"
 )
 target_link_options(ttt_no_mem PRIVATE
 	/LARGEADDRESSAWARE:NO
