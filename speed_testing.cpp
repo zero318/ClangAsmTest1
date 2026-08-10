@@ -61,6 +61,7 @@ __VA_ARGS__(M) \
 __VA_ARGS__(M2) \
 __VA_ARGS__(G2) \
 __VA_ARGS__(G) \
+__VA_ARGS__(G3) \
 __VA_ARGS__(O) \
 __VA_ARGS__(O2) \
 __VA_ARGS__(O3) \
@@ -99,6 +100,7 @@ __VA_ARGS__(M) \
 __VA_ARGS__(M2) \
 __VA_ARGS__(G2) \
 __VA_ARGS__(G) \
+__VA_ARGS__(G3) \
 __VA_ARGS__(O) \
 __VA_ARGS__(O2) \
 __VA_ARGS__(O3) \
@@ -484,6 +486,22 @@ test_export test_inline void regcall test_G2(vec<uint32_t, 4> value) {
     vec<uint32_t, 4> xmm_rand = RAND_XMM; \
     __asm__ volatile("":"+x"(xmm_rand));
 #define cleanup_G2
+
+// Variant G3: MASKMOVDQU
+test_export test_inline void regcall test_G3(vec<uint32_t, 4> value) {
+    alignas(16) char buffer[16];
+    vec<uint32_t, 4> temp;
+    __asm__ volatile (
+        "MASKMOVDQU %[value], %[value] \n"
+        : asm_arg("=x", temp)
+        : asm_arg("x", value), [buffer]"D"(&buffer)
+    );
+}
+#define args_G3 xmm_rand
+#define setup_G3 \
+    vec<uint32_t, 4> xmm_rand = RAND_XMM; \
+    __asm__ volatile("":"+x"(xmm_rand));
+#define cleanup_G3
 
 // Variant H: LOOP 32
 test_export test_inline void regcall test_H() {
@@ -1325,6 +1343,7 @@ void fastcall run_test(uint32_t test_count) {
 #define desc_M2 "PUSH/POP r32:            "
 #define desc_G2 "MOVDQA/MOVDQA:           "
 #define desc_G  "MASKMOVDQU/MOVDQA:       "
+#define desc_G3 "MASKMOVDQU:              "
 #define desc_O  "RCR r32, 31:             "
 #define desc_O2 "SHRD r32, r32, 31:       "
 #define desc_O3 "ROR r32, 31:             "

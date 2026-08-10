@@ -557,36 +557,43 @@ static forceinline double tan(double value) {
 
 #if GAME_VERSION == EoSD_VER
 #define float_inline_state ForceInline
+#define sqrt_inline_state ForceInline
 #define float_volatile /*volatile*/
 #define float_convention stdcall
 #define float_linkage static
 #elif GAME_VERSION == PCB_VER || (GAME_VERSION >= StB_VER && GAME_VERSION <= UB_VER)
 #define float_inline_state ForceInline
+#define sqrt_inline_state ForceInline
 #define float_volatile
 #define float_convention stdcall
 #define float_linkage static
 #elif GAME_VERSION == IN_VER || GAME_VERSION == PoFV_VER
 #define float_inline_state NoInline
+#define sqrt_inline_state NoInline
 #define float_volatile
 #define float_convention stdcall
 #define float_linkage static
 #elif GAME_VERSION >= SA_VER && GAME_VERSION <= TD_VER
 #define float_inline_state DefaultInline
+#define sqrt_inline_state DefaultInline
 #define float_volatile /*volatile*/
 #define float_convention stdcall
 #define float_linkage static
 #elif GAME_VERSION >= DDC_VER && GAME_VERSION <= UDoALG_VER
 #define float_inline_state NoInline
+#define sqrt_inline_state ForceInline
 #define float_volatile
 #define float_convention vectorcall
 #define float_linkage static
 #elif GAME_VERSION == FW_VER
 #define float_inline_state NoInline
+#define sqrt_inline_state NoInline
 #define float_volatile
 #define float_convention cdecl
 #define float_linkage dllexport
 #else
 #define float_inline_state DefaultInline
+#define sqrt_inline_state DefaultInline
 #define float_volatile
 #define float_convention
 #define float_linkage static
@@ -793,7 +800,7 @@ static forceinline long double zsqrtl(long double value) {
 static forceinline double zsqrt(double value) {
     return ZCRT::sqrt(value);
 }
-template <InlineState inline_state = float_inline_state>
+template <InlineState inline_state = sqrt_inline_state>
 static forceinline float zsqrtf(float value) {
     if constexpr (inline_state == ForceInline) {
         clang_forceinline return ZCRT::sqrtf(value);

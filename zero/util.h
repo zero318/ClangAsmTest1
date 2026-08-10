@@ -817,7 +817,10 @@ enum InlineState {
 
 #if !CPP20 && !(defined(__cpp_consteval) && __cpp_consteval >= 201811L)
 #define consteval constexpr
+#define not_consteval (!std::is_constant_evaluated())
 #pragma message("consteval not supported, using constexpr instead")
+#else
+#define not_consteval !consteval
 #endif
 #if !CPP20 && !(defined(__cpp_constinit) && __cpp_constinit >= 201907L)
 #define constinit
@@ -2664,7 +2667,10 @@ static forceinline const T* based_pointer(const void* base, void* offset) {
 
 constexpr inline size_t byteloop_strlen(const char *const restrict str) {
     const char *restrict temp = str;
-    while (*temp) ++temp;
+    while (*temp) {
+        ++temp;
+        if not_consteval{ __asm__ volatile (""::"r"(temp)); }
+    }
     return temp - str;
 }
 
@@ -3374,7 +3380,10 @@ inline bool byteloop_strucmp(const volatile uint8_t* restrict strA, const volati
 template <size_t size>
 inline char* byteloop_strcat(char* restrict dst, const char (&src)[size]) {
     char* original_dst = dst;
-    while (*dst) ++dst;
+    while (*dst) {
+        ++dst;
+        if not_consteval{ __asm__ volatile (""::"r"(dst)); }
+    }
     __builtin_memcpy(dst, src, sizeof(src));
     return original_dst;
 }
@@ -3383,7 +3392,10 @@ inline char* byteloop_strcat(char* restrict dst, const char (&src)[size]) {
 template <typename T>
 inline char* byteloop_strcat(char*restrict dst, const T src) {
     char* original_dst = dst;
-    while (*dst) ++dst;
+    while (*dst) {
+        ++dst;
+        if not_consteval{ __asm__ volatile (""::"r"(dst)); }
+    }
     byteloop_strcpy(dst, src);
     return original_dst;
 }
@@ -3392,10 +3404,10 @@ inline char* byteloop_strcat(char*restrict dst, const T src) {
 template <typename T>
 inline char* byteloop_strcat(char* restrict dst, T src) {
     const char* original_src = src;
-    while (*src++);
+    while (*src++) if not_consteval{ __asm__ volatile (""::"r"(src)); }
     size_t src_length = PtrDiffStrlen(src, original_src);
     char* dst_end = dst - 1;
-    while (*++dst_end);
+    while (*++dst_end) if not_consteval{ __asm__ volatile (""::"r"(dst_end)); }
     __builtin_memcpy(dst_end, original_src, src_length);
     return dst;
 }

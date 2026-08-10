@@ -563,6 +563,7 @@ target_compile_options(${EXE} PRIVATE
 	# of emitting NOPs? Maybe?
 	"SHELL:-mllvm -x86-pad-for-align=true"
 	"SHELL:-mllvm -x86-pad-for-branch-align=true"
+	"SHELL:-mllvm -x86-pad-max-prefix-size=1"
 
 	#"SHELL:-mllvm -enable-interleaved-mem-accesses=true"
 	#"SHELL:-mllvm -enable-masked-interleaved-mem-accesses=true"
@@ -573,8 +574,12 @@ target_compile_options(${EXE} PRIVATE
 	"SHELL:-mllvm -extra-vectorizer-passes=true"
 	"SHELL:-mllvm -aggressive-ext-opt"
 
+	"SHELL:-mllvm -mcp-use-is-copy-instr=true"
+	"SHELL:-mllvm -enable-spill-copy-elim=true"
+
 	# Screw with these at some point to fix that stupid
 	# "move tons of LEA above a switch" nonsense
+	# NOTE: updating clang fixed this anyway
 	#"SHELL:-mllvm -disable-licm-promotion=true"
 	#"SHELL:-mllvm -disable-machine-licm=true"
 	#"SHELL:-mllvm -disable-postra-machine-licm=true"
@@ -586,6 +591,9 @@ target_compile_options(${EXE} PRIVATE
 	# Disable Stack Slot Coloring
 	#"SHELL:-mllvm -disable-ssc=true"
 
+	# Apply global merging to exported stuff
+	"SHELL:-mllvm -global-merge-on-external=true"
+
 	# Enable splitting cold blocks into independent things
 	#"SHELL:-mllvm -enable-split-machine-functions=true"
 
@@ -594,9 +602,6 @@ target_compile_options(${EXE} PRIVATE
 	
 	# Convert all CMOVs to branches
 	#"SHELL:-mllvm -x86-cmov-converter-force-all=true"
-
-	# Disable SSE domain reassignment
-	#"SHELL:-mllvm -disable-x86-domain-reassignment=true"
 
 	# Disable converting byte/word instructions to dword
 	#"SHELL:-mllvm -fixup-byte-word-insts=false"
@@ -615,13 +620,23 @@ target_compile_options(${EXE} PRIVATE
 
 	# Enable early if conversion
 	#"SHELL:-mllvm -x86-early-ifcvt=true"
+	#"SHELL:-mllvm -enable-early-ifcvt-data-dependent=true"
+
+	#"SHELL:-mllvm -x86-br-merging-likely-bias=0"
+	#"SHELL:-mllvm -x86-br-merging-unlikely-bias=-1"
+
+	# Disable SSE domain reassignment
+	#"SHELL:-mllvm -disable-x86-domain-reassignment=true"
+
+	#"SHELL:-mllvm -enable-branch-hint=true"
+	#"SHELL:-mllvm -branch-hint-probability-threshold=50"
 
 	# Subtarget controls
 	#"SHELL:-Xclang -target-feature -Xclang -"
 	#"SHELL:-Xclang -target-feature -Xclang -slow-shld"
 	#"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay"
 	# Steamroller has no MOV domain penalty for register->register
-	"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay-mov"
+	#"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay-mov"
 	#"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay-blend"
 	# All shuffles are integer unit anyway whether I like it or not
 	"SHELL:-Xclang -target-feature -Xclang +no-bypass-delay-shuffle"
@@ -672,10 +687,14 @@ target_compile_options(${EXE} PRIVATE
 	"SHELL:-Xclang -fdata-sections"
 	"SHELL:-Xclang -ffunction-sections"
 	
-	"SHELL:-Xclang -ffp-contract=fast"
-	/fp:fast
-	"SHELL:-Xclang -ffast-math"
+	#/fp:fast
+	#"SHELL:-Xclang -ffast-math"
 	${SLASH_CLANG_ARG}-fno-math-errno
+	"SHELL:-Xclang -fapprox-func"
+	"SHELL:-Xclang -freciprocal-math"
+	${SLASH_CLANG_ARG}-fassociative-math
+	"SHELL:-Xclang -fno-signed-zeros"
+	"SHELL:-Xclang -ffp-contract=fast"
 
 	#"SHELL:-Xclang -fassume-sane-operator-new"
 	${SLASH_CLANG_ARG}-fnew-infallible
@@ -706,10 +725,11 @@ target_compile_options(${EXE} PRIVATE
 	# Clang 24 starts complaining about Itanium ABI with this enabled???
 	${SLASH_CLANG_ARG}-mno-ms-bitfields
 	#"SHELL:-Xclang -mno-ms-bitfields"
+	${SLASH_CLANG_ARG}-fno-honor-nans
+	${SLASH_CLANG_ARG}-fno-honor-infinities
 )
 else()
 target_compile_options(${EXE} PRIVATE
-	${SLASH_CLANG_ARG}-fassociative-math
 	#${SLASH_CLANG_ARG}-fno-assume-nothrow-exception-dtor
 	#${SLASH_CLANG_ARG}-fdevirtualize-speculatively
 	${SLASH_CLANG_ARG}-fexcess-precision=fast
@@ -723,9 +743,9 @@ target_compile_options(${EXE} PRIVATE
 	#${SLASH_CLANG_ARG}-ffinite-math-only
 	#${SLASH_CLANG_ARG}-fno-honor-nans
 	#${SLASH_CLANG_ARG}-fno-honor-infinities
-	#${SLASH_CLANG_ARG}-fno-signed-zeros
 	"SHELL:-Xclang -mconstructor-aliases"
 	"SHELL:-Xclang -fno-lifetime-dse"
+	"SHELL:-mllvm -post-RA-scheduler=false"
 )
 endif()
 

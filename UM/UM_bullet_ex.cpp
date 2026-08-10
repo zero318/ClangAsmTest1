@@ -1403,9 +1403,13 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
 	return buffer;
 }
 
+#define LZSS_DICTSIZE 0x2000
+#define LZSS_DICTSIZE_MASK (LZSS_DICTSIZE - 1)
+#define LZSS_MIN_MATCH 3
+
 extern "C" {
 // 0x51F660
-externcg uint8_t DECOMPRESS_BUFFER[0x2000] cgasm("_DECOMPRESS_BUFFER");
+externcg uint8_t LZSS_DICT[LZSS_DICTSIZE] cgasm("_DECOMPRESS_BUFFER");
 }
 
 // 0x46F5B0
@@ -1416,10 +1420,6 @@ dllexport gnu_noinline void* fastcall __compress_buffer(void* buffer_in, int32_t
 	*out_buffer_size = rand();
 	return (void*)rand();
 }
-
-#define LZSS_DICTSIZE 0x2000
-#define LZSS_DICTSIZE_MASK (LZSS_DICTSIZE - 1)
-#define LZSS_MIN_MATCH 3
 
 // 0x46F840
 dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32_t buffer_size, void* out_buffer, int32_t out_buffer_size) ASR(0x46F840);
@@ -1547,9 +1547,9 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
 		if (uintB) {
 			// loop A
 			uint32_t val = common_loop(0b10000000); // 0x80
-			DECOMPRESS_BUFFER[decompress_buffer_offset++] = val;
+			LZSS_DICT[decompress_buffer_offset++] = val;
 			*out_buffer_write++ = val;
-			decompress_buffer_offset %= countof(DECOMPRESS_BUFFER);
+			decompress_buffer_offset %= countof(LZSS_DICT);
 		}
 		else {
 			// loop B
@@ -1562,10 +1562,10 @@ dllexport gnu_noinline void* fastcall __decompress_buffer(void* buffer_in, int32
 			int32_t iters = common_loop(0b1000) + 2; // 0x8
 			// loop D
 			for (int32_t i = 0; i <= iters; ++i) {
-				uint8_t val = DECOMPRESS_BUFFER[(intD + i) % countof(DECOMPRESS_BUFFER)];
-				DECOMPRESS_BUFFER[decompress_buffer_offset++] = val;
+				uint8_t val = LZSS_DICT[(intD + i) % countof(LZSS_DICT)];
+				LZSS_DICT[decompress_buffer_offset++] = val;
 				*out_buffer_write++ = val;
-				decompress_buffer_offset %= countof(DECOMPRESS_BUFFER);
+				decompress_buffer_offset %= countof(LZSS_DICT);
 			}
 		}
 	}
@@ -9816,23 +9816,23 @@ dllexport gnu_noinline float vectorcall __interp_inner_thing(int32_t mode, float
 				return 0.5f + value * 0.5f;
 			}
 		case DecelerateSine: // 18
-			return zsinf(value * PI_f * 0.5f);
+			return zsin(value * PI_f * 0.5f);
 		case AccelerateSine: // 19
-			return 1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f);
+			return 1.0f - zsin(value * PI_f * 0.5f + HALF_PI_f);
 		case DecelAccelSine: // 20
 			value += value;
 			if (1.0f > value) {
-				return zsinf(value * PI_f * 0.5f) * 0.5f;
+				return zsin(value * PI_f * 0.5f) * 0.5f;
 			} else {
-				return (1.0f - zsinf(value * PI_f * 0.5f)) * 0.5f + 0.5f;
+				return (1.0f - zsin(value * PI_f * 0.5f)) * 0.5f + 0.5f;
 			}
 		case AccelDecelSine: // 21
 			value += value;
 			if (1.0f > value) {
-				return (1.0f - zsinf(value * PI_f * 0.5f + HALF_PI_f)) * 0.5f;
+				return (1.0f - zsin(value * PI_f * 0.5f + HALF_PI_f)) * 0.5f;
 			} else {
 				value = value - 1.0f;
-				return zsinf(value * PI_f * 0.5f) * 0.5f + 0.5f;
+				return zsin(value * PI_f * 0.5f) * 0.5f + 0.5f;
 			}
 		case AccelParabolaA: // 22
 			value = value - 0.25f;
@@ -39890,6 +39890,7 @@ struct AbilityMenu : ZUNTask {
 							ABILITY_TEXT_DATA_PTR->__show_card_type_label_if_unlocked(this->card_ids[this->__menu_select_1BC], false);
 				sprite_set_loop_A:
 							position = this->base_position + Float3(0.0f, 224.0f, 0.0f);
+							this->__float3_2C0 = position;
 							for (int32_t i = 0; i < this->__card_count; ++i) {
 								this->__anm_id_array_7EC[i].mark_tree_for_delete();
 								this->__anm_id_array_7EC[i] = ABILITY_MANAGER_PTR->instantiate_large_card_sprite_vm(&position, 13, this->cards[i]);
@@ -64694,7 +64695,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 
 	byteloop_strcpy(self->info->name, name);
 	for (
-		int32_t i = strlen(name);
+		int32_t i = byteloop_strlen(name);
 		i < countof(self->info->name) - 1;
 		++i
 	) {
