@@ -19938,11 +19938,11 @@ private:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
 			++primitive_write_cursor;
 
-			if (i) {
+			if (i > 0) {
 				do {
 					primitive_write_cursor->position.make_from_vector(angle, radius);
 					angle += angle_add;
@@ -20018,9 +20018,9 @@ private:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
-			if (i) {
+			if (i > 0) {
 				do {
 					primitive_write_cursor->position.make_from_vector(angle, radius);
 					angle += angle_add;
@@ -20096,10 +20096,10 @@ private:
 			float half_width = width * 0.5f;
 
 			float radius_inner = radius - half_width;
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 			float radius_outer = radius + half_width;
 
-			if (i) {
+			if (i > 0) {
 				do {
 					primitive_write_cursor[0].position.make_from_vector(angle, radius_inner);
 					primitive_write_cursor[0].position.x += position_x;
@@ -20836,11 +20836,11 @@ public:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
 			++primitive_write_cursor;
 
-			if (i) {
+			if (i > 0) {
 				int32_t j = 0;
 				do {
 					primitive_write_cursor->position.make_from_vector(angle, j & 1 ? radius_odd : radius_even);
@@ -20890,9 +20890,9 @@ public:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
-			if (i) {
+			if (i > 0) {
 				int32_t j = 0;
 				do {
 					primitive_write_cursor->position.make_from_vector(angle, j & 1 ? radius_odd : radius_even);
@@ -20939,11 +20939,11 @@ public:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
 			float half_width = width * 0.5f;
 
-			if (i) {
+			if (i > 0) {
 				int32_t j = 0;
 				do {
 					primitive_write_cursor[0].position.make_from_vector(angle, (j & 1 ? radius_odd : radius_even) - half_width);
@@ -21004,11 +21004,11 @@ public:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
 			++primitive_write_cursor;
 
-			if (i) {
+			if (i > 0) {
 				Float2 unit;
 				unit.make_unit_vector(angle);
 				do {
@@ -21061,9 +21061,9 @@ public:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
-			if (i) {
+			if (i > 0) {
 				Float2 unit;
 				unit.make_unit_vector(angle);
 				do {
@@ -21115,9 +21115,9 @@ public:
 
 			float half_width = width * 0.5f;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
-			if (i) {
+			if (i > 0) {
 				Float2 unit;
 				unit.make_unit_vector(angle);
 				do {
@@ -21184,14 +21184,14 @@ public:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
 			++primitive_write_cursor;
 
 			float half_width = (size_x - (radius + radius)) * 0.5f;
 			float half_height = (size_y - (radius + radius)) * 0.5f;
 
-			if (i) {
+			if (i > 0) {
 				int32_t j = 0;
 				Float2 unit;
 				unit.make_unit_vector(rotation);
@@ -21266,12 +21266,12 @@ public:
 
 			int32_t i = sides + 1;
 
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 
 			float half_width = (size_x - (radius + radius)) * 0.5f;
 			float half_height = (size_y - (radius + radius)) * 0.5f;
 
-			if (i) {
+			if (i > 0) {
 				int32_t j = 0;
 				Float2 unit;
 				unit.make_unit_vector(rotation);
@@ -21349,13 +21349,13 @@ public:
 			float half_width = width * 0.5f;
 
 			float radius_inner = radius - half_width;
-			float angle_add = TWO_PI_f / i;
+			float angle_add = TWO_PI_f / sides;
 			float radius_outer = radius + half_width;
 
 			half_width = size_x * 0.5f;
 			float half_height = size_y * 0.5f;
 
-			if (i) {
+			if (i > 0) {
 				int32_t j = 0;
 				Float2 unit;
 				unit.make_unit_vector(rotation);
