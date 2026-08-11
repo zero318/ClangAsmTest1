@@ -16909,10 +16909,10 @@ VSS32(0xC8)
 
 			SPRITE_VERTEX_BUFFER_A[0].position.x = (X0 * unit_x - Y0 * unit_y) + projectedA.x;
 			SPRITE_VERTEX_BUFFER_A[0].position.y = (X0 * unit_y + Y0 * unit_x) + projectedA.y;
-			SPRITE_VERTEX_BUFFER_A[1].position.x = (X1 * unit_x - Y1 * unit_y) + projectedA.x;
-			SPRITE_VERTEX_BUFFER_A[1].position.y = (X1 * unit_y + Y1 * unit_x) + projectedA.y;
-			SPRITE_VERTEX_BUFFER_A[2].position.x = (X2 * unit_x - Y2 * unit_y) + projectedA.x;
-			SPRITE_VERTEX_BUFFER_A[2].position.y = (X2 * unit_y + Y2 * unit_x) + projectedA.y;
+			SPRITE_VERTEX_BUFFER_A[1].position.x = (X1 * unit_x - Y2 * unit_y) + projectedA.x;
+			SPRITE_VERTEX_BUFFER_A[1].position.y = (X1 * unit_y + Y2 * unit_x) + projectedA.y;
+			SPRITE_VERTEX_BUFFER_A[2].position.x = (X2 * unit_x - Y1 * unit_y) + projectedA.x;
+			SPRITE_VERTEX_BUFFER_A[2].position.y = (X2 * unit_y + Y1 * unit_x) + projectedA.y;
 			SPRITE_VERTEX_BUFFER_A[3].position.x = (X3 * unit_x - Y3 * unit_y) + projectedA.x;
 			SPRITE_VERTEX_BUFFER_A[3].position.y = (X3 * unit_y + Y3 * unit_x) + projectedA.y;
 			return ZUN_SUCCESS;
@@ -54668,7 +54668,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			float speed = this->get_float_arg(1);
 			float orbit_radius = this->get_float_arg(2);
 			float orbit_radius_delta = this->get_float_arg(3);
-			if (motion.mode_is_orbit()) {
+			if (!motion.mode_is_orbit()) {
 				motion.set_orbit_origin(motion.get_position());
 			}
 			if (angle > -999999.0) {
@@ -54744,7 +54744,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			float orbit_radius_delta = this->get_float_arg(3);
 			float ellipse_angle = this->get_float_arg(4);
 			float ellipse_ratio = this->get_float_arg(5);
-			if (motion.mode_is_orbit()) {
+			if (!motion.mode_is_orbit()) {
 				motion.set_orbit_origin(motion.get_position());
 			}
 			if (angle > -999999.0) {
