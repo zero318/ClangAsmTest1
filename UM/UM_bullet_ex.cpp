@@ -48466,11 +48466,12 @@ public:
 	}
 
 	// 0x42CC70
-	dllexport gnu_noinline uint32_t thiscall __count_graze_array() ASR(0x42CC70) {
+	dllexport gnu_noinline static uint32_t __count_graze_array() ASR(0x42CC70) {
+		BulletManager* bullet_manager = BULLET_MANAGER_PTR;
 		// MSVC loops this 2 at a time?
 		uint32_t count = 0;
-		for (size_t i = 0; i < countof(this->__graze_array); ++i) {
-			count += this->__graze_array[i];
+		for (size_t i = 0; i < countof(bullet_manager->__graze_array); ++i) {
+			count += bullet_manager->__graze_array[i];
 		}
 		return count;
 	}
@@ -55860,6 +55861,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			params.width = this->shooters[slot].width;
 			params.shoot_sound = this->shooters[slot].shoot_sound;
 			params.transform_sound = this->shooters[slot].transform_sound;
+			params.distance = this->shooters[slot].distance;
 			params.laser_id = this->get_int_arg(1);
 			LASER_MANAGER_PTR->allocate_new_laser(InfiniteLaser, &params);
 			break;

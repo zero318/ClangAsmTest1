@@ -9,7 +9,7 @@ SET "trustd=%truth_path%truth-core.exe trustd"
 SET "trumsg=%truth_path%truth-core.exe trumsg"
 
 SET "out=..\..\out\build\x86-Clang-Release-Debug-Custom\"
-SET "outD=..\..\out\build\x86-Clang-Debug\"
+SET "outD=..\..\out\build\x86-Clang-Debug-Custom\"
 
 SET "thecl=F:\Users\zero318\Source\Repos\thtk_current2\out\build\x64-Clang-Release-Debug\thecl\thecl.exe"
 
