@@ -46332,7 +46332,7 @@ struct LaserData {
 	int32_t invulnerable_time; // 0x77C
 	int32_t sprite; // 0x780
 	int32_t color; // 0x784
-	uint8_t derived_class[0]; // 0x788
+	// 0x788
 
 	inline void zero_contents() {
 		zero_this();
@@ -46398,7 +46398,7 @@ public:
 	// 0x42D700
 	dllexport gnu_noinline void thiscall set_position(Float3* position) ASR(0x42D700) {
 		// why zun, don't do this
-		*(Float3*)&this->derived_class[0] = this->position = *position;
+		*based_pointer<Float3>(this, sizeof(*this) + 0x0) = this->position = *position;
 	}
 
 	// 0x42D730
@@ -46407,13 +46407,13 @@ public:
 	// Curve:       angle, width, __speed1
 	// Beam:        velocity
 	dllexport gnu_noinline void thiscall set_velocity(Float3* set_velocity) ASR(0x42D730) {
-		*(Float3*)&this->derived_class[0xC] = *set_velocity;
+		*based_pointer<Float3>(this, sizeof(*this) + 0xC) = *set_velocity;
 	}
 
 private:
 	// 0x42D750
 	dllexport gnu_noinline void vectorcall set_angular_velocity(float, float angular_velocity) {
-		*(float*)&this->derived_class[0x1C] = angular_velocity;
+		*based_pointer<float>(this, sizeof(*this) + 0x1C) = angular_velocity;
 	}
 public:
 	// Line:        width
