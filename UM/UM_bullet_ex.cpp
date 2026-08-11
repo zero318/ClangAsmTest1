@@ -41,8 +41,12 @@
 #include "../zero/func_traits_basic.h"
 
 // Testing toggles
+#ifndef DEBUG_INVINCIBLE
 #define DEBUG_INVINCIBLE 0
+#endif
+#ifndef DEBUG_FAST_FORWARD
 #define DEBUG_FAST_FORWARD 0
+#endif
 #define DEBUG_FAST_FORWARD_SPEED 10
 
 // Patch/extension feature toggles
@@ -77,8 +81,12 @@
 #define FORCE_DEBUG_LOGGING 1
 #define INCLUDE_SOUND_DEBUG 0
 
+#ifndef DEBUG_SKIP_MENUS
 #define DEBUG_SKIP_MENUS 0
+#endif
+#ifndef INCLUDE_EXTRA_DEBUG_STUFF
 #define INCLUDE_EXTRA_DEBUG_STUFF (1 && (FORCE_DEBUG_LOGGING || !NDEBUG))
+#endif
 #define ZUN_DEBUG_CODE 0
 
 #define ALLOCATE_CONSOLE 1
@@ -86,7 +94,9 @@
 #define IMAGE_REPLACEMENT 0
 
 #define THE_BEST_ENDING_SCREEN 1
+#ifndef DEBUG_NO_GAME_OVER
 #define DEBUG_NO_GAME_OVER 0
+#endif
 
 #define PROTECT_ORIGINAL_FILES 1
 #define OVERRIDE_PATH_CHECKS 1
