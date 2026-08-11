@@ -49926,7 +49926,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 
 	this->main_vm.data.blend_mode = BlendAdditive; // 1
 	this->main_vm.data.x_anchor_mode = AnchorXCenter; // 0
-	this->main_vm.data.y_anchor_mode = AnchorYTop; // 1
+	this->main_vm.data.y_anchor_mode = AnchorYBottom; // 2
 	this->main_vm.data.render_mode = Mode2DSpriteRotated; // 1
 	this->main_vm.data.origin_mode = OriginFixedResolution; // 1
 
@@ -49989,7 +49989,7 @@ dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
 	// why does only one of these use vm and rest are direct access???
 	vm->data.blend_mode = BlendAdditive; // 1
 	this->main_vm.data.x_anchor_mode = AnchorXCenter; // 0
-	this->main_vm.data.y_anchor_mode = AnchorYTop; // 1
+	this->main_vm.data.y_anchor_mode = AnchorYBottom; // 2
 	this->main_vm.data.render_mode = Mode2DSpriteRotated; // 1
 	this->main_vm.data.origin_mode = OriginFixedResolution; // 1
 
