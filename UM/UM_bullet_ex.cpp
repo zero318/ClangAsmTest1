@@ -47299,9 +47299,12 @@ struct LaserInfiniteParams {
 
 	inline LaserInfiniteParams() {
 		this->zero_contents();
+		this->speed = 8.0f;
 	}
 
-	inline LaserInfiniteParams(int) {}
+	inline LaserInfiniteParams(int) {
+		this->speed = 8.0f;
+	}
 };
 
 // size: 0x1824
@@ -47415,10 +47418,9 @@ struct LaserInfinite : LaserData {
 
 		this->check_collision(LethalCollisionTest);
 
-		// flipped length/width again
 		this->main_vm.set_scale(
-			this->length / this->main_vm.get_sprite()->__size_x,
-			this->width / this->main_vm.get_sprite()->__size_y
+			this->width / this->main_vm.get_sprite()->__size_x,
+			this->length / this->main_vm.get_sprite()->__size_y
 		);
 
 		this->main_vm.run_anm();
@@ -47434,7 +47436,7 @@ struct LaserInfinite : LaserData {
 	// Method 0x14
 	dllexport virtual gnu_noinline int thiscall on_draw() override ASR(0x44D010) {
 		this->main_vm.data.position = this->position;
-		this->main_vm.set_z_rotation(this->angle);
+		this->main_vm.set_z_rotation(reduce_angle(this->angle + HALF_PI_f));
 		ANM_MANAGER_PTR->draw_vm(&this->main_vm);
 		if (this->distance_traveled == 0.0f) {
 			this->__spawn_effect_vm.data.position = this->position;
@@ -47489,17 +47491,16 @@ struct LaserInfinite : LaserData {
 		switch (this->state) {
 			case LaserState::State2: // 2
 			case LaserState::State4: // 4
-				// WHY DO YOU STILL SWAP LENGTH/WIDTH ON LASERS ZUN, STOP ALREADY
-				float width = this->length;
-				if (width > 16.0f) {
+				float length = this->length;
+				if (length > 16.0f) {
 					Float3 position = this->position;
-					float length = this->width;
-					if (length < 32.0f) {
-						length *= 0.5f;
+					float width = this->width;
+					if (width < 32.0f) {
+						width *= 0.5f;
 					} else {
-						length -= (length + 16.0f) / 3.0f;
+						width -= (width + 16.0f) / 3.0f;
 					}
-					switch (PLAYER_PTR->__check_collision_rotated_rectangle(&position, this->angle, width * 0.9f, length, test_type)) {
+					switch (PLAYER_PTR->__check_collision_rotated_rectangle(&position, this->angle, width, length * 0.9f, test_type)) {
 						case DeathCollision: {
 							Float3 size = { 32.0f, 32.0f, 0.0f };
 							this->cancel_in_rectangle(&PLAYER_PTR->data.position, &size, 0.0f, CancelType0, 1);
@@ -51111,7 +51112,6 @@ dllexport void Bullet::run_effects() {
 				switch (IntArg(0)) {
 					case InfiniteLaser: { // 1
 						LaserInfiniteParams laser_params(0); // 0xA8
-						laser_params.speed = 8.0f; // IDK why this isn't 0
 						laser_params.velocity = { 0.0f, 0.0f, 0.0f };
 						laser_params.angle = 0.0f;
 						laser_params.angular_velocity = 0.0f;
