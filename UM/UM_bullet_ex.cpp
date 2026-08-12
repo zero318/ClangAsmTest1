@@ -48759,9 +48759,11 @@ public:
 			int32_t interrupt_index = (uint16_t)shooter->effects[effect_index].int_values[0];
 			if (interrupt_index != 1) {
 				bullet->vm.interrupt(7 + interrupt_index);
+				effect_index = bullet->effect_index;
 			}
 			bullet->state = BulletState::State2; // 2
 			bullet->position -= bullet->velocity * 4.0f;
+			bullet->effect_index = effect_index + 1;
 		}
 		else {
 			bullet->vm.interrupt(2);
@@ -50285,8 +50287,8 @@ dllexport gnu_noinline ZUNResult fastcall EnemyData::__func_set_4_ex(EnemyData* 
 #define ShortArg(index) (*(int16_t*)&IntArg(index))
 #define WordArg(index) (*(uint16_t*)&IntArg(index))
 #define FloatArg(index) (current_effect.float_values[index])
-#define IntArgEx(index) (((index < 4) + &current_effect)->int_values[(index) % 4])
-#define FloatArgEx(index) (((index < 4) + &current_effect)->float_values[(index) % 4])
+#define IntArgEx(index) ((((index) >> 2) + &current_effect)->int_values[(index) & 3])
+#define FloatArgEx(index) ((((index) >> 2) + &current_effect)->float_values[(index) & 3])
 
 // 0x4494F0
 // Method 0x4
@@ -55551,7 +55553,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 				this->shooters[shooter_slot].effects[effect_slot].int_values[2] = C;
 				int32_t D = this->get_int_arg(effect_arg_index);
 				++effect_arg_index;
-				this->shooters[shooter_slot].effects[effect_slot].int_values[2] = D;
+				this->shooters[shooter_slot].effects[effect_slot].int_values[3] = D;
 			}
 
 			float R = this->get_float_arg(effect_arg_index);
