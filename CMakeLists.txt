@@ -778,6 +778,9 @@ target_compile_options(${EXE} PRIVATE
 	"SHELL:-mllvm -force-loop-cold-block=true"
 
 	${SLASH_CLANG_ARG}-fno-sized-deallocation
+
+	#${SLASH_CLANG_ARG}-S
+	#${SLASH_CLANG_ARG}-emit-llvm
 )
 if(NOT CUSTOM_CLANG)
 target_compile_options(${EXE} PRIVATE

@@ -255,7 +255,7 @@ static inline constexpr void destroy_at_without_noexcept(T* p) {
 
 template <typename T, typename ... Args>
 static forceinline T* new_no_eh(Args&&... args) {
-	return new (new unsigned char[sizeof(T)]) T(args...);
+	return new (::operator new(sizeof(T))) T(args...);
 }
 template <typename T>
 static forceinline void delete_no_eh_nonnull(T* ptr) noexcept(false) {
@@ -4647,7 +4647,7 @@ struct Supervisor {
 	union {
 		uint32_t flags; // 0x834
 		struct {
-			uint32_t __unknown_flag_su_D : 1 = false; // 1
+			uint32_t hardware_vertex_processing : 1 = false; // 1
 			uint32_t __unknown_flag_su_C : 1 = false; // 2
 			uint32_t full_color_mode : 1 = false; // 3
 			uint32_t : 1; // 4
@@ -7853,7 +7853,7 @@ struct WindowData {
 		uint32_t flags; // 0x2040
 		struct {
 			uint32_t __unknown_flag_wd_A : 1; // 1
-			uint32_t __unknown_flag_wd_B : 1; // 2
+			uint32_t resolution_changed : 1; // 2
 			uint32_t config_resolution : 5; // 3-7
 			uint32_t vsync : 1; // 8
 			uint32_t __unknown_bitfield_wd_B : 2; // 9-10
@@ -44326,7 +44326,7 @@ struct ItemManager : ZUNTask {
 		constexpr int dword_C8C_val = 0;
 		constexpr int32_t sound_id = -1;
 
-		if (item_id > ITEM_ID_COUNT) {
+		if (item_id > ITEM_ID_COUNT - 1) {
 			return NULL;
 		}
 		Item* item = NULL;
@@ -66640,7 +66640,7 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 			break;
 		case WM_SIZE: // 0x5
 			if (WINDOW_DATA.__unknown_flag_wd_A && wParam == SIZE_MAXIMIZED) {
-				WINDOW_DATA.__unknown_flag_wd_B = true;
+				WINDOW_DATA.resolution_changed = true;
 				switch (WINDOW_DATA.config_resolution) {
 					case Windowed640x480: // 3
 						WINDOW_DATA.config_resolution = Fullscreen640x480; // 0
@@ -66686,7 +66686,7 @@ dllexport gnu_noinline LRESULT CALLBACK WndProc(HWND hWnd, UINT uMsg, WPARAM wPa
 			break;
 		case WM_SYSKEYDOWN: // 0x104
 			if (wParam == VK_RETURN) {
-				WINDOW_DATA.__unknown_flag_wd_B = true;
+				WINDOW_DATA.resolution_changed = true;
 				switch (WINDOW_DATA.config_resolution) {
 					case Windowed640x480: // 3
 						WINDOW_DATA.config_resolution = Fullscreen640x480; // 0
@@ -67324,7 +67324,7 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 				WINDOW_DATA.backbuffer_height = height;
 			}
 			if (!arg1) {
-				SUPERVISOR.__unknown_flag_su_D = false;
+				SUPERVISOR.hardware_vertex_processing = false;
 				if (!SUPERVISOR.config.reference_rasterizer) {
 					if (SUPERVISOR.d3d->CreateDevice(
 						D3DADAPTER_DEFAULT,
@@ -67334,6 +67334,14 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 						&present_parameters,
 						&SUPERVISOR.d3d_device
 					) == D3D_OK) {
+						SUPERVISOR.hardware_vertex_processing = true;
+			device_ok:
+						HDC hdc = GetDC(WINDOW_DATA.window);
+						GetDeviceCaps(hdc, VREFRESH); // yup, just ignore the return value
+						ReleaseDC(WINDOW_DATA.window, hdc);
+						if (i < countof(RESOLUTIONS)) {
+							goto success;
+						}
 						break;
 					}
 					if (SUPERVISOR.d3d->CreateDevice(
@@ -67344,7 +67352,7 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 						&present_parameters,
 						&SUPERVISOR.d3d_device
 					) == D3D_OK) {
-						break;
+						goto device_ok;
 					}
 				}
 				if (SUPERVISOR.d3d->CreateDevice(
@@ -67355,24 +67363,16 @@ dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) {
 					&present_parameters,
 					&SUPERVISOR.d3d_device
 				) == D3D_OK) {
-					break;
+					goto device_ok;
 				}
 				SAFE_RELEASE(SUPERVISOR.d3d_device);
 			}
 			else {
 				if (SUPERVISOR.d3d_device->Reset(&present_parameters) == D3D_OK) {
-					goto reset_success;
+					goto device_ok;
 				}
 			}
 		} while (++i < countof(RESOLUTIONS));
-		SUPERVISOR.__unknown_flag_su_D = true;
-reset_success:
-		HDC hdc = GetDC(WINDOW_DATA.window);
-		GetDeviceCaps(hdc, VREFRESH);
-		ReleaseDC(WINDOW_DATA.window, hdc);
-		if (i < countof(RESOLUTIONS)) {
-			break;
-		}
 		if (is_second_iteration) {
 			if (!arg1) {
 				LOG_BUFFER.write_error(JpEnStr(
@@ -67385,6 +67385,7 @@ reset_success:
 		}
 		is_second_iteration = true;
 	}
+success:
 	HDC hdc = GetDC(WINDOW_DATA.window);
 	int32_t refresh_rate = GetDeviceCaps(hdc, VREFRESH);
 	ReleaseDC(WINDOW_DATA.window, hdc);
@@ -67980,7 +67981,7 @@ winmain_d3d_create_success:
 			else {
 				switch (SUPERVISOR.d3d_device->TestCooperativeLevel()) {
 					case D3D_OK:
-						if (!WINDOW_DATA.__unknown_flag_wd_B) {
+						if (!WINDOW_DATA.resolution_changed) {
 							if (WINDOW_DATA.vsync) {
 								local_int_18 = WINDOW_DATA.update_window__alt_version2();
 							}
@@ -68001,7 +68002,7 @@ winmain_d3d_create_success:
 						}
 					case D3DERR_DEVICENOTRESET:
 						WINDOW_DATA.__counter_2044 = 10;
-						if (!WINDOW_DATA.__unknown_flag_wd_B) {
+						if (!WINDOW_DATA.resolution_changed) {
 							D3DFORMAT format;
 							if (RESOLUTION_IS_FULLSCREEN(WINDOW_DATA.config_resolution)) {
 								GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
@@ -68025,7 +68026,7 @@ winmain_d3d_create_success:
 						ANM_MANAGER_PTR->__create_render_targets();
 						SUPERVISOR.__force_pause = true;
 						SUPERVISOR.__counter_818 = 3;
-						if (WINDOW_DATA.__unknown_flag_wd_B) {
+						if (WINDOW_DATA.resolution_changed) {
 							SUPERVISOR.__camera2_sub_454F50();
 							switch (WINDOW_DATA.config_resolution) {
 								default: {
@@ -68078,7 +68079,7 @@ winmain_d3d_create_success:
 							}
 							GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
 							SUPERVISOR.__sub_455EC0();
-							WINDOW_DATA.__unknown_flag_wd_B = false;
+							WINDOW_DATA.resolution_changed = false;
 						}
 				}
 			}
