@@ -3249,7 +3249,7 @@ gnu_noinline void slow_instruction_test() {
 		uint32_t counter = test_count;
 		volatile char buffer[16];
 		do {
-			_mm_maskmoveu_si128((__m128i)mask, (__m128i)mask, &buffer)
+			_mm_maskmoveu_si128((__m128i)mask, (__m128i)mask, (char*)buffer);
 		} while (--counter);
 	}
 	uint64_t end_time_G = rdtsc_serialize();
@@ -6631,6 +6631,7 @@ dllexport size_t regcall str_to_num_test(const char* str, size_t base) {
 
 static constexpr const char checkbox_str[] = "checkbox";
 
+#define NTAPI __stdcall
 
 #if !IS_X64
 /*
@@ -6707,11 +6708,18 @@ extern "C" {
 #define _RTL_USER_PROCESS_PARAMETERS _TH_RTL_USER_PROCESS_PARAMETERS
 #define RTL_USER_PROCESS_PARAMETERS TH_RTL_USER_PROCESS_PARAMETERS
 #define PROCESSINFOCLASS TH_PROCESSINFOCLASS
+#define SYSTEM_INFORMATION_CLASS TH_SYSTEM_INFORMATION_CLASS
+#define _SYSTEM_THREAD_INFORMATION _TH_SYSTEM_THREAD_INFORMATION
+#define SYSTEM_THREAD_INFORMATION TH_SYSTEM_THREAD_INFORMATION
+#define _SYSTEM_PROCESS_INFORMATION _TH_SYSTEM_PROCESS_INFORMATION
+#define SYSTEM_PROCESS_INFORMATION TH_SYSTEM_PROCESS_INFORMATION
 #define ProcessBasicInformation TH_ProcessBasicInformation
 #define ProcessWow64Information TH_ProcessWow64Information
 #define ProcessImageFileName TH_ProcessImageFileName
-#define NTAPI __stdcall
+#define SystemBasicInformation TH_SystemBasicInformation
+#define SystemProcessInformation TH_SystemProcessInformation
 #define NtQueryInformationProcess TH_NtQueryInformationProcess
+#define NtQuerySystemInformation TH_NtQuerySystemInformation
 #define NtProductWinNt TH_NtProductWinNt
 #define NtProductLanManNt TH_NtProductLanManNt
 #define NtProductServer TH_NtProductServer
@@ -6747,10 +6755,18 @@ extern "C" {
 #undef _RTL_USER_PROCESS_PARAMETERS
 #undef RTL_USER_PROCESS_PARAMETERS
 #undef PROCESSINFOCLASS
+#undef SYSTEM_INFORMATION_CLASS
+#undef _SYSTEM_THREAD_INFORMATION
+#undef SYSTEM_THREAD_INFORMATION
+#undef _SYSTEM_PROCESS_INFORMATION
+#undef SYSTEM_PROCESS_INFORMATION
 #undef ProcessBasicInformation
 #undef ProcessWow64Information
 #undef ProcessImageFileName
+#undef SystemBasicInformation TH_SystemBasicInformation
+#undef SystemProcessInformation
 #undef NtQueryInformationProcess
+#undef NtQuerySystemInformation
 #undef NtProductWinNt
 #undef NtProductLanManNt
 #undef NtProductServer

@@ -1204,6 +1204,7 @@ namespace Pbg {
 						if (this->set_file_pointer(file_offset, FILE_BEGIN)) {
 							if (!this->read_file_to_buffer(buffer, file_size)) {
 								// BUG: Yes, this free is misplaced and can leak memory
+								// bit will only happen when abusing the struct
 								free(buffer);
 							} else {
 								this->set_file_pointer(file_offset, FILE_BEGIN);
@@ -10896,7 +10897,9 @@ public:
 	forceinline float parse_float_as_arg(int32_t index, float value);
 
 	// 0x42CCC0
-	dllexport gnu_noinline EclContext() noexcept(true) {}
+	dllexport gnu_noinline EclContext() noexcept(true) {
+		this->set_float_interp_times(0);
+	}
 
 	// 0x48B030
 	dllexport gnu_noinline ZUNResult thiscall call(EclContext* new_context, int32_t va_index, int32_t = UNUSED_DWORD) ASR(0x48B030);
@@ -52544,7 +52547,7 @@ inline void EclContext::step_float_interps() {
 				float value = FloatArg(1);
 				int32_t value_as_int = value;
 				if (value >= 0.0f) {
-					value_write = &this->stack.ref_offset<float>(this->float_interp_stack_offsets[i]);
+					value_write = &this->stack.ref_local<float>(value_as_int, this->float_interp_stack_offsets[i]);
 				} else {
 					value_write = this->vm->get_float_ptr(value_as_int);
 				}
@@ -53943,6 +53946,8 @@ dllexport gnu_noinline ZUNResult vectorcall EclContext::low_ecl_run(float, float
 					this->float_interps[slot].final_value = final_value;
 					float* interp_write = this->get_float_ptr_arg(1);
 					*interp_write = initial_value;
+					this->float_interps[slot].bezier1 = 0.0f;
+					this->float_interps[slot].bezier2 = 0.0f;
 					this->float_interps[slot].time.reset();
 					this->float_interp_stack_offsets[slot] = this->stack.base;
 					break;

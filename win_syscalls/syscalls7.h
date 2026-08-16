@@ -279,6 +279,7 @@ static inline R syscall(SyscallIndex index, Args... args) {
 template<SyscallIndex index, uint32_t wow_table, typename R = uint32_t>
 naked static gnu_noinline R stdcall syscallWoW() {
 	__asm__(
+		".code32 \n"
 		"CALLL *%%FS:0xC0 \n"
 		"ADDL $4, %%ESP \n"
 		"RETL \n"
@@ -299,8 +300,9 @@ naked static gnu_noinline R stdcall syscallWoW() {
 }
 
 template<SyscallIndex index, uint32_t wow_table, typename R = uint32_t, typename ... Args>
-naked static gnu_noinline R stdcall syscallWoW(gnu_used Args... args) {
+naked static gnu_noinline R stdcall syscallWoW(Args... args) {
 	__asm__(
+		".code32 \n"
 		"CALLL *%%FS:0xC0 \n"
 		"ADDL $4, %%ESP \n"
 		"RETL %[ret_size] \n"
