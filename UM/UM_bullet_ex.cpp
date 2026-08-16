@@ -14465,17 +14465,13 @@ struct Gui : ZUNTask {
 	}
 
 	static inline bool msg_is_active() {
-		if (Gui* gui = GUI_PTR) {
-			return gui->msg_vm_active();
-		}
-		return false;
+		Gui* gui = GUI_PTR;
+		return gui && gui->msg_vm_active();
 	}
 
 	static inline bool msg_is_inactive() {
-		if (Gui* gui = GUI_PTR) {
-			return !gui->msg_vm_active();
-		}
-		return false;
+		Gui* gui = GUI_PTR;
+		return gui && !gui->msg_vm_active();
 	}
 
 	// 0x441ED0
@@ -29257,10 +29253,10 @@ struct ShtFile {
 	union {
 		float movement_speeds[4]; // 0x10
 		struct {
-			float __unfocused_linear_speed; // 0x10
-			float __focused_linear_speed; // 0x14
-			float __unfocused_diagonal_speed; // 0x18
-			float __focused_diagonal_speed; // 0x1C
+			float unfocused_linear_speed; // 0x10
+			float focused_linear_speed; // 0x14
+			float unfocused_diagonal_speed; // 0x18
+			float focused_diagonal_speed; // 0x1C
 		};
 	};
 	int32_t max_level; // 0x20
@@ -30424,24 +30420,24 @@ struct PlayerBullet {
 	}
 
 	// 0x45F7B0
-	dllexport gnu_noinline static int32_t fastcall __init_func_1(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x45F7B0) {
+	dllexport gnu_noinline static int32_t fastcall init_func_1_reimu_amulets(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x45F7B0) {
 		self->__enemy_id_90 = NULL;
 		return 0;
 	}
 	// 0x45FC20
-	dllexport gnu_noinline static int32_t fastcall __init_func_2(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x45FC20);
+	dllexport gnu_noinline static int32_t fastcall init_func_2_marisa_lasers(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x45FC20);
 	// 0x460B60
-	dllexport gnu_noinline static int32_t fastcall __init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x460B60);
+	dllexport gnu_noinline static int32_t fastcall init_func_3_sakuya_knives(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x460B60);
 	// 0x460DA0
-	dllexport gnu_noinline static int32_t fastcall __init_func_4(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x460DA0) {
+	dllexport gnu_noinline static int32_t fastcall init_func_4_sanae_snakes(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x460DA0) {
 		self->__unknown_field_pb_A = 0;
 		self->__enemy_id_90 = NULL;
 		return 0;
 	}
 	// 0x4612D0
-	dllexport gnu_noinline static int32_t fastcall __init_func_5(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x4612D0);
+	dllexport gnu_noinline static int32_t fastcall init_func_5_card_alice(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x4612D0);
 	// 0x461330
-	dllexport gnu_noinline static int32_t fastcall __init_func_6(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x461330) {
+	dllexport gnu_noinline static int32_t fastcall init_func_6_card_cirno(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x461330) {
 		self->motion.angle = REPLAY_RNG.rand_angle_2() * 0.5f - HALF_PI_f;
 		return 0;
 	}
@@ -30449,15 +30445,15 @@ struct PlayerBullet {
 	dllexport gnu_noinline static int32_t fastcall __init_func_7(PlayerBullet* self, PlayerDamageSource* damage_source) ASR(0x4613B0);
 
 	// 0x45F9D0
-	dllexport gnu_noinline static int32_t fastcall __damage_func_1(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x45F9D0);
+	dllexport gnu_noinline static int32_t fastcall damage_func_1_reimu_needles(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x45F9D0);
 	// 0x460320
-	dllexport gnu_noinline static int32_t fastcall __damage_func_2(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460320);
+	dllexport gnu_noinline static int32_t fastcall damage_func_2_marisa_lasers(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460320);
 	// 0x4609C0
-	dllexport gnu_noinline static int32_t fastcall __damage_func_3(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x4609C0);
+	dllexport gnu_noinline static int32_t fastcall damage_func_3_marisa_rockets(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x4609C0);
 	// 0x460CB0
-	dllexport gnu_noinline static int32_t fastcall __damage_func_4(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460CB0);
+	dllexport gnu_noinline static int32_t fastcall damage_func_4_sanae_frogs(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460CB0);
 	// 0x460F30
-	dllexport gnu_noinline static int32_t fastcall __damage_func_5(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460F30);
+	dllexport gnu_noinline static int32_t fastcall damage_func_5_sanae_snakes(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x460F30);
 	// 0x461080
 	dllexport gnu_noinline static int32_t fastcall __damage_func_6(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x461080);
 
@@ -30465,20 +30461,20 @@ struct PlayerBullet {
 	dllexport gnu_noinline static int32_t fastcall create_explosion_suwako_card(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) ASR(0x40C4F0);
 
 	// 0x45F7C0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_1(PlayerBullet* self) ASR(0x45F7C0);
+	dllexport gnu_noinline static ZUNResult fastcall on_tick_1_reimu_amulets(PlayerBullet* self) ASR(0x45F7C0);
 	// 0x45FC80
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_2(PlayerBullet* self) ASR(0x45FC80);
+	dllexport gnu_noinline static ZUNResult fastcall on_tick_2_marisa_lasers(PlayerBullet* self) ASR(0x45FC80);
 	// 0x4609A0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_3(PlayerBullet* self) ASR(0x4609A0) {
+	dllexport gnu_noinline static ZUNResult fastcall on_tick_3_marisa_rockets(PlayerBullet* self) ASR(0x4609A0) {
 		if (self->state == PlayerBulletState::State1) { // 1
 			self->motion.speed += 0.3f;
 		}
 		return ZUN_SUCCESS;
 	}
 	// 0x460DB0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_4(PlayerBullet* self) ASR(0x460DB0);
+	dllexport gnu_noinline static ZUNResult fastcall on_tick_4_sanae_snakes(PlayerBullet* self) ASR(0x460DB0);
 	// 0x460AE0
-	dllexport gnu_noinline static ZUNResult fastcall __on_tick_5(PlayerBullet* self) ASR(0x460AE0) {
+	dllexport gnu_noinline static ZUNResult fastcall on_tick_5_card_sakuya2(PlayerBullet* self) ASR(0x460AE0) {
 		if (self->state == PlayerBulletState::State1) { // 1
 			float x = self->motion.position.x;
 			if (x < SCREEN_LEFT_EDGE || x > SCREEN_RIGHT_EDGE) {
@@ -30517,23 +30513,23 @@ VSS32(0xF8)
 // 0x4B41F0
 static BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] = {
 	NULL,
-	&PlayerBullet::__damage_func_1,
-	&PlayerBullet::__damage_func_2,
-	&PlayerBullet::__damage_func_3,
-	&PlayerBullet::__damage_func_4,
-	&PlayerBullet::__damage_func_5,
-	&PlayerBullet::__damage_func_6,
+	&PlayerBullet::damage_func_1_reimu_needles,
+	&PlayerBullet::damage_func_2_marisa_lasers,
+	&PlayerBullet::damage_func_3_marisa_rockets,
+	&PlayerBullet::damage_func_4_sanae_frogs,
+	&PlayerBullet::damage_func_5_sanae_snakes,
+	&PlayerBullet::__damage_func_6, // unused?
 	NULL
 };
 
 // 0x4B4210
 static BulletTickFunc *const PLAYER_BULLET_TICK_FUNCS[8] = {
 	NULL,
-	&PlayerBullet::__on_tick_1,
-	&PlayerBullet::__on_tick_2,
-	&PlayerBullet::__on_tick_3,
-	&PlayerBullet::__on_tick_4,
-	&PlayerBullet::__on_tick_5,
+	&PlayerBullet::on_tick_1_reimu_amulets,
+	&PlayerBullet::on_tick_2_marisa_lasers,
+	&PlayerBullet::on_tick_3_marisa_rockets,
+	&PlayerBullet::on_tick_4_sanae_snakes,
+	&PlayerBullet::on_tick_5_card_sakuya2,
 	NULL,
 	NULL
 };
@@ -30541,13 +30537,13 @@ static BulletTickFunc *const PLAYER_BULLET_TICK_FUNCS[8] = {
 // 0x4B4230
 static BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[9] = {
 	NULL,
-	&PlayerBullet::__init_func_1,
-	&PlayerBullet::__init_func_2,
-	&PlayerBullet::__init_func_3,
-	&PlayerBullet::__init_func_4,
-	&PlayerBullet::__init_func_5,
-	&PlayerBullet::__init_func_6,
-	&PlayerBullet::__init_func_7,
+	&PlayerBullet::init_func_1_reimu_amulets,
+	&PlayerBullet::init_func_2_marisa_lasers,
+	&PlayerBullet::init_func_3_sakuya_knives,
+	&PlayerBullet::init_func_4_sanae_snakes,
+	&PlayerBullet::init_func_5_card_alice,
+	&PlayerBullet::init_func_6_card_cirno,
+	&PlayerBullet::__init_func_7, // sht entry 22, unused?
 	NULL
 };
 
@@ -30607,10 +30603,10 @@ struct PlayerData {
 		};
 	};
 	Timer __yukari_wrap_timer; // 0x47180, 0x477A0
-	int32_t __unfocused_linear_speed; // 0x47194, 0x477B4
-	int32_t __focused_linear_speed; // 0x47198, 0x477B8
-	int32_t __unfocused_diagonal_speed; // 0x4719C, 0x477BC
-	int32_t __focused_diagonal_speed; // 0x471A0, 0x477C0
+	int32_t unfocused_linear_speed; // 0x47194, 0x477B4
+	int32_t focused_linear_speed; // 0x47198, 0x477B8
+	int32_t unfocused_diagonal_speed; // 0x4719C, 0x477BC
+	int32_t focused_diagonal_speed; // 0x471A0, 0x477C0
 	Float3 velocity; // 0x471A4, 0x477C4
 	Float3 __last_movement_velocity; // 0x471B0, 0x477D0
 	Int2 __internal_velocity; // 0x471BC, 0x477DC
@@ -30658,10 +30654,10 @@ VFO32(0x47154,invulnerable_timer)
 VFO32(0x47168,__timer_47168)
 VFO32(0x4717C,flags)
 VFO32(0x47180,__yukari_wrap_timer)
-VFO32(0x47194,__unfocused_linear_speed)
-VFO32(0x47198,__focused_linear_speed)
-VFO32(0x4719C,__unfocused_diagonal_speed)
-VFO32(0x471A0,__focused_diagonal_speed)
+VFO32(0x47194,unfocused_linear_speed)
+VFO32(0x47198,focused_linear_speed)
+VFO32(0x4719C,unfocused_diagonal_speed)
+VFO32(0x471A0,focused_diagonal_speed)
 VFO32(0x471A4,velocity)
 VFO32(0x471B0,__last_movement_velocity)
 VFO32(0x471BC,__internal_velocity)
@@ -30975,17 +30971,17 @@ public:
 				}
 			}
 			if (this->is_movement_direction_diagonal()) {
-				speed = this->data.__focused_diagonal_speed;
+				speed = this->data.focused_diagonal_speed;
 			} else {
-				speed = this->data.__focused_linear_speed;
+				speed = this->data.focused_linear_speed;
 			}
 		}
 		else {
 			this->data.focus_sigil_vm_id.interrupt_and_orphan_tree(1);
 			if (this->is_movement_direction_diagonal()) {
-				speed = this->data.__unfocused_diagonal_speed;
+				speed = this->data.unfocused_diagonal_speed;
 			} else {
-				speed = this->data.__unfocused_linear_speed;
+				speed = this->data.unfocused_linear_speed;
 			}
 		}
 
@@ -31399,7 +31395,7 @@ public:
 			this->__set_all_option_D4_to_1();
 
 			for (int32_t i = 0; i < 4; ++i) {
-				((int32_t*)&this->data.__unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * INTERNAL_POSITION_RATIO;
+				((int32_t*)&this->data.unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * INTERNAL_POSITION_RATIO;
 			}
 
 			this->sht_file->power_per_level = DEFAULT_POWER_PER_LEVEL;
@@ -31481,7 +31477,7 @@ private:
 			!(max.x < test_min.x) &&
 			!(max.y < test_min.y)
 		) {
-			if (!Gui::msg_is_active()) {
+			if (!GUI_PTR->msg_is_active()) {
 				if (test_type != LethalCollisionTest) {
 					return GrazeCollision;
 				}
@@ -31552,7 +31548,7 @@ private:
 				!(max.x < 0.0f) &&
 				!(max.y < -width * 0.5f)
 			) {
-				if (!Gui::msg_is_active()) {
+				if (!GUI_PTR->msg_is_active()) {
 					if (test_type != LethalCollisionTest) {
 						return GrazeCollision;
 					}
@@ -31625,7 +31621,7 @@ private:
 				!(x_max < 0.0f) &&
 				!(y_max < -width * 0.5f)
 			) {
-				if (!Gui::msg_is_active()) {
+				if (!GUI_PTR->msg_is_active()) {
 					if (test_type != LethalCollisionTest) {
 						return GrazeCollision;
 					}
@@ -31689,7 +31685,7 @@ private:
 			}
 			return GrazeCollision;
 		}
-		if (Gui::msg_is_active()) {
+		if (GUI_PTR->msg_is_active()) {
 			return NoCollision;
 		}
 		if (test_type != LethalCollisionTest) {
@@ -32189,7 +32185,7 @@ forceinline void PlayerBullet::on_tick() {
 }
 
 // 0x45FC20
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_2(PlayerBullet* self, PlayerDamageSource* damage_source) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::init_func_2_marisa_lasers(PlayerBullet* self, PlayerDamageSource* damage_source) {
 	Player* player = PLAYER_PTR;
 	self->size.x = 0.0f;
 	SOUND_MANAGER.play_sound_positioned(20, player->data.position.x);
@@ -32202,7 +32198,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_2(PlayerBullet
 }
 
 // 0x460B60
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_3(PlayerBullet* self, PlayerDamageSource* damage_source) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::init_func_3_sakuya_knives(PlayerBullet* self, PlayerDamageSource* damage_source) {
 	Player* player = PLAYER_PTR;
 
 	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
@@ -32214,7 +32210,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_3(PlayerBullet
 }
 
 // 0x4612D0
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_5(PlayerBullet* self, PlayerDamageSource* damage_source) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::init_func_5_card_alice(PlayerBullet* self, PlayerDamageSource* damage_source) {
 	self->motion.angle = PLAYER_PTR->__angle_479CC;
 	return 0;
 }
@@ -32231,7 +32227,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__init_func_7(PlayerBullet
 }
 
 // 0x45F9D0
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_1(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::damage_func_1_reimu_needles(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	float angle = self->motion.angle + RNG.rand_float_signed_range(PI_f / 9.0f) + PI_f;
 	// Splash effect
 	AnmVM* vm = EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(149, &self->motion.position, angle).get_vm_ptr();
@@ -32243,7 +32239,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_1(PlayerBull
 }
 
 // 0x460320
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::damage_func_2_marisa_lasers(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	Player* player = PLAYER_PTR;
 	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	self->__bool_94 = true;
@@ -32303,21 +32299,21 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 
 	if (!self->__timer_C.__is_paused()) {
 		if (self->__timer_C.is_multiple_of(2)) {
-			Float3 G;
-			G.make_from_vector(self->motion.angle, self->size.x);
+			Float3 position;
+			position.make_from_vector(self->motion.angle, self->size.x);
 			B = self->motion.position;
-			G += B;
+			position += B;
 			E.make_from_vector(self->motion.angle, 64.0f);
-			G.z = 0.0f;
+			position.z = 0.0f;
 			E.z = 0.0f;
 
-			AnmID id = self->bullet_anm->instantiate_vm_to_world_list_back(entry_ptr->__anm_scriptB, &G);
+			AnmID id = self->bullet_anm->instantiate_vm_to_world_list_back(entry_ptr->__anm_scriptB, &position);
 			EFFECT_MANAGER_PTR->fill_available_slot(id);
 			id.set_z_rotation(self->motion.angle);
 			id.get_vm_ptr()->initialize_position_interp(20, DecelerateSlow, ZERO_FLOAT3, E);
 			player = PLAYER_PTR;
 		}
-		if (!self->__timer_C.__is_multiple_of_not_paused(4)) {
+		if (self->__timer_C.__is_multiple_of_not_paused(4)) {
 			return player->get_damage_source_by_index(self->damage_source_index)->damage;
 		}
 	}
@@ -32325,7 +32321,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_2(PlayerBull
 }
 
 // 0x4609C0
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_3(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::damage_func_3_marisa_rockets(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	Player* player = PLAYER_PTR;
 	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, 1.0f, 10, entry_ptr->damage);
@@ -32345,7 +32341,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_3(PlayerBull
 }
 
 // 0x460CB0
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_4(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::damage_func_4_sanae_frogs(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	ShtEntry* entry_ptr = &PLAYER_PTR->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	Player* player = PLAYER_PTR;
 	int32_t index = player->create_damage_source_circle(&self->motion.position, 24.0f, entry_ptr->__float_4C, 20, entry_ptr->damage);
@@ -32362,7 +32358,7 @@ dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_4(PlayerBull
 }
 
 // 0x460F30
-dllexport gnu_noinline int32_t fastcall PlayerBullet::__damage_func_5(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
+dllexport gnu_noinline int32_t fastcall PlayerBullet::damage_func_5_sanae_snakes(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius) {
 	float angle = self->motion.angle + RNG.rand_float_signed_range(PI_f / 9.0f);
 	// Splash effect
 	EFFECT_MANAGER_PTR->effect_anm->instantiate_vm_to_world_list_back(149, &self->motion.position, angle);
@@ -34857,8 +34853,8 @@ struct CardAya : CardBase {
 		Player* player = PLAYER_PTR;
 		if (player->data.__is_shooting) {
 			ShtFile* sht_file = player->sht_file;
-			player->data.__unfocused_linear_speed = INTERNAL_POSITION_ADJUST(sht_file->__unfocused_linear_speed);
-			player->data.__unfocused_diagonal_speed = INTERNAL_POSITION_ADJUST(sht_file->__unfocused_diagonal_speed);
+			player->data.unfocused_linear_speed = INTERNAL_POSITION_ADJUST(sht_file->unfocused_linear_speed);
+			player->data.unfocused_diagonal_speed = INTERNAL_POSITION_ADJUST(sht_file->unfocused_diagonal_speed);
 			this->__int_54 = 1;
 			this->previous_direction = MovementNone;
 		}
@@ -34871,8 +34867,8 @@ struct CardAya : CardBase {
 			AnmVM* vm2 = id2.get_vm_ptr();
 			vm2->data.color1 = COLOR(255, 255, 0, 0);
 
-			player->data.__unfocused_linear_speed = INTERNAL_POSITION_ADJUST(8.0);
-			player->data.__unfocused_diagonal_speed = INTERNAL_POSITION_ADJUST(5.65625);
+			player->data.unfocused_linear_speed = INTERNAL_POSITION_ADJUST(8.0);
+			player->data.unfocused_diagonal_speed = INTERNAL_POSITION_ADJUST(5.65625);
 
 			MovementDirection previous_direction = this->previous_direction;
 			if (
@@ -35836,7 +35832,7 @@ struct CardClownpiece : CardBase {
 			Player* player = PLAYER_PTR;
 			Float3 A = this->position_interp.initial_value = this->position = player->data.position;
 			A.y -= 400.0f;
-			this->position_interp.mode = 1;
+			this->position_interp.mode = AccelerateSlow;
 			this->position_interp.end_time = 120;
 			this->position_interp.final_value = A;
 			this->position_interp.time.reset();
@@ -35895,14 +35891,14 @@ struct CardClownpiece : CardBase {
 				vm->data.color1 = COLOR_WHITE;
 
 				PlayerDamageSource* damage_source = this->damage_source_ptr;
-				if (damage_source_ptr->damage_dealt != 0) {
+				if (damage_source->damage_dealt != 0) {
 					this->__float_C0 += 3.5f;
 					if (this->__timer_20.is_multiple_of(2)) {
 						vm->data.color1 = COLOR(255, 128, 128, 255);
 						damage_source = this->damage_source_ptr;
 					}
 				}
-				damage_source_ptr->damage_dealt = 0;
+				damage_source->damage_dealt = 0;
 			}
 		}
 		++this->__timer_20;
@@ -38892,7 +38888,7 @@ inline void Player::reset_impl() {
 	this->data.__timer_472F4.reset();
 
 	for (int32_t i = 0; i < 4; ++i) {
-		((int32_t*)&this->data.__unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * INTERNAL_POSITION_RATIO;
+		((int32_t*)&this->data.unfocused_linear_speed)[i] = this->sht_file->movement_speeds[i] * INTERNAL_POSITION_RATIO;
 	}
 
 	this->__item_attract_speed = 5.0f;
@@ -40828,7 +40824,7 @@ dllexport gnu_noinline void thiscall PlayerOption::__position_func_card_alice_im
 }
 
 // 0x45F7C0
-dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_1(PlayerBullet* self) {
+dllexport gnu_noinline ZUNResult fastcall PlayerBullet::on_tick_1_reimu_amulets(PlayerBullet* self) {
 	if (self->state != PlayerBulletState::State2) { // 2
 		if (ENEMY_MANAGER_PTR) {
 			EnemyID id = self->__enemy_id_90;
@@ -40873,7 +40869,7 @@ fail:
 }
 
 // 0x45FC80
-dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_2(PlayerBullet* self) {
+dllexport gnu_noinline ZUNResult fastcall PlayerBullet::on_tick_2_marisa_lasers(PlayerBullet* self) {
 	Player* player = PLAYER_PTR;
 	ShtEntry* entry_ptr = &player->sht_file->entry_ptrs[self->__sht_entry_index1][self->__sht_entry_index2];
 	Float3 position = self->option->get_position();
@@ -40899,10 +40895,10 @@ dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_2(PlayerBullet
 			size_x += 18.0f;
 			self->size.x = size_x;
 			get_damage_source_by_index(self->damage_source_index)->size.x = size_x;
-			size_x = self->size.x * 0.5f;
+			size_x = self->size.x;
 		}
 		Float2 offset;
-		offset.make_from_vector(self->motion.angle, size_x);
+		offset.make_from_vector(self->motion.angle, size_x * 0.5f);
 		position.as2() += offset;
 		if (self->__vm_id_8.has_live_vm()) {
 			self->__vm_id_8.get_vm_ptr()->set_x_sprite_size(self->size.x);
@@ -40970,7 +40966,7 @@ end:
 }
 
 // 0x460DB0
-dllexport gnu_noinline ZUNResult fastcall PlayerBullet::__on_tick_4(PlayerBullet* self) {
+dllexport gnu_noinline ZUNResult fastcall PlayerBullet::on_tick_4_sanae_snakes(PlayerBullet* self) {
 	if (self->state != PlayerBulletState::State2) { // 2
 		float angle = 0.0f;
 		if (self->__unknown_field_pb_A == 0) {
