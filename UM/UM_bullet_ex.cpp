@@ -2464,11 +2464,11 @@ RestartOnTick:
 							goto CleanupThenNext;
 						}
 						int32_t update_ret;
-						CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
+						CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
 						{
 							update_ret = update_tick->on_update_func(update_tick->func_arg);
 						}
-						CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
+						CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
 						switch (expect_chance(update_ret, UpdateFuncRepeatCurrent, 0.05)) {
 							case UpdateFuncDeleteCurrentThenNext:
 								goto DeleteCurrentThenNext;
@@ -2538,11 +2538,11 @@ EndOnTick:
 							goto CleanupThenNext;
 						}*/
 						int32_t update_ret;
-						CRITICAL_SECTION_MANAGER.enter_section_volatile(UpdateFuncRegistry_CS);
+						CRITICAL_SECTION_MANAGER.leave_section_volatile(UpdateFuncRegistry_CS);
 						{
 							update_ret = update_draw->on_update_func(update_draw->func_arg);
 						}
-						CRITICAL_SECTION_MANAGER.leave_section(UpdateFuncRegistry_CS);
+						CRITICAL_SECTION_MANAGER.enter_section(UpdateFuncRegistry_CS);
 						switch (expect_chance(update_ret, UpdateFuncNext, 0.95)) {
 							case UpdateFuncDeleteCurrentThenNext:
 								goto DeleteCurrentThenNext;
