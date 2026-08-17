@@ -24206,7 +24206,11 @@ struct LoadingThread : ZUNTask {
 
 	inline LoadingThread() {
 		this->zero_contents();
+		// BUG: This causes another possible use of NULL SUPERVISOR.text_anm
+		// during startup if you try to close the game.
+#if !FIX_REALLY_BAD_BUGS
 		this->__unknown_task_flag_A = true;
+#endif
 	}
 
 	// 0x452F80
@@ -29123,6 +29127,9 @@ dllexport gnu_noinline UpdateFuncRet UpdateFuncCC FpsCounter::on_draw(void* ptr)
 }
 
 inline UpdateFuncRet LoadingThread::on_tick() {
+	// BUG: This flag is set in the LoadingThread constructor
+	// but __sub_455EC0 can use SUPERVISOR.text_anm before
+	// LoadingThread::thread_func_A has a chance to load it.
 	if (this->__unknown_task_flag_A) {
 		SUPERVISOR.__sub_455EC0();
 
@@ -38514,6 +38521,7 @@ dllexport gnu_noinline unsigned cdecl LoadingThread::thread_func_A(void* arg) {
 			SUPERVISOR.text_anm = anm_loaded;
 #if FIX_REALLY_BAD_BUGS
 			loading_thread->__ascii_manager_loaded = 1;
+			loading_thread->__unknown_task_flag_A = true;
 #endif
 			if (anm_loaded) {
 				void* bgm_format = read_file_to_buffer("../../bgm/thbgm.fmt", NULL, false);
@@ -59672,6 +59680,7 @@ struct NoticeManager : ZUNTask {
 	}
 
 	inline NoticeManager() {
+		this->zero_contents();
 		this->__unknown_task_flag_A = true;
 	}
 
