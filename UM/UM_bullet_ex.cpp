@@ -58123,7 +58123,7 @@ struct PauseMenu : ZUNTask {
 			} else {
 				position.x += 18.0f;
 			}
-			if (i >= KEYBOARD_STRING_TOTAL_KEY_COUNT) break;
+			if (++i >= KEYBOARD_STRING_TOTAL_KEY_COUNT) break;
 			ascii_manager = ASCII_MANAGER_PTR;
 		}
 
