@@ -18134,7 +18134,7 @@ struct AnmImage {
 	union {
 		uint32_t flags; // 0x14
 		struct {
-			uint32_t __unknown_flag_im_A : 1;
+			uint32_t __is_render_target : 1;
 			uint32_t : 31;
 		};
 	};
@@ -18851,7 +18851,7 @@ struct AnmManager {
 			if (AnmLoaded* anm_loaded = *anm_loaded_ptr) {
 				for (int32_t j = 0; j < anm_loaded->entry_count; ++j) {
 					AnmImage* image = &anm_loaded->images[j];
-					if (image->__unknown_flag_im_A) {
+					if (image->__is_render_target) {
 						SAFE_RELEASE(image->d3d_texture);
 					}
 				}
@@ -18870,7 +18870,7 @@ struct AnmManager {
 			if (AnmLoaded* anm_loaded = *anm_loaded_ptr) {
 				for (int32_t j = 0; j < anm_loaded->entry_count; ++j) {
 					AnmImage* image = &anm_loaded->images[j];
-					if (image->__unknown_flag_im_A) {
+					if (image->__is_render_target) {
 						image->create_render_target_texture();
 					}
 				}
@@ -22534,7 +22534,7 @@ public:
 	// 0x4860C0
 	dllexport gnu_noinline static int stdcall __sub_4860C0(AnmImage* image, LPCVOID image_data, UINT image_size, int = UNUSED_DWORD, int = UNUSED_DWORD, int = UNUSED_DWORD) ASR(0x4860C0) {
 		AnmManager* anm_manager = ANM_MANAGER_PTR;
-		image->__unknown_flag_im_A = false;
+		image->__is_render_target = false;
 		image->file_size = image_size;
 		LPDIRECT3DSURFACE9 surface = NULL;
 		image->d3d_texture->GetSurfaceLevel(0, &surface);
@@ -64274,7 +64274,7 @@ dllexport gnu_noinline uint32_t get_hardware_inputs() {
 
 // 0x486140
 dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(AnmImage* image, uint32_t format_index, uint32_t entry_index, int32_t width, int32_t height, int32_t offset_x, int32_t offset_y) {
-	image->__unknown_flag_im_A = false;
+	image->__is_render_target = false;
 	LPDIRECT3DTEXTURE9 texture;
 	if (D3DXCreateTextureFromFileInMemoryEx(
 		SUPERVISOR.d3d_device,
@@ -64349,7 +64349,7 @@ dllexport gnu_noinline int32_t thiscall AnmManager::__create_texture_from_file(A
 // 0x486390
 dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) ASR(0x486390);
 dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image, AnmTexture* texture, uint32_t format_index, int32_t width, int32_t height) {
-	image->__unknown_flag_im_A = false;
+	image->__is_render_target = false;
 	AnmEntry* entry = image->entry;
 	int32_t texture_width = texture->width;
 	int32_t texture_height = texture->height;
@@ -64416,6 +64416,7 @@ dllexport gnu_noinline int32_t stdcall __create_texture_from_anm(AnmImage* image
 
 // 0x486560
 dllexport gnu_noinline int32_t stdcall __create_render_target_texture(AnmImage* image, uint32_t width, uint32_t height) {
+	image->__is_render_target = true;
 	SUPERVISOR.d3d_device->CreateTexture(
 		width, height,
 		1, D3DUSAGE_RENDERTARGET,
@@ -64427,7 +64428,7 @@ dllexport gnu_noinline int32_t stdcall __create_render_target_texture(AnmImage* 
 }
 
 static inline int32_t stdcall __create_normal_texture(AnmImage* image, uint32_t format_index, uint32_t width, uint32_t height) {
-	image->__unknown_flag_im_A = false;
+	image->__is_render_target = false;
 	D3DXCreateTexture(
 		SUPERVISOR.d3d_device,
 		width, height,
@@ -68003,7 +68004,7 @@ winmain_d3d_create_success:
 						}
 					case D3DERR_DEVICENOTRESET:
 						WINDOW_DATA.__counter_2044 = 10;
-						if (!WINDOW_DATA.resolution_changed) {
+						if (WINDOW_DATA.resolution_changed) {
 							D3DFORMAT format;
 							if (RESOLUTION_IS_FULLSCREEN(WINDOW_DATA.config_resolution)) {
 								GetWindowRect(WINDOW_DATA.window, &SUPERVISOR.window_rect);
