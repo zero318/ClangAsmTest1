@@ -149,11 +149,17 @@ void APPLY_DEBUG_CONFIG();
 
 #if USE_EXTERN_FOR_CODEGEN
 #define externcg extern
+#define externcgs extern
+#define externcgsc extern
+#define externcgsic extern
 #define ecgconstinit
 #define cgasm(...) asm(__VA_ARGS__)
 #define ecginit(...)
 #else
 #define externcg
+#define externcgs static
+#define externcgsc static constexpr
+#define externcgsic static inline constexpr
 #define ecgconstinit constinit
 #define cgasm(...)
 #define ecginit(...) __VA_ARGS__
@@ -852,7 +858,7 @@ VSS32(0x1D0)
 
 extern "C" {
 // 0x521660
-externcg CriticalSectionManager CRITICAL_SECTION_MANAGER cgasm("_CRITICAL_SECTION_MANAGER");
+alignas(16) externcg CriticalSectionManager CRITICAL_SECTION_MANAGER cgasm("_CRITICAL_SECTION_MANAGER");
 }
 
 // 0x404F60
@@ -1013,13 +1019,11 @@ struct DebugLogger {
 
 extern "C" {
 // 0x4CF290
-externcg DebugLogger* DEBUG_LOG_PTR cgasm("_DEBUG_LOG_PTR");
-
+alignas(16) externcg DebugLogger* DEBUG_LOG_PTR cgasm("_DEBUG_LOG_PTR");
 // 0x4CF2F0
-externcg char REPLAY_FILENAME_BUFFER[MAX_PATH] cgasm("_REPLAY_FILENAME_BUFFER");
-
+alignas(16) externcg char REPLAY_FILENAME_BUFFER[MAX_PATH] cgasm("_REPLAY_FILENAME_BUFFER");
 // 0x570FA4
-externcg char REPLAY_USERDATA_NAME[5] cgasm("_REPLAY_USERDATA_NAME");
+alignas(4) externcg char REPLAY_USERDATA_NAME[5] cgasm("_REPLAY_USERDATA_NAME");
 }
 
 namespace Pbg {
@@ -1248,65 +1252,18 @@ struct CryptParams {
 	// 0xC
 };
 
+extern "C" {
 // 0x4C5360
-static CryptParams CRYPT_PARAMS[] = {
-	{ // 0
-		.xor_mask = 0x1B,
-		.xor_vel = 0x73,
-		.__ubyte_2 = 0xAA,
-		.__int_4 = 256,
-		.__int_8 = 0x3800
-	},
-	{ // 1
-		.xor_mask = 0x12,
-		.xor_vel = 0x43,
-		.__ubyte_2 = 0xFF,
-		.__int_4 = 512,
-		.__int_8 = 0x3E00
-	},
-	{ // 2
-		.xor_mask = 0x35,
-		.xor_vel = 0x79,
-		.__ubyte_2 = 0x11,
-		.__int_4 = 1024,
-		.__int_8 = 0x3C00
-	},
-	{ // 3
-		.xor_mask = 0x03,
-		.xor_vel = 0x91,
-		.__ubyte_2 = 0xDD,
-		.__int_4 = 128,
-		.__int_8 = 0x6400
-	},
-	{ // 4
-		.xor_mask = 0xAB,
-		.xor_vel = 0xDC,
-		.__ubyte_2 = 0xEE,
-		.__int_4 = 128,
-		.__int_8 = 0x7000
-	},
-	{ // 5
-		.xor_mask = 0x51,
-		.xor_vel = 0x9E,
-		.__ubyte_2 = 0xBB,
-		.__int_4 = 256,
-		.__int_8 = 0x4000
-	},
-	{ // 6
-		.xor_mask = 0xC1,
-		.xor_vel = 0x15,
-		.__ubyte_2 = 0xCC,
-		.__int_4 = 1024,
-		.__int_8 = 0x2C00
-	},
-	{ // 7
-		.xor_mask = 0x99,
-		.xor_vel = 0x7D,
-		.__ubyte_2 = 0x77,
-		.__int_4 = 128,
-		.__int_8 = 0x4400
-	}
-};
+alignas(16) externcgs CryptParams CRYPT_PARAMS[8] cgasm("_CRYPT_PARAMS")
+#if !USE_EXTERN_FOR_CODEGEN
+= {
+#if !__INTELLISENSE__
+#include "crypt_table.h"
+#endif
+}
+#endif
+;
+}
 
 // 0x401F50
 dllexport gnu_noinline void* fastcall __crypt_buffer(void* buffer, int32_t buffer_size, uint8_t xor_mask, uint8_t xor_vel, int32_t arg3, int32_t arg4) ASR(0x401F50);
@@ -1421,7 +1378,7 @@ dllexport gnu_noinline void* fastcall __decrypt_buffer(void* buffer, int32_t buf
 
 extern "C" {
 // 0x51F660
-externcg uint8_t LZSS_DICT[LZSS_DICTSIZE] cgasm("_DECOMPRESS_BUFFER");
+alignas(16) externcg uint8_t LZSS_DICT[LZSS_DICTSIZE] cgasm("_DECOMPRESS_BUFFER");
 }
 
 // 0x46F5B0
@@ -1676,7 +1633,7 @@ error_free:
 };
 extern "C" {
 // 0x5217C0
-externcg ArcFile THDAT_ARCFILE cgasm("_THDAT_ARCFILE");
+alignas(16) externcg ArcFile THDAT_ARCFILE cgasm("_THDAT_ARCFILE");
 }
 
 // size: 0x10
@@ -1799,7 +1756,7 @@ struct ArcFileEx : ArcFile {
 
 extern "C" {
 // 0x568AF0
-externcg ArcFileEx ARCFILE_ARRAY[20] cgasm("_ARCFILE_ARRAY");
+alignas(16) externcg ArcFileEx ARCFILE_ARRAY[20] cgasm("_ARCFILE_ARRAY");
 }
 
 #if TESTING_FEATURES
@@ -1868,7 +1825,7 @@ decode_file:
 
 extern "C" {
 // 0x570EA0
-externcg char PATH_BUFFER[MAX_PATH] cgasm("_PATH_BUFFER");
+alignas(16) externcg char PATH_BUFFER[MAX_PATH] cgasm("_PATH_BUFFER");
 }
 forceinline void* read_file_from_dat(const char* path, int32_t* size_out = NULL) {
 	PATH_BUFFER[0] = '\0';
@@ -2132,7 +2089,7 @@ struct LogBuffer {
 };
 extern "C" {
 // 0x4CABE8
-externcg ecgconstinit LogBuffer<0x2000> LOG_BUFFER cgasm("_LOG_BUFFER");
+alignas(8) externcg ecgconstinit LogBuffer<0x2000> LOG_BUFFER cgasm("_LOG_BUFFER");
 }
 
 enum UpdateFuncRet : int32_t {
@@ -2680,9 +2637,9 @@ VSS32(0x8)
 
 extern "C" {
 // 0x4CF280
-externcg Rng RNG cgasm("_RNG");
+alignas(16) externcg Rng RNG cgasm("_RNG");
 // 0x4CF288
-externcg Rng REPLAY_RNG cgasm("_REPLAY_RNG");
+alignas(8) externcg Rng REPLAY_RNG cgasm("_REPLAY_RNG");
 }
 
 enum Difficulty : int32_t {
@@ -2722,16 +2679,17 @@ VSS32(0x8)
 
 extern "C" {
 // 0x4CCBF0
-externcg ecgconstinit GameSpeed GAME_SPEED cgasm("_GAME_SPEED");
+alignas(16) externcg ecgconstinit GameSpeed GAME_SPEED cgasm("_GAME_SPEED");
+// 0x4B35C0
+alignas(16) externcgsic const float *const TIME_SCALING_TABLE[1] cgasm("_TIME_SCALING_TABLE") ecginit(= {
+	&GAME_SPEED.value
+});
 }
+
 // 0x43A200
 dllexport inline void vectorcall GameSpeed::set(float new_speed) {
 	GAME_SPEED.value = new_speed;
 }
-
-static const float* TIME_SCALING_TABLE[] = {
-	&GAME_SPEED.value
-};
 
 // size: 0x14
 struct Timer {
@@ -2831,9 +2789,6 @@ public:
 	dllexport gnu_noinline void set_from_timer(Timer timer) ASR(0x418C40) {
 		this->set(timer.current);
 	}
-
-	// Just in case that is an assignment operator, check for warnings in current uses
-	Timer& operator=(Timer timer) = delete;
 
 	inline uint32_t get_scaling_index() {
 #if !FAST_TIMER
@@ -3632,7 +3587,7 @@ enum PlayerId : int32_t {
 extern "C" {
 // why is this 3
 // 0x4CA210
-externcg ecgconstinit InputState INPUT_STATES[3] cgasm("_INPUT_STATES");
+alignas(16) externcg ecgconstinit InputState INPUT_STATES[3] cgasm("_INPUT_STATES");
 }
 
 static inline InputState& INPUT_P1 = INPUT_STATES[Player1];
@@ -4056,10 +4011,12 @@ VSS32(0x58)
 #undef V
 
 extern "C" {
+// 0x4CCCA0
+alignas(16) externcg ZUNThread UNKNOWN_THREAD_A cgasm("_UNKNOWN_THREAD_A");
 // 0x4CD950
-externcg D3DThread D3D_THREAD_A cgasm("_D3D_THREAD_A");
-// 0x4CDAE0
-externcg ZUNThread UNKNOWN_THREAD_A cgasm("_UNKNOWN_THREAD_A");
+alignas(16) externcg D3DThread D3D_THREAD_A cgasm("_D3D_THREAD_A");
+// 004CDAE0
+alignas(16) externcg ZUNThread UNKNOWN_THREAD_C cgasm("_UNKNOWN_THREAD_C");
 }
 
 // size: 0xC
@@ -4355,17 +4312,18 @@ enum StageID : int32_t {
 
 extern "C" {
 // 0x4C9410
-//externcg StageData STAGE_DATA[STAGE_COUNT] cgasm("_STAGE_DATA");
-// 0x4CF428
-externcg StageData* STAGE_DATA_PTR cgasm("_STAGE_DATA_PTR");
-}
-
-// 0x4C9410
-static StageData STAGE_DATA[STAGE_COUNT] = {
+alignas(16) externcgs StageData STAGE_DATA[STAGE_COUNT] cgasm("_STAGE_DATA")
+#if !USE_EXTERN_FOR_CODEGEN
+= {
 #if !__INTELLISENSE__
 #include "stage_data_table.h"
 #endif
-};
+}
+#endif
+;
+// 0x4CF428
+externcg StageData* STAGE_DATA_PTR cgasm("_STAGE_DATA_PTR");
+}
 
 typedef struct AnmManager AnmManager;
 typedef struct MainMenu MainMenu;
@@ -4553,12 +4511,10 @@ VSS32(0x4)
 extern "C" {
 // 0x4C5F90
 externcg int32_t ACHIEVEMENT_MODE_STATE cgasm("_ACHIEVEMENT_MODE_STATE") ecginit(= -1);
-
 // 0x4CF3FC
 externcg void (*UNKNOWN_FUNC_PTR_B)() cgasm("_UNKNOWN_FUNC_PTR_B");
 // 0x4CF400
 externcg void (*UNKNOWN_FUNC_PTR_A)() cgasm("_UNKNOWN_FUNC_PTR_A");
-
 // 0x5217D0
 externcg AnmID UNKNOWN_ANM_ID_A cgasm("_UNKNOWN_ANM_ID_A");
 // 0x5217D4
@@ -4880,7 +4836,7 @@ VSS32(0xB60)
 
 extern "C" {
 // 0x4CCDF0
-externcg ecgconstinit Supervisor SUPERVISOR cgasm("_SUPERVISOR");
+alignas(16) externcg ecgconstinit Supervisor SUPERVISOR cgasm("_SUPERVISOR");
 }
 
 inline UpdateFuncRegistry::~UpdateFuncRegistry() NO_EH_TERMINATE {
@@ -4956,83 +4912,20 @@ dllexport gnu_noinline int32_t Supervisor::__start_thread_A94(_beginthreadex_pro
 	return 0;
 }
 
-#define SOUND_EFFECT_COUNT 84
+static inline constexpr int32_t SOUND_EFFECT_COUNT = 84;
 
+extern "C" {
 // 0x4B47A0
-static inline constexpr const char *const SOUND_EFFECT_FILENAMES[] = {
-	"se_plst00.wav",
-	"se_enep00.wav",
-	"se_pldead00.wav",
-	"se_power0.wav",
-	"se_power1.wav",
-	"se_tan00.wav",
-	"se_tan01.wav",
-	"se_tan02.wav",
-	"se_ok00.wav",
-	"se_cancel00.wav",
-	"se_select00.wav",
-	"se_gun00.wav",
-	"se_cat00.wav",
-	"se_lazer00.wav",
-	"se_lazer01.wav",
-	"se_enep01.wav",
-	"se_damage00.wav",
-	"se_item00.wav",
-	"se_kira00.wav",
-	"se_kira01.wav",
-	"se_kira02.wav",
-	"se_timeout.wav",
-	"se_graze.wav",
-	"se_powerup.wav",
-	"se_pause.wav",
-	"se_cardget.wav",
-	"se_damage01.wav",
-	"se_timeout2.wav",
-	"se_invalid.wav",
-	"se_slash.wav",
-	"se_ch00.wav",
-	"se_ch01.wav",
-	"se_extend.wav",
-	"se_cardget.wav", // Yes, this is a duplicate
-	"se_nep00.wav",
-	"se_bonus.wav",
-	"se_bonus2.wav",
-	"se_enep02.wav",
-	"se_lazer02.wav",
-	"se_nodamage.wav",
-	"se_boon00.wav",
-	"se_don00.wav",
-	"se_boon01.wav",
-	"se_ch02.wav",
-	"se_ch03.wav",
-	"se_extend2.wav",
-	"se_pin00.wav",
-	"se_pin01.wav",
-	"se_lgods1.wav",
-	"se_lgods2.wav",
-	"se_lgods3.wav",
-	"se_lgods4.wav",
-	"se_lgodsget.wav",
-	"se_msl.wav",
-	"se_msl2.wav",
-	"se_pldead01.wav",
-	"se_heal.wav",
-	"se_msl3.wav",
-	"se_fault.wav",
-	"se_noise.wav",
-	"se_etbreak.wav",
-	"se_tan03.wav",
-	"se_wolf.wav",
-	"se_bonus4.wav",
-	"se_big.wav",
-	"se_item01.wav",
-	"se_release.wav",
-	"se_changeitem.wav",
-	"se_trophy.wav",
-	"se_warpl.wav",
-	"se_warpr.wav",
-	"se_notice.wav"
-};
+alignas(16) externcgsic const char *const SOUND_EFFECT_FILENAMES[72] cgasm("_SOUND_EFFECT_FILENAMES")
+#if !USE_EXTERN_FOR_CODEGEN
+= {
+#if !__INTELLISENSE__
+#include "sound_effect_filename_table.h"
+#endif
+}
+#endif
+;
+}
 
 #define SE_PLST 0
 #define SE_ENEP00 1
@@ -6239,17 +6132,18 @@ VSS32(0x200)
 #undef V
 
 extern "C" {
-// 0x4C9B80
-//externcg SoundData SOUND_DATA[SOUND_EFFECT_COUNT] cgasm("_SOUND_DATA");
-}
-
 // WHY ISN'T THIS CONST
 // 0x4C9B80
-static SoundData SOUND_DATA[SOUND_EFFECT_COUNT] = {
+alignas(16) externcgs SoundData SOUND_DATA[SOUND_EFFECT_COUNT] cgasm("_SOUND_DATA")
+#if !USE_EXTERN_FOR_CODEGEN
+= {
 #if !__INTELLISENSE__
 #include "sound_data_table.h"
 #endif
-};
+}
+#endif
+;
+}
 
 typedef struct SoundManager SoundManager;
 
@@ -6704,7 +6598,7 @@ VSS32(0x573C)
 extern "C" {
 // NOT constinit
 // 0x56AD80
-externcg SoundManager SOUND_MANAGER cgasm("_SOUND_MANAGER");
+alignas(16) externcg SoundManager SOUND_MANAGER cgasm("_SOUND_MANAGER");
 }
 
 // 0x48ACC0
@@ -7121,7 +7015,7 @@ dllexport gnu_noinline SoundCommandType thiscall SoundManager::__on_tick() {
 			if (snd_cmd->type == SndCmdEmpty) {
 				break;
 			}
-			*snd_cmd = *(snd_cmd + 1);
+			*snd_cmd = *(snd_cmd + 1); // REP MOVSD default operator=
 			++snd_cmd;
 		}
 	} while (run_next_cmd);
@@ -7347,16 +7241,16 @@ static inline void __update_life_ui_unsafe();
 static inline void __update_bomb_ui();
 static inline void __update_bomb_ui_unsafe();
 
+extern "C" {
 // 0x4B3FF4
-static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE_EXTRA[10] = {
+externcgsic const int32_t LIFE_FRAGMENT_COST_TABLE_EXTRA[10] cgasm("_LIFE_FRAGMENT_COST_TABLE_EXTRA") ecginit(= {
 	3, 3, 3,
 	3, 3, 3,
 	3, 3, 3,
 	99999999
-};
-
+});
 // 0x4B40C8
-static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE[31] = {
+externcgsic const int32_t LIFE_FRAGMENT_COST_TABLE[31] cgasm("_LIFE_FRAGMENT_COST_TABLE") ecginit(= {
 	3, 3, 3,
 	3, 3, 3,
 	3, 3, 3,
@@ -7368,7 +7262,8 @@ static inline constexpr int32_t LIFE_FRAGMENT_COST_TABLE[31] = {
 	3, 3, 3,
 	3, 3, 3,
 	99999999
-};
+});
+}
 
 static inline constexpr int32_t BOMB_FRAGMENT_COST = 3;
 static inline constexpr int32_t MAX_CONTINUES = 9; // increasing this will break score rendering, so DO NOT
@@ -7786,7 +7681,7 @@ struct GameManager {
 
 extern "C" {
 // 0x4CCCC0
-externcg ecgconstinit GameManager GAME_MANAGER cgasm("_GAME_MANAGER");
+alignas(16) externcg ecgconstinit GameManager GAME_MANAGER cgasm("_GAME_MANAGER");
 }
 
 static inline constexpr float SCREEN_LEFT_BORDER = 32.0f;
@@ -7985,7 +7880,7 @@ VFO32(0x20D4,__int3_array_20D4)
 
 extern "C" {
 // 0x568C30
-externcg WindowData WINDOW_DATA cgasm("_WINDOW_DATA");
+alignas(16) externcg WindowData WINDOW_DATA cgasm("_WINDOW_DATA");
 }
 
 struct DInputKeyboard {
@@ -8238,8 +8133,9 @@ enum PriceTier : int32_t {
 	ExpensiveTier5 = 14
 };
 
+extern "C" {
 // 0x4B35C4
-static int32_t CARD_PRICE_TABLE[] = {
+externcgsic const int32_t CARD_PRICE_TABLE[15] cgasm("_CARD_PRICE_TABLE") ecginit(= {
 	// Free
 	0,
 	// Cheap
@@ -8260,10 +8156,9 @@ static int32_t CARD_PRICE_TABLE[] = {
 	400,
 	450,
 	500,
-};
-
+});
 // 0x4B60E0
-static D3DCOLOR CARD_PRICE_COLORS[] = {
+alignas(16) externcgsic const D3DCOLOR CARD_PRICE_COLORS[15] cgasm("_CARD_PRICE_COLORS") ecginit(= {
 	// Free
 	COLOR_WHITE,
 	// Cheap
@@ -8284,7 +8179,8 @@ static D3DCOLOR CARD_PRICE_COLORS[] = {
 	COLOR(255, 255, 255, 80),
 	COLOR(255, 255, 255, 80),
 	COLOR(255, 255, 255, 80),
-};
+});
+}
 
 #define ALWAYS_IN_SHOP 0
 #define NEVER_IN_SHOP 6
@@ -8359,15 +8255,16 @@ VSS32(0x34)
 
 extern "C" {
 // 0x4C53C0
-//externcg CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] cgasm("_CARD_DATA_TABLE");
-}
-
-// 0x4C53C0
-static CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] = {
+alignas(16) externcgs CardData CARD_DATA_TABLE[INTERNAL_CARD_COUNT] cgasm("_CARD_DATA_TABLE")
+#if !USE_EXTERN_FOR_CODEGEN
+= {
 #if !__INTELLISENSE__
 #include "card_table.h"
 #endif
-};
+}
+#endif
+;
+}
 
 template <typename L>
 static inline constexpr const CardData& find_in_card_data(const L& lambda) {
@@ -8393,8 +8290,9 @@ static inline constexpr int32_t SPELL_COUNT = 97;
 
 static inline constexpr int32_t MAX_SPELLS_PER_STAGE = 13;
 
+extern "C" {
 // 0x4B3F30
-static const int8_t SPELL_DIFFICULTY_TABLE[SPELL_COUNT] = {
+alignas(16) externcgsic const int8_t SPELL_DIFFICULTY_TABLE[SPELL_COUNT] cgasm("_SPELL_DIFFICULTY_TABLE") ecginit(= {
 	EASY, NORMAL, HARD, LUNATIC,
 	EASY, NORMAL, HARD, LUNATIC,
 	EASY, NORMAL, HARD, LUNATIC,
@@ -8429,11 +8327,10 @@ static const int8_t SPELL_DIFFICULTY_TABLE[SPELL_COUNT] = {
 	EXTRA,
 	EXTRA,
 	EXTRA
-};
-
+});
 // +1 for overdrive? Or just an end marker?
 // 0x4B3710
-static const int32_t SPELL_ID_TABLE[STAGE_COUNT][MAX_SPELLS_PER_STAGE][SPELL_DIFFICULTY_VARIANTS] = {
+alignas(16) externcgsic const int32_t SPELL_ID_TABLE[STAGE_COUNT][MAX_SPELLS_PER_STAGE][SPELL_DIFFICULTY_VARIANTS] cgasm("_SPELL_ID_TABLE") ecginit(= {
 	{ // Stage 1
 		{ 0, 1, 2, 3, -1 },
 		{ 4, 5, 6, 7, -1 }
@@ -8482,7 +8379,8 @@ static const int32_t SPELL_ID_TABLE[STAGE_COUNT][MAX_SPELLS_PER_STAGE][SPELL_DIF
 		{ 95, -1 },
 		{ 96, -1 },
 	}
-};
+});
+}
 
 // 0x429CB0
 dllexport gnu_noinline int32_t fastcall count_spells_for_difficulty(int32_t difficulty) ASR(0x429CB0);
@@ -8726,7 +8624,7 @@ struct ScorefileShottypeSection : ScorefileSectionHeader {
 			for (size_t j = 0; j < RECORDS_PER_DIFFICULTY; ++j) {
 				this->records[i][j].score = 100000 - j * 10000;
 				this->records[i][j].__stage_reached = Stage1;
-				memcpy(this->records[i][j].name, EMPTY_RECORD_NAME, sizeof(EMPTY_RECORD_NAME));
+				memcpy_str(this->records[i][j].name, EMPTY_RECORD_NAME);
 				this->records[i][j].time = 0;
 				this->records[i][j].continues = 0;
 				this->records[i][j].slowdown_rate = 0.0f;
@@ -8763,7 +8661,7 @@ struct ScorefileShottypeSection : ScorefileSectionHeader {
 		cur_record->continues = GAME_MANAGER.globals.continues;
 		cur_record->__stage_reached = GAME_MANAGER.globals.current_stage;
 		time(&cur_record->time);
-		memcpy(cur_record->name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
+		memcpy_str(cur_record->name, DEFAULT_RECORD_NAME);
 		cur_record->slowdown_rate = FPS_COUNTER_PTR->calc_slowdown_rate();
 
 		return found_index;
@@ -8835,7 +8733,7 @@ struct ScorefileCommonSection : ScorefileSectionHeader {
 	uint8_t __card_ids_150[4][16]; // 0x150, 0x5F608
 	unknown_fields(0x30); // 0x190, 0x5F648
 	int32_t __int_array_1C0[4]; // 0x1C0, 0x5F678
-	short __short_array_1D0[0x100]; // 0x1D0, 0x5F688
+	uint16_t junk_buffer[0x100]; // 0x1D0, 0x5F688
 	// 0x3D0, 0x5F888
 
 	inline void zero_contents() {
@@ -8857,7 +8755,7 @@ struct ScorefileCommonSection : ScorefileSectionHeader {
 		this->__version_number = SCOREFILE_COMMON_SECTION_VERSION_NUMBER;
 		this->size = sizeof(ScorefileCommonSection);
 
-		memcpy(this->__recent_name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
+		memcpy_str(this->__recent_name, DEFAULT_RECORD_NAME);
 		for (int32_t i = 0; i < CARD_COUNT; ++i) {
 			this->unlocked_cards[i] = find_id_in_card_data(i).__default_unlock;
 		}
@@ -8871,8 +8769,8 @@ struct ScorefileCommonSection : ScorefileSectionHeader {
 		this->__int_array_1C0[2] = 5;
 		this->__card_ids_150[2][0] = KOZUCHI_CARD;
 		this->__int_array_1C0[3] = 0;
-		for (size_t i = 0; i < countof(this->__short_array_1D0); ++i) {
-			this->__short_array_1D0[i] = REPLAY_RNG.rand_ushort();
+		for (size_t i = 0; i < countof(this->junk_buffer); ++i) {
+			this->junk_buffer[i] = REPLAY_RNG.rand_ushort();
 		}
 	}
 };
@@ -8891,7 +8789,7 @@ VFO(0x50,trophies)
 VFO(0xD0,unlocked_cards)
 VFO(0x150,__card_ids_150)
 VFO(0x1C0,__int_array_1C0)
-VFO(0x1D0,__short_array_1D0)
+VFO(0x1D0,junk_buffer)
 VSS(0x3D0)
 #undef V
 
@@ -8995,7 +8893,7 @@ private:
 
 		ScorefileCommonSection* common_section = &scorefile->common;
 		common_section->checksum = common_section->calculate_checksum();
-		*(ScorefileCommonSection*)&big_buffer[written_size] = *common_section;
+		*(ScorefileCommonSection*)&big_buffer[written_size] = *common_section; // REP MOVSD default operator=
 		written_size += sizeof(ScorefileCommonSection) - sizeof(ScorefileHeader); // WTF ZUN
 
 		scorefile->buffer->header.decompressed_size = written_size;
@@ -9062,7 +8960,7 @@ private:
 								common_section->checksum == common_section->calculate_checksum() &&
 								common_section->size == sizeof(ScorefileCommonSection)
 							) {
-								scorefile->common = *common_section;
+								scorefile->common = *common_section; // REP MOVSD default operator=
 								remaining_size -= common_section->size;
 								if (remaining_size < 0) break;
 								section = common_section->next_section();
@@ -9126,7 +9024,7 @@ externcg ScorefileManager* SCOREFILE_MANAGER_PTR cgasm("_SCOREFILE_MANAGER_PTR")
 
 // 0x4B7A48
 static inline constexpr auto UNLOCK_CODE_A = ASCII_TO_DIK_ARRAY("mastersdream");
-
+// 0x4B7A98
 static inline constexpr auto UNLOCK_CODE_B = ASCII_TO_DIK_ARRAY("classiclager");
 
 extern "C" {
@@ -9160,12 +9058,12 @@ struct ScorefileManager {
 
 	inline void copy_backup_to_primary() {
 		memcpy(this->primary_file.shottypes, this->backup_file.shottypes, sizeof(this->backup_file.shottypes));
-		this->primary_file.common = this->backup_file.common;
+		this->primary_file.common = this->backup_file.common; // REP MOVSD default operator=
 	}
 
 	inline void copy_primary_to_backup() {
 		memcpy(this->backup_file.shottypes, this->primary_file.shottypes, sizeof(this->primary_file.shottypes));
-		this->backup_file.common = this->primary_file.common;
+		this->backup_file.common = this->primary_file.common; // REP MOVSD default operator=
 	}
 
 	inline void initialize() {
@@ -10965,7 +10863,7 @@ struct ShooterData {
 	float speed1; // 0x1C
 	float speed2; // 0x20
 	float distance; // 0x24
-	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x28
+	std::array<BulletEffectArgs, BULLET_EFFECT_MAX> effects; // 0x28
 	float width; // 0x448
 	unknown_fields(0xC); // 0x44C
 	int32_t start_time; // 0x458
@@ -12063,23 +11961,21 @@ VFO32(0x55FC,chapter_spawn_weight)
 VSS32(0x5600)
 #undef V
 
+extern "C" {
 // 0x4B3FE0
-static constexpr FuncSetFunc *const ECL_FUNC_CALL_TABLE[5] = {
+externcgsic FuncSetFunc *const ECL_FUNC_CALL_TABLE[5] cgasm("_ECL_FUNC_CALL_TABLE") ecginit(= {
 	NULL,
 	&EnemyData::__func_set_1_6bs,
 	&EnemyData::__func_call_2_ex,
 	&EnemyData::__func_call_3_ex,
 	&EnemyData::__func_set_4_ex
-};
-
+});
 // 0x4B36E4
-static constexpr ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[] = {
+externcgsic ExtraDamageFunc *const EXTRA_DAMAGE_FUNC_TABLE[3] cgasm("_EXTRA_DAMAGE_FUNC_TABLE") ecginit(= {
 	NULL,
 	&EnemyData::extra_damage_func1,
 	&EnemyData::extra_damage_func2,
-};
-
-extern "C" {
+});
 // Table is *not* const
 // 0x4CF2D8
 externcg ExtraHitboxFunc* EXTRA_HITBOX_FUNC_TABLE[1] cgasm("_EXTRA_HITBOX_FUNC_TABLE");
@@ -13392,7 +13288,6 @@ externcg Gui* GUI_PTR cgasm("_GUI_PTR");
 externcg void* CACHED_MSG_FILE_PTR cgasm("_CACHED_MSG_FILE_PTR");
 // 0x57091C
 externcg BOOL FRONT_ANM_IS_LOADED cgasm("_FRONT_ANM_IS_LOADED");
-
 // 0x4CF2D0
 externcg EnemyManager* ENEMY_MANAGER_PTR cgasm("_ENEMY_MANAGER_PTR");
 }
@@ -14058,10 +13953,12 @@ enum FontId : int32_t {
 static inline constexpr size_t MAX_PORTRAIT_COUNT = 4;
 static inline constexpr size_t MAX_DIALOG_LINE_COUNT = 2;
 
+extern "C" {
 // 0x4B6620
-static int32_t PLAYER_PORTRAIT_SCRIPT_TABLE[] = {
+alignas(16) externcgsic const int32_t PLAYER_PORTRAIT_SCRIPT_TABLE[CHARACTER_COUNT] cgasm("_PLAYER_PORTRAIT_SCRIPT_TABLE") ecginit(= {
 	40, 46, 29, 28
-};
+});
+}
 
 // size: 0x8
 struct MsgScriptHeader {
@@ -15005,19 +14902,18 @@ extern "C" {
 // 0x570928
 externcg FontBlock FONT_BLOCK cgasm("_FONT_BLOCK");
 // 0x4CD9B0
-externcg ecgconstinit GdiManager GDI_MANAGER cgasm("_GDI_MANAGER");
-};
-
+alignas(16) externcg ecgconstinit GdiManager GDI_MANAGER cgasm("_GDI_MANAGER");
 // 0x4C9AD0
-static D3DFormatData D3DFORMAT_DATA_TABLE[7] = {
+alignas(16) externcgs ecgconstinit D3DFormatData D3DFORMAT_DATA_TABLE[7] cgasm("_D3DFORMAT_DATA_TABLE") ecginit(= {
 	D3DFormatData::make_for<PixelX8R8G8B8>(),
 	D3DFormatData::make_for<PixelA8R8G8B8>(),
 	D3DFormatData::make_for<PixelX1R5G5B5>(),
 	D3DFormatData::make_for<PixelR5G6B5>(),
 	D3DFormatData::make_for<PixelA1R5G5B5>(),
 	D3DFormatData::make_for<PixelA4R4G4B4>(),
-	{ .format = (D3DFORMAT)-1 }
-};
+	{ .format = bitcast<D3DFORMAT>(-1) }
+});
+}
 
 // 0x4703A0
 dllexport gnu_noinline bool stdcall GdiManager::__sub_4703A0(int arg1, int) {
@@ -15454,23 +15350,28 @@ typedef int32_t (*fastcall AnmOnFunc)(AnmVM*);
 typedef int32_t (*fastcall AnmOnFuncArg)(AnmVM*, int32_t);
 typedef AnmRunRet (*fastcall AnmOnTickFunc)(AnmVM*);
 
-extern inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
-extern inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
-
-extern inline AnmOnFunc ANM_ON_WAIT_FUNCS[]; // 1
-extern inline const AnmOnTickFunc ANM_ON_TICK_FUNCS[]; // 7
-extern inline const AnmOnFunc ANM_ON_DRAW_FUNCS[]; // 8
-extern inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[]; // 6
-extern inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[]; // 6
-extern inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[]; // 4
+extern const AnmOnFunc ANM_ON_COPY_A_FUNCS[];
+extern const AnmOnFunc ANM_ON_COPY_B_FUNCS[];
 
 extern "C" {
-// For some unholy reason these aren't const
+// 0x50764C
+extern AnmOnFunc ANM_ON_WAIT_FUNCS[1] cgasm("_ANM_ON_WAIT_FUNCS");
+// 0x4B4254
+extern const AnmOnTickFunc ANM_ON_TICK_FUNCS[7] cgasm("_ANM_ON_TICK_FUNCS");
+// 0x4B48D0
+extern const AnmOnFunc ANM_ON_DRAW_FUNCS[8] cgasm("_ANM_ON_DRAW_FUNCS");
+// 0x4B42A8
+extern const AnmOnFunc ANM_ON_DESTROY_FUNCS[6] cgasm("_ANM_ON_DESTROY_FUNCS");
+// 0x4B4308
+extern const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[6] cgasm("_ANM_ON_INTERRUPT_FUNCS");
+// 0x4B48C0
+extern const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4] cgasm("_ANM_ON_SPRITE_LOOKUP_FUNCS");
 
+// For some unholy reason these aren't const
 // 0x5217DC
-externcg Float3 ZERO_FLOAT3 cgasm("_ZERO_FLOAT3");
+externcgs Float3 ZERO_FLOAT3 cgasm("_ZERO_FLOAT3");
 // 0x56AD78
-externcg Float2 ZERO_FLOAT2 cgasm("_ZERO_FLOAT2");
+externcgs Float2 ZERO_FLOAT2 cgasm("_ZERO_FLOAT2");
 }
 
 // size: 0x14
@@ -15583,11 +15484,11 @@ extern "C" {
 // 0x51F65C
 externcg AnmManager* ANM_MANAGER_PTR cgasm("_ANM_MANAGER_PTR");
 // 0x5704C0
-externcg SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] cgasm("_SPRITE_VERTEX_BUFFER_B");
+alignas(16) externcg SpriteVertexB SPRITE_VERTEX_BUFFER_B[4] cgasm("_SPRITE_VERTEX_BUFFER_B");
 // 0x570520
-externcg SpriteVertex SPRITE_VERTEX_BUFFER_A[4] cgasm("_SPRITE_VERTEX_BUFFER_A");
+alignas(16) externcg SpriteVertex SPRITE_VERTEX_BUFFER_A[4] cgasm("_SPRITE_VERTEX_BUFFER_A");
 // 0x570590
-externcg SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] cgasm("_SPRITE_VERTEX_BUFFER_C");
+alignas(16) externcg SpriteVertexC SPRITE_VERTEX_BUFFER_C[4] cgasm("_SPRITE_VERTEX_BUFFER_C");
 }
 
 namespace Anm {
@@ -15844,19 +15745,20 @@ union AnmVMCreationFlags {
 	}
 };
 
+extern "C" {
 // 0x4CDB00
-static Float4 ANCHOR_X_TABLE[3] = {
+alignas(16) externcgs Float4 ANCHOR_X_TABLE[3] cgasm("_ANCHOR_X_TABLE") ecginit(= {
 	{ -0.5f, 0.5f, -0.5f, 0.5f }, // Center
 	{ 0.0f, 1.0f, 0.0f, 1.0f },   // Left
 	{ -1.0f, 0.0f, -1.0f, 0.0f }  // Right
-};
-
+});
 // 0x4CDB30
-static Float4 ANCHOR_Y_TABLE[3] = {
+alignas(16) externcgs Float4 ANCHOR_Y_TABLE[3] cgasm("_ANCHOR_Y_TABLE") ecginit(= {
 	{ -0.5f, -0.5f, 0.5f, 0.5f }, // Center
 	{ 0.0f, 0.0f, 1.0f, 1.0f },   // Top
 	{ -1.0f, -1.0f, 0.0f, 0.0f }  // Bottom
-};
+});
+}
 
 // 0x0
 static inline constexpr AnmVMCreationFlags WORLD_LIST_BACK = { .list_type = WorldListBack };
@@ -18202,10 +18104,11 @@ VFO(0x4,script_offset)
 VSS(0x8)
 #undef V
 
-inline AnmOnFunc ANM_ON_WAIT_FUNCS[] = {
+#if !USE_EXTERN_FOR_CODEGEN
+AnmOnFunc ANM_ON_WAIT_FUNCS[1] = {
 	NULL
 };
-inline const AnmOnTickFunc ANM_ON_TICK_FUNCS[] = {
+const AnmOnTickFunc ANM_ON_TICK_FUNCS[7] = {
 	NULL,
 	&AnmVM::on_tick_special_dataA,
 	&AnmVM::on_tick_special_dataB,
@@ -18214,7 +18117,7 @@ inline const AnmOnTickFunc ANM_ON_TICK_FUNCS[] = {
 	&AnmVM::on_tick_special_dataD,
 	NULL
 };
-inline const AnmOnFunc ANM_ON_DRAW_FUNCS[] = {
+const AnmOnFunc ANM_ON_DRAW_FUNCS[8] = {
 	NULL,
 	&AnmVM::on_draw_special_dataA,
 	&AnmVM::on_draw_special_dataB,
@@ -18224,7 +18127,7 @@ inline const AnmOnFunc ANM_ON_DRAW_FUNCS[] = {
 	&AnmVM::on_draw_special_dataE,
 	&AnmVM::on_draw_special_dataD
 };
-inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[] = { 
+const AnmOnFunc ANM_ON_DESTROY_FUNCS[6] = { 
 	NULL,
 	&AnmVM::on_destroy_special_dataA,
 	&AnmVM::on_destroy_special_dataB,
@@ -18232,7 +18135,7 @@ inline const AnmOnFunc ANM_ON_DESTROY_FUNCS[] = {
 	&AnmVM::on_destroy_special_dataD,
 	NULL
 };
-inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] = {
+const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[6] = {
 	NULL,
 	&AnmVM::on_interrupt_special_dataA,
 	&AnmVM::on_interrupt_special_dataB,
@@ -18240,14 +18143,15 @@ inline const AnmOnFuncArg ANM_ON_INTERRUPT_FUNCS[] = {
 	&AnmVM::on_interrupt_special_dataD,
 	NULL
 };
-inline const AnmOnFunc ANM_ON_COPY_A_FUNCS[] = { NULL, NULL };
-inline const AnmOnFunc ANM_ON_COPY_B_FUNCS[] = { NULL, NULL };
-inline const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[] = {
+const AnmOnFuncArg ANM_ON_SPRITE_LOOKUP_FUNCS[4] = {
 	NULL,
 	&AnmVM::sprite_lookup_1,
 	&AnmVM::sprite_lookup_2,
 	&AnmVM::sprite_lookup_3
 };
+#endif
+const AnmOnFunc ANM_ON_COPY_A_FUNCS[] = { NULL, NULL };
+const AnmOnFunc ANM_ON_COPY_B_FUNCS[] = { NULL, NULL };
 
 enum AnmListEnd {
 	AnmListBack,
@@ -18343,7 +18247,7 @@ struct AnmLoaded {
 		vm->controller.global_list_node.initialize_with(vm);
 		vm->controller.child_list_node.initialize_with(vm);
 		vm->controller.child_list.initialize_with(vm);
-		rep_movsd(&vm->data, &(*this->__vm_array)[index].data, sizeof(AnmVM::AnmVMData) / sizeof(DWORD));
+		vm->data = (*this->__vm_array)[index].data; // REP MOVSD default operator=
 		vm->controller.__timer_1C.reset();
 		vm->controller.script_time.reset();
 	}
@@ -18729,12 +18633,14 @@ VFO32(0x18,dst)
 VSS32(0x28)
 #undef V
 
+extern "C" {
 // 0x4B48F0
-static inline constexpr float TEXT_FONT_TABLE[] = {
+alignas(16) externcgsic const float TEXT_FONT_TABLE[12] cgasm("_TEXT_FONT_TABLE") ecginit(= {
 	16.5f, 16.5f, 16.5f, 16.5f,
 	20.5f, 20.5f, 20.5f, 20.5f,
 	14.0f, 12.0f, 32.0f, 32.0f
-};
+});
+}
 
 // size: 0x39724B8
 struct AnmManager {
@@ -23360,7 +23266,7 @@ dllexport gnu_noinline void thiscall Supervisor::__sub_455EC0() {
 		}
 	}
 	else {
-		this->cameras[0] = this->cameras[StdCamera];
+		this->cameras[0] = this->cameras[StdCamera]; // REP MOVSD default operator=
 	}
 }
 
@@ -23753,7 +23659,7 @@ extern "C" {
 externcg TrophyManager* TROPHY_MANAGER_PTR cgasm("_TROPHY_MANAGER_PTR");
 
 // 0x5713B0
-externcg char TROPHY_TEXT_BUFFER[TROPHY_TEXT_LINE_LENGTH] cgasm("_TROPHY_TEXT_BUFFER");
+alignas(16) externcg char TROPHY_TEXT_BUFFER[TROPHY_TEXT_LINE_LENGTH] cgasm("_TROPHY_TEXT_BUFFER");
 }
 
 // size: 0x100
@@ -23885,9 +23791,8 @@ struct TrophyData {
 };
 
 extern "C" {
-// TODO: Find exact length somehow
 // 0x4CF440
-externcg TrophyData TROPHY_DATA[TROPHY_COUNT] cgasm("_TROPHY_DATA");
+alignas(16) externcg TrophyData TROPHY_DATA[TROPHY_COUNT] cgasm("_TROPHY_DATA");
 }
 
 // 0x46EAB0
@@ -23999,7 +23904,7 @@ struct TrophyQueue {
 		if (length > 0) {
 			int32_t trophy_id = this->queue[0];
 			this->length = length - 1;
-			memmove(&this->queue[0], &this->queue[1], sizeof(int32_t[127]));
+			memmove(&this->queue[0], &this->queue[1], sizeof(int32_t[127])); // REP MOVSD
 			return trophy_id;
 		}
 		return 0;
@@ -24319,62 +24224,18 @@ VSS32(0x20)
 extern "C" {
 // 0x507648
 externcg uint32_t SCREEN_EFFECT_DISABLE_TIME cgasm("_SCREEN_EFFECT_DISABLE_TIME");
-}
-
 // 0x4CCBF8
 // this isn't marked const again...
-static EffectData EFFECT_DATA_TABLE[5] = {
-	{ 
-		.__effect_anm_file_index = 0,
-		.on_create_func = &AnmVM::on_create_special_dataA,
-		.on_tick_index = 1,
-		.on_draw_index = 1,
-		.on_destroy_index = 1,
-		.on_interrupt_index = 1,
-		.on_copyA_index = 0,
-		.on_copyB_index = 0
-	},
-	{
-		.__effect_anm_file_index = 0,
-		.on_create_func = &AnmVM::on_create_special_dataB,
-		.on_tick_index = 2,
-		.on_draw_index = 2,
-		.on_destroy_index = 2,
-		.on_interrupt_index = 2,
-		.on_copyA_index = 1,
-		.on_copyB_index = 1,
-	},
-	{
-		.__effect_anm_file_index = 0,
-		.on_create_func = &AnmVM::on_create_special_dataC1,
-		.on_tick_index = 3,
-		.on_draw_index = 3,
-		.on_destroy_index = 3,
-		.on_interrupt_index = 3,
-		.on_copyA_index = 0,
-		.on_copyB_index = 0
-	},
-	{
-		.__effect_anm_file_index = 0,
-		.on_create_func = &AnmVM::on_create_special_dataC2,
-		.on_tick_index = 3,
-		.on_draw_index = 3,
-		.on_destroy_index = 3,
-		.on_interrupt_index = 3,
-		.on_copyA_index = 0,
-		.on_copyB_index = 0
-	},
-	{
-		.__effect_anm_file_index = 0,
-		.on_create_func = &AnmVM::on_create_special_dataD,
-		.on_tick_index = 5,
-		.on_draw_index = 7,
-		.on_destroy_index = 4,
-		.on_interrupt_index = 4,
-		.on_copyA_index = 0,
-		.on_copyB_index = 0
-	}
-};
+alignas(8) externcgs EffectData EFFECT_DATA_TABLE[5] cgasm("_EFFECT_DATA_TABLE")
+#if !USE_EXTERN_FOR_CODEGEN
+= {
+#if !__INTELLISENSE__
+#include "effect_data_table.h"
+#endif
+}
+#endif
+;
+}
 
 // size: 0x40
 struct ScreenEffect : ZUNTask {
@@ -24866,12 +24727,6 @@ VFO32(0x2C,timer)
 VSS32(0x40)
 #undef V
 
-// this does absolutely nothing
-extern "C" {
-// 0x56AD38
-externcg ScreenEffect SCREEN_INF cgasm("_SCREEN_INF");
-}
-
 forceinline ScreenEffect* screen_effect_allocate(ScreenEffectType type, int32_t A, int32_t B, int32_t C, int32_t D, int32_t draw_priority) {
 	return ScreenEffect::allocate(type, A, B, C, D, draw_priority);
 }
@@ -24884,6 +24739,8 @@ typedef struct EffectManager EffectManager;
 extern "C" {
 // 0x4CF2C8
 externcg EffectManager* EFFECT_MANAGER_PTR cgasm("_EFFECT_MANAGER_PTR");
+// 0x56AD38
+externcg ScreenEffect SCREEN_INF cgasm("_SCREEN_INF"); // this does absolutely nothing
 }
 
 static inline constexpr int32_t MAX_EFFECTS = 0x400;
@@ -24900,9 +24757,9 @@ struct EffectManager : ZUNTask {
 	};
 	unknown_fields(0x4); // 0x14
 	int32_t slot_index; // 0x18
-	AnmID vm_slots[MAX_EFFECTS]; // 0x1C
+	std::array<AnmID, MAX_EFFECTS> vm_slots; // 0x1C
 	int32_t __slot_indexB; // 0x101C
-	AnmID __vm_slotsB[MAX_EFFECTS]; // 0x1020
+	std::array<AnmID, MAX_EFFECTS> __vm_slotsB; // 0x1020
 	ZUNThreadB __thread_2020; // 0x2020
 	BOOL __done_loading; // 0x203C
 	// 0x2040
@@ -26134,10 +25991,16 @@ dllexport gnu_noinline BOOL thiscall Globals::subtract_power(int32_t amount) {
 	return prev_level != new_level;
 }
 
+extern "C" {
+// 0x4B6600
+externcgsic const int32_t BOMB_FRAGMENT_INTERRUPT_TABLE[3] cgasm("_BOMB_FRAGMENT_INTERRUPT_TABLE") ecginit(= {
+	0, 1, 2
+});
 // 0x4B660C
-static inline constexpr int32_t LIFE_FRAGMENT_INTERRUPT_TABLE[] = {
-	0, 1, 2, 0, 0
-};
+externcgsic const int32_t LIFE_FRAGMENT_INTERRUPT_TABLE[3] cgasm("_LIFE_FRAGMENT_INTERRUPT_TABLE") ecginit(= {
+	0, 1, 2
+});
+}
 
 // 0x441F10
 dllexport gnu_noinline void thiscall Gui::__update_life_ui(int32_t life_count, int32_t life_fragments, int32_t life_max) {
@@ -26192,11 +26055,6 @@ dllexport gnu_noinline void thiscall Gui::__update_life_ui(int32_t life_count, i
 		}
 	}
 }
-
-// 0x4B6600
-static inline constexpr int32_t BOMB_FRAGMENT_INTERRUPT_TABLE[] = {
-	0, 1, 2
-};
 
 // 0x4420E0
 dllexport gnu_noinline void thiscall Gui::__update_bomb_ui(int32_t bomb_count, int32_t bomb_fragments, int32_t bomb_max) {
@@ -26864,7 +26722,7 @@ struct AsciiManager : ZUNTask {
 		for (int32_t cur_index = 0; cur_index < self->string_count; ++cur_index) {
 			if (--self->strings[cur_index].duration >= 0) {
 				if (cur_index != live_index) {
-					*live_string++ = *cur_string;
+					*live_string++ = *cur_string; // REP MOVSD default operator=
 				}
 				++live_index;
 			}
@@ -27334,10 +27192,8 @@ extern "C" {
 externcg Ending* ENDING_PTR cgasm("_ENDING_PTR");
 // 0x4C5F88
 externcg int32_t UNKNOWN_INT32_I cgasm("_UNKNOWN_INT32_I") ecginit(= -1);
-}
-
-// 0x4B3Fa0
-static inline constexpr const char *const ENDING_FILENAMES[] = {
+// 0x4B3FA0
+alignas(16) externcgsic const char *const ENDING_FILENAMES[16] cgasm("_ENDING_FILENAMES") ecginit(= {
 	"e01.msg",
 	"e02.msg",
 	"e03.msg",
@@ -27349,8 +27205,13 @@ static inline constexpr const char *const ENDING_FILENAMES[] = {
 	"e09.msg",
 	"e10.msg",
 	"e11.msg",
-	"e12.msg"
-};
+	"e12.msg",
+	"staff1.msg",
+	"staff2.msg",
+	"staff3.msg",
+	"staff4.msg"
+});
+}
 
 namespace End {
 enum Opcode : uint8_t {
@@ -29165,21 +29026,13 @@ using DamageSourceFunc = int32_t fastcall(PlayerDamageSource* self, Float3* posi
 using BulletDamageFunc = int32_t fastcall(PlayerBullet* self, Float3* position, Float2* size, float rotation, float radius);
 using BulletInitFunc = int32_t fastcall(PlayerBullet* self, PlayerDamageSource* damage_source);
 using BulletTickFunc = ZUNResult fastcall(PlayerBullet* self);
+using BulletDrawFunc = ZUNResult fastcall(PlayerBullet* self);
 using OptionPositionFunc = int32_t fastcall(PlayerOption* self);
 
 typedef struct ShtFile ShtFile;
 extern "C" {
 // 0x570920
 externcg ShtFile* CACHED_SHT_FILE_PTR cgasm("_CACHED_SHT_FILE_PTR");
-
-// 0x4B4230
-//externcg BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[8] cgasm("_PLAYER_BULLET_INIT_FUNCS");
-// 0x4B4210
-//externcg void *const PLAYER_BULLET_TICK_FUNCS[8] cgasm("_PLAYER_BULLET_TICK_FUNCS");
-// 0x4CF414
-void* PLAYER_FUNC_TABLE_C[1] cgasm("_PLAYER_FUNC_TABLE_C") = {}; // No, the missing const isn't a typo
-// 0x4B41F0
-//externcg BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] cgasm("_PLAYER_BULLET_DAMAGE_FUNCS");
 }
 
 static inline constexpr size_t MAX_SHT_ENTRY_COUNT = 40;
@@ -29212,8 +29065,8 @@ struct ShtEntry {
 		uint32_t on_tick_func_index; // 0x30
 	};
 	union {
-		PTR32Z<void> __unknown_func_C; // 0x34
-		uint32_t __unknown_func_C_index; // 0x34
+		PTR32Z<BulletDrawFunc> on_draw_func; // 0x34
+		uint32_t on_draw_func_index; // 0x34
 	};
 	union {
 		PTR32Z<BulletDamageFunc> damage_func; // 0x38
@@ -29244,7 +29097,7 @@ VFO(0x2A,__long_timer_modulo)
 VFO(0x2B,__long_timer_value)
 VFO(0x2C,init_func)
 VFO(0x30,on_tick_func)
-VFO(0x34,__unknown_func_C)
+VFO(0x34,on_draw_func)
 VFO(0x38,damage_func)
 VFO(0x4C,__float_4C)
 VSS(0x5C)
@@ -29352,8 +29205,9 @@ enum DamageSourceHitboxType {
 	CircleHitbox = 1
 };
 
+extern "C" {
 // 0x4B7040
-static inline const Int2 MOVEMENT_DIRECTIONS_LOOKUP[] = {
+alignas(16) externcgsic const Int2 MOVEMENT_DIRECTIONS_LOOKUP[9] cgasm("_MOVEMENT_DIRECTIONS_LOOKUP") ecginit(= {
 	{ 0, 0 }, // MovementNone
 	{ 0, -1 }, // MovementUp
 	{ 0, 1 }, // MovementDown
@@ -29363,7 +29217,8 @@ static inline const Int2 MOVEMENT_DIRECTIONS_LOOKUP[] = {
 	{ 1, -1 }, // MovementUpRight
 	{ -1, 1 }, // MovementDownLeft
 	{ 1, 1 }, // MovementDownRight
-};
+});
+}
 
 struct RectPoints {
 	Float2 points[4];
@@ -29423,14 +29278,16 @@ public:
 	}
 };
 
+extern "C" {
 // 0x4B35A0
 // this could've been just +1 and a mask ZUN...
-static const int32_t AWFUL_RECTANGLE_INDEX_TABLE[] = {
+alignas(16) externcgs const int32_t AWFUL_RECTANGLE_INDEX_TABLE[8] cgasm("_AWFUL_RECTANGLE_INDEX_TABLE") ecginit(= {
 	0, 1,
 	1, 2,
 	2, 3,
 	3, 0
-};
+});
+}
 
 inline namespace HitboxManager {
 
@@ -30252,13 +30109,15 @@ VFO32(0x98,__unknown_func_index)
 VSS32(0x9C)
 #undef V
 
+extern "C" {
 // 0x4B4270
-static constexpr DamageSourceFunc *const PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[] = {
+alignas(16) externcgsic DamageSourceFunc *const PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS[4] cgasm("_PLAYER_DAMAGE_SOURCE_UNKNOWN_FUNCS") ecginit(= {
 	NULL,
 	&PlayerDamageSource::__unknown_func_1,
 	&PlayerDamageSource::__unknown_func_2,
 	&PlayerDamageSource::__unknown_func_3
-};
+});
+}
 
 static inline PlayerDamageSource* get_damage_source_by_index(int32_t index);
 
@@ -30399,7 +30258,7 @@ struct PlayerBullet {
 	PlayerOption* option; // 0xE4
 	BulletInitFunc* init_func; // 0xE8
 	BulletTickFunc* on_tick_func; // 0xEC
-	void* __unknown_func_C; // 0xF0
+	BulletDrawFunc* on_draw_func; // 0xF0
 	BulletDamageFunc* damage_func; // 0xF4
 	// 0xF8
 
@@ -30512,13 +30371,14 @@ VFO32(0xE0,bullet_anm)
 VFO32(0xE4,option)
 VFO32(0xE8,init_func)
 VFO32(0xEC,on_tick_func)
-VFO32(0xF0,__unknown_func_C)
+VFO32(0xF0,on_draw_func)
 VFO32(0xF4,damage_func)
 VSS32(0xF8)
 #undef V
 
+extern "C" {
 // 0x4B41F0
-static BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] = {
+alignas(16) externcgsic BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] cgasm("_PLAYER_BULLET_DAMAGE_FUNCS") ecginit(= {
 	NULL,
 	&PlayerBullet::damage_func_1_reimu_needles,
 	&PlayerBullet::damage_func_2_marisa_lasers,
@@ -30527,10 +30387,9 @@ static BulletDamageFunc *const PLAYER_BULLET_DAMAGE_FUNCS[8] = {
 	&PlayerBullet::damage_func_5_sanae_snakes,
 	&PlayerBullet::__damage_func_6, // unused?
 	NULL
-};
-
+});
 // 0x4B4210
-static BulletTickFunc *const PLAYER_BULLET_TICK_FUNCS[8] = {
+alignas(16) externcgsic BulletTickFunc *const PLAYER_BULLET_TICK_FUNCS[8] cgasm("_PLAYER_BULLET_TICK_FUNCS") ecginit(= {
 	NULL,
 	&PlayerBullet::on_tick_1_reimu_amulets,
 	&PlayerBullet::on_tick_2_marisa_lasers,
@@ -30539,10 +30398,9 @@ static BulletTickFunc *const PLAYER_BULLET_TICK_FUNCS[8] = {
 	&PlayerBullet::on_tick_5_card_sakuya2,
 	NULL,
 	NULL
-};
-
+});
 // 0x4B4230
-static BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[9] = {
+alignas(16) externcgsic BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[9] cgasm("_PLAYER_BULLET_INIT_FUNCS") ecginit(= {
 	NULL,
 	&PlayerBullet::init_func_1_reimu_amulets,
 	&PlayerBullet::init_func_2_marisa_lasers,
@@ -30552,7 +30410,10 @@ static BulletInitFunc *const PLAYER_BULLET_INIT_FUNCS[9] = {
 	&PlayerBullet::init_func_6_card_cirno,
 	&PlayerBullet::__init_func_7, // sht entry 22, unused?
 	NULL
-};
+});
+// 0x4CF414
+externcgs BulletDrawFunc* PLAYER_BULLET_DRAW_FUNCS[1] cgasm("_PLAYER_BULLET_DRAW_FUNCS") ecginit(= {}); // No, the missing const isn't a typo
+}
 
 static inline constexpr size_t PLAYER_OPTION_COUNT = 4;
 static inline constexpr size_t PLAYER_EQUIPMENT_OPTION_COUNT = 12;
@@ -30681,20 +30542,25 @@ VFO32(0x472F4,__timer_472F4)
 VSS32(0x47308)
 #undef V
 
+// This is unused
+extern "C" {
+// 0x5217E8
+externcg PlayerData GLOBAL_PLAYER_DATA cgasm("_GLOBAL_PLAYER_DATA");
 // 0x4B7088
-static inline constexpr const char *const PLAYER_SHT_FILENAMES[] = {
+externcgsic const char *const PLAYER_SHT_FILENAMES[SHOTTYPE_COUNT] cgasm("_PLAYER_SHT_FILENAMES") ecginit(= {
 	"pl00.sht",
 	"pl01.sht",
 	"pl02.sht",
 	"pl03.sht"
-};
+});
 // 0x4B7098
-static inline constexpr const char *const PLAYER_ANM_FILENAMES[] = {
+externcgsic const char *const PLAYER_ANM_FILENAMES[SHOTTYPE_COUNT] cgasm("_PLAYER_ANM_FILENAMES") ecginit(= {
 	"pl00.anm",
 	"pl01.anm",
 	"pl02.anm",
 	"pl03.anm"
-};
+});
+}
 
 // size: 0x479D4
 struct Player : ZUNTask {
@@ -31379,7 +31245,7 @@ public:
 						) {
 							entry_ptr->init_func = PLAYER_BULLET_INIT_FUNCS[entry_ptr->init_func_index];
 							entry_ptr->on_tick_func = PLAYER_BULLET_TICK_FUNCS[entry_ptr->on_tick_func_index];
-							entry_ptr->__unknown_func_C = PLAYER_FUNC_TABLE_C[entry_ptr->__unknown_func_C_index];
+							entry_ptr->on_draw_func = PLAYER_BULLET_DRAW_FUNCS[entry_ptr->on_draw_func_index];
 							entry_ptr->damage_func = PLAYER_BULLET_DAMAGE_FUNCS[entry_ptr->damage_func_index];
 						}
 						
@@ -37158,15 +37024,15 @@ struct AbilityManager : ZUNTask {
 	AnmID __selected_card_vm; // 0x3C
 	BOOL __selected_card_hidden; // 0x40
 	Timer __timer_44; // 0x44
-	AnmID __card_vms[MAX_EQUIPPED_CARDS]; // 0x58
-	AnmID __active_card_vms[MAX_EQUIPPED_CARDS]; // 0x458
+	std::array<AnmID, MAX_EQUIPPED_CARDS> __card_vms; // 0x58
+	std::array<AnmID, MAX_EQUIPPED_CARDS> __active_card_vms; // 0x458
 	CardBase* __active_card_array[MAX_EQUIPPED_CARDS]; // 0x858
 	float __float_C58; // 0xC58
 	int32_t __int_C5C; // 0xC5C
 	BOOL __ability_data_loaded; // 0xC60
 	BOOL __created_ability_data; // 0xC64
 	ZUNThread __thread_C68; // 0xC68
-	BOOL purchased_cards[USABLE_CARD_COUNT]; // 0xC84
+	std::array<BOOL, USABLE_CARD_COUNT> purchased_cards; // 0xC84
 	unknown_fields(0xC); // 0xD64
 	// 0xD70
 
@@ -37391,7 +37257,7 @@ public:
 			}
 		}
 
-		zero_array(ability_manager->__card_vms);
+		ability_manager->__card_vms = {};
 	}
 
 	inline void wait_for_ability_data_to_load() {
@@ -37758,7 +37624,7 @@ public:
 				const CardData* card = &find_id_in_card_data(i);
 				int32_t weight = card->shop_weight;
 				for (int32_t j = 0; j < weight; ++j) {
-					weighted_array[weighted_array_size + j] = card;
+					weighted_array[weighted_array_size + j] = card; // REP STOSD
 				}
 				weighted_array_size += weight;
 				if (!SCOREFILE_MANAGER_PTR->primary_file.common.unlocked_cards[i]) {
@@ -37797,8 +37663,7 @@ public:
 		}
 
 		if (arg1) {
-			// Do these REP STOS memsets correspond to std::array = {}?
-			zero_array(this->purchased_cards);
+			this->purchased_cards = {}; // REP STOSD default operator=
 
 			ScorefileManager* scorefile_manager = SCOREFILE_MANAGER_PTR;
 			for (
@@ -38623,7 +38488,7 @@ dllexport gnu_noinline ZUNResult thiscall PlayerBullet::shoot(int32_t sht_entry_
 	this->__focused = PLAYER_PTR->data.focused;
 	this->init_func = entry_ptr->init_func;
 	this->on_tick_func = entry_ptr->on_tick_func;
-	this->__unknown_func_C = entry_ptr->__unknown_func_C;
+	this->on_draw_func = entry_ptr->on_draw_func;
 	this->damage_func = entry_ptr->damage_func;
 	this->motion.zero_contents();
 
@@ -38738,22 +38603,21 @@ normal_angle:
 extern "C" {
 // 0x4CDB60
 // For all characters: 0, 1, 3, 6, 10, 11, 13, 16
-externcg int32_t UNKNOWN_W[SHOTTYPE_COUNT][MAX_ALLOWED_POWER_LEVEL] cgasm("_UNKNOWN_W") ecginit(= {
+alignas(16) externcg int32_t UNKNOWN_W[SHOTTYPE_COUNT][MAX_ALLOWED_POWER_LEVEL] cgasm("_UNKNOWN_W") ecginit(= {
 	{ 0, 1, 3, 6, 10, 11, 13, 16 },
 	{ 0, 1, 3, 6, 10, 11, 13, 16 },
 	{ 0, 1, 3, 6, 10, 11, 13, 16 },
 	{ 0, 1, 3, 6, 10, 11, 13, 16 }
 });
-}
-
 // 0x4B7020
-static inline constexpr int32_t PLAYER_OPTION_ANM_SCRIPTS_B[CHARACTER_COUNT] = {
+alignas(16) externcgsic const int32_t PLAYER_OPTION_ANM_SCRIPTS_B[CHARACTER_COUNT] cgasm("_PLAYER_OPTION_ANM_SCRIPTS_B") ecginit(= {
 	15, 17, 12, 10
-};
+});
 // 0x4B7030
-static inline constexpr int32_t PLAYER_OPTION_ANM_SCRIPTS_A[CHARACTER_COUNT] = {
+alignas(16) externcgsic const int32_t PLAYER_OPTION_ANM_SCRIPTS_A[CHARACTER_COUNT] cgasm("_PLAYER_OPTION_ANM_SCRIPTS_A") ecginit(= {
 	16, 18, 13, 12
-};
+});
+}
 
 // 0x45D5E0
 dllexport gnu_noinline void thiscall PlayerData::__update_option_power_levels(int) {
@@ -39083,8 +38947,8 @@ struct AbilityShop : ZUNTask {
 	Timer __timer_208; // 0x208
 	unknown_fields(0xC); // 0x21C
 	AnmID __anm_id_228; // 0x228
-	AnmID __anm_id_array_22C[256]; // 0x22C
-	AnmID __anm_id_array_62C[256]; // 0x62C
+	std::array<AnmID, 256> __anm_id_array_22C; // 0x22C
+	std::array<AnmID, 256> __anm_id_array_62C; // 0x62C
 	int32_t card_count; // 0xA2C
 	const CardData* card_array[256]; // 0xA30
 	int32_t __purchased_card_id; // 0xE30
@@ -39336,9 +39200,9 @@ struct AbilityMenu : ZUNTask {
 	int32_t card_ids[USABLE_CARD_COUNT]; // 0x304
 	int32_t __card_count; // 0x3E4
 	AnmID __anm_id_3E8; // 0x3E8
-	AnmID __anm_id_array_3EC[MAX_EQUIPPED_CARDS]; // 0x3EC
-	AnmID __anm_id_array_7EC[MAX_EQUIPPED_CARDS]; // 0x7EC
-	AnmID __anm_id_array_BEC[MAX_EQUIPPED_CARDS]; // 0xBEC
+	std::array<AnmID, MAX_EQUIPPED_CARDS> __anm_id_array_3EC; // 0x3EC
+	std::array<AnmID, MAX_EQUIPPED_CARDS> __anm_id_array_7EC; // 0x7EC
+	std::array<AnmID, MAX_EQUIPPED_CARDS> __anm_id_array_BEC; // 0xBEC
 	CardBase* cards[MAX_EQUIPPED_CARDS]; // 0xFEC
 	AbilityMenuType menu_type; // 0x13EC
 	BOOL __is_pause_menu; // 0x13F0
@@ -42416,7 +42280,7 @@ struct Stage : ZUNTask {
 				}
 				this->std_vm.run_std();
 			}
-			SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
+			SUPERVISOR.cameras[StdCamera] = this->std_vm.camera; // REP MOVSD default operator=
 			nounroll for (size_t i = 0; i < countof(this->std_vm.slot_vms); ++i) {
 				this->std_vm.slot_vms[i].run_anm();
 			}
@@ -42432,7 +42296,7 @@ struct Stage : ZUNTask {
 			if (!this->__wait_for_transition || this->__transition_timer < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
 				this->std_vm.camera.__vertex_offsetA = SUPERVISOR.cameras[StdCamera].__vertex_offsetA;
-				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
+				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera; // REP MOVSD default operator=
 				SUPERVISOR.__setup_stage_camera();
 
 				SUPERVISOR.d3d_enable_zwrite();
@@ -42500,7 +42364,7 @@ struct Stage : ZUNTask {
 			if (!this->__wait_for_transition || this->__transition_timer < 60) {
 				ANM_MANAGER_PTR->flush_sprites();
 				this->std_vm.camera.__vertex_offsetA = SUPERVISOR.cameras[StdCamera].__vertex_offsetA;
-				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera;
+				SUPERVISOR.cameras[StdCamera] = this->std_vm.camera; // REP MOVSD default operator=
 				SUPERVISOR.__setup_stage_camera();
 
 				SUPERVISOR.d3d_disable_fog();
@@ -42622,7 +42486,7 @@ corrupted_data:
 
 		this->std_vm.full_stage = this;
 
-		this->std_vm.camera = SUPERVISOR.cameras[StdCamera];
+		this->std_vm.camera = SUPERVISOR.cameras[StdCamera]; // REP MOVSD default operator=
 
 		this->std_vm.camera.position = { 0.0f, 0.0f, -600.0f };
 		this->std_vm.camera.facing = { 0.0f, 300.0f, 600.0f };
@@ -43870,10 +43734,7 @@ struct ItemSpriteData {
 
 extern "C" {
 // 0x4B4020
-//externcg const ItemSpriteData ITEM_SPRITE_DATA[21] cgasm("_ITEM_SPRITE_DATA");
-}
-
-static const ItemSpriteData ITEM_SPRITE_DATA[] = {
+alignas(16) externcgsic const ItemSpriteData ITEM_SPRITE_DATA[21] cgasm("_ITEM_SPRITE_DATA") ecginit(= {
 	{ // 0, InvalidItem
 		.__id_0 = -1,
 		.__id_4 = -1
@@ -43958,7 +43819,8 @@ static const ItemSpriteData ITEM_SPRITE_DATA[] = {
 		.__id_0 = 129,
 		.__id_4 = -1
 	}
-};
+});
+}
 
 enum class ItemState : uint32_t {
 	Inactive = 0, // Default state, also set when despawning
@@ -45037,453 +44899,21 @@ make_bullet_colors_fixed(int32_t cancel_script) {
 
 extern "C" {
 // 0x4C5F90
-//externcg BulletSpriteData BULLET_SPRITE_DATA[48] cgasm("_BULLET_SPRITE_DATA");
-// 0x4B36F0
-//externcg int32_t BULLET_IDK_DATA[8] cgasm("_BULLET_IDK_DATA");
-}
-
-// 0x4C5F90
 // This is *not* marked const for some reason
-static BulletSpriteData BULLET_SPRITE_DATA[48] = {
-	{ // 0, PELLET
-		.anm_script = 35,
-		.color_data = make_bullet_colors_16(0, 323, 336, 161),
-		.hitbox_size = 2.4f,
-		.layer = 5,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 1, PELLET2
-		.anm_script = 36,
-		.color_data = make_bullet_colors_16(0, 323, 336, 161),
-		.hitbox_size = 2.4f,
-		.layer = 5,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 2, INVERT_POPCORN
-		.anm_script = 37,
-		.color_data = make_bullet_colors_16(16, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 5,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 3, POPCORN
-		.anm_script = 38,
-		.color_data = make_bullet_colors_16(48, 323, 336, 209),
-		.hitbox_size = 2.0f,
-		.layer = 5,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 4, BALL
-		.anm_script = 39,
-		.color_data = make_bullet_colors_16(64, 323, 336, 209),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 5, BALL2
-		.anm_script = 40,
-		.color_data = make_bullet_colors_16(80, 323, 336, 209),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 6, RING_BALL
-		.anm_script = 41,
-		.color_data = make_bullet_colors_16(96, 323, 336, 209),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 7, RING_BALL2
-		.anm_script = 42,
-		.color_data = make_bullet_colors_16(112, 323, 336, 209),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 8, RICE
-		.anm_script = 43,
-		.color_data = make_bullet_colors_16(128, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 9, KUNAI
-		.anm_script = 44,
-		.color_data = make_bullet_colors_16(160, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 10, SHARD
-		.anm_script = 45,
-		.color_data = make_bullet_colors_16(176, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 11, TALISMAN
-		.anm_script = 46,
-		.color_data = make_bullet_colors_16(208, 323, 336, 209),
-		.hitbox_size = 2.8f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 12, ARROWHEAD
-		.anm_script = 47,
-		.color_data = make_bullet_colors_16(224, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 13, BULLET
-		.anm_script = 48,
-		.color_data = make_bullet_colors_16(240, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 14, LUMPY_BALL
-		.anm_script = 49,
-		.color_data = make_bullet_colors_16(256, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 15, INVERT_RICE
-		.anm_script = 50,
-		.color_data = make_bullet_colors_16(272, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 16, STAR_R
-		.anm_script = 51,
-		.color_data = make_bullet_colors_16(288, 323, 336, 209),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 17, COIN
-		.anm_script = 52,
-		.color_data = make_bullet_colors_coin(320),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 0,
-		.__int_110 = 6,
-		.__anm_script_114 = 0
-	},
-	{ // 18, BIG_BALL
-		.anm_script = 72,
-		.color_data = make_bullet_colors_8(368, 323, 257),
-		.hitbox_size = 8.5f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 19, BIG_BALL2
-		.anm_script = 73,
-		.color_data = make_bullet_colors_8(376, 323, 257),
-		.hitbox_size = 8.5f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 20, OVAL
-		.anm_script = 74,
-		.color_data = make_bullet_colors_8(392, 323, 257),
-		.hitbox_size = 7.0f,
-		.layer = 2,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 21, DAGGER
-		.anm_script = 75,
-		.color_data = make_bullet_colors_8(400, 323, 257),
-		.hitbox_size = 6.0f,
-		.layer = 2,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 22, BUTTERFLY
-		.anm_script = 76,
-		.color_data = make_bullet_colors_8(408, 323, 257),
-		.hitbox_size = 7.0f,
-		.layer = 2,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 23, BIG_STAR_R
-		.anm_script = 77,
-		.color_data = make_bullet_colors_8(416, 323, 257),
-		.hitbox_size = 7.0f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 24, BIG_STAR_L
-		.anm_script = 78,
-		.color_data = make_bullet_colors_8(424, 323, 257),
-		.hitbox_size = 7.0f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 25, FIREBALL_RED
-		.anm_script = 108,
-		.color_data = make_bullet_colors_fixed(263),
-		.hitbox_size = 6.0f,
-		.layer = 2,
-		.__int_10C = 7,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 26, FIREBALL_PURPLE
-		.anm_script = 109,
-		.color_data = make_bullet_colors_fixed(260),
-		.hitbox_size = 6.0f,
-		.layer = 2,
-		.__int_10C = 8,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 27, FIREBALL_BLUE
-		.anm_script = 110,
-		.color_data = make_bullet_colors_fixed(266),
-		.hitbox_size = 4.0f,
-		.layer = 2,
-		.__int_10C = 9,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 28, FIREBALL_YELLOW
-		.anm_script = 111,
-		.color_data = make_bullet_colors_fixed(275),
-		.hitbox_size = 4.0f,
-		.layer = 2,
-		.__int_10C = 10,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 29, HEART
-		.anm_script = 81,
-		.color_data = make_bullet_colors_8(444, 323, 257),
-		.hitbox_size = 10.0f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 30, PULSE_BALL
-		.anm_script = 79,
-		.color_data = make_bullet_colors_8(384, 323, 257),
-		.hitbox_size = 7.0f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 31, ARROW
-		.anm_script = 82,
-		.color_data = make_bullet_colors_8(452, 323, 257),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 32, BUBBLE
-		.anm_script = 80,
-		.color_data = make_bullet_colors_4(432, 281),
-		.hitbox_size = 14.0f,
-		.layer = 0,
-		.__int_10C = 6,
-		.__int_110 = 60,
-		.__anm_script_114 = 0
-	},
-	{ // 33, GLOW_BALL
-		.anm_script = 315,
-		.color_data = make_bullet_colors_8(548, 257),
-		.hitbox_size = 12.0f,
-		.layer = 2,
-		.__int_10C = 6,
-		.__int_110 = 60,
-		.__anm_script_114 = 0
-	},
-	{ // 34, DROPLET
-		.anm_script = 107,
-		.color_data = make_bullet_colors_16(468, 323, 336, 209),
-		.hitbox_size = 2.4f,
-		.layer = 5,
-		.__int_10C = 6,
-		.__int_110 = 8,
-		.__anm_script_114 = 0
-	},
-	{ // 35, SPIN_RICE
-		.anm_script = 53,
-		.color_data = make_bullet_colors_16(144, 323, 336, 209),
-		.hitbox_size = 3.2f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 8,
-		.__anm_script_114 = 0
-	},
-	{ // 36, SPIN_SHARD
-		.anm_script = 54,
-		.color_data = make_bullet_colors_16(192, 323, 336, 209),
-		.hitbox_size = 3.2f,
-		.layer = 4,
-		.__int_10C = 6,
-		.__int_110 = 8,
-		.__anm_script_114 = 0
-	},
-	{ // 37, STAR_L
-		.anm_script = 55,
-		.color_data = make_bullet_colors_16(304, 323, 336, 209),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 8,
-		.__anm_script_114 = 0
-	},
-	{ // 38, LASER_CHUNK
-		.anm_script = 158,
-		.color_data = make_bullet_colors_16(352, 336, 209),
-		.hitbox_size = 4.0f,
-		.layer = 2,
-		.__int_10C = 6,
-		.__int_110 = 30,
-		.__anm_script_114 = 0
-	},
-	{ // 39, NOTE_RED
-		.anm_script = 317,
-		.color_data = make_bullet_colors_fixed(260),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 40, NOTE_BLUE
-		.anm_script = 318,
-		.color_data = make_bullet_colors_fixed(266),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 41, NOTE_YELLOW
-		.anm_script = 319,
-		.color_data = make_bullet_colors_fixed(275),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 42, NOTE_PURPLE
-		.anm_script = 320,
-		.color_data = make_bullet_colors_fixed(263),
-		.hitbox_size = 4.0f,
-		.layer = 3,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 43, REST
-		.anm_script = 321,
-		.color_data = make_bullet_colors_8(568, 323, 257),
-		.hitbox_size = 5.0f,
-		.layer = 2,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 44, YIN_YANG_R
-		.anm_script = 324,
-		.color_data = make_bullet_colors_8(580, 323, 257),
-		.hitbox_size = 10.0f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 45, YIN_YANG_L
-		.anm_script = 325,
-		.color_data = make_bullet_colors_8(588, 323, 257),
-		.hitbox_size = 10.0f,
-		.layer = 1,
-		.__int_10C = 6,
-		.__int_110 = 12,
-		.__anm_script_114 = 0
-	},
-	{ // 46, BIG_YIN_YANG_R
-		.anm_script = 326,
-		.color_data = make_bullet_colors_4(596, 281),
-		.hitbox_size = 28.0f,
-		.layer = 0,
-		.__int_10C = 6,
-		.__int_110 = 60,
-		.__anm_script_114 = 0
-	},
-	{ // 47, BIG_YIN_YANG_L
-		.anm_script = 327,
-		.color_data = make_bullet_colors_4(596, 281),
-		.hitbox_size = 28.0f,
-		.layer = 0,
-		.__int_10C = 6,
-		.__int_110 = 60,
-		.__anm_script_114 = 0
-	},
-};
-
+alignas(16) externcgs ecgconstinit BulletSpriteData BULLET_SPRITE_DATA[48] cgasm("_BULLET_SPRITE_DATA")
+#if !USE_EXTERN_FOR_CODEGEN
+= {
+#if !__INTELLISENSE__
+#include "bullet_sprite_data_table.h"
+#endif
+}
+#endif
+;
 // 0x4B36F0
-static inline const int32_t BULLET_IDK_DATA[8] = {
+alignas(16) externcgsic const int32_t BULLET_IDK_DATA[8] cgasm("_BULLET_IDK_DATA") ecginit(= {
 	4, 8, 12, 16, 20, 24, 28, 34
-};
-
+});
+}
 
 typedef struct BulletManager BulletManager;
 typedef struct LaserManager LaserManager;
@@ -45637,7 +45067,7 @@ struct Bullet {
 	int __int_690; // 0x690
 	int32_t transform_sound; // 0x694
 	int32_t layer; // 0x698
-	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x69C
+	std::array<BulletEffectArgs, BULLET_EFFECT_MAX> effects; // 0x69C
 	BulletEffectData effect_speedup; // 0xABC
 	BulletEffectData effect_accel; // 0xB04
 	BulletEffectData effect_angle_accel; // 0xB4C
@@ -46650,7 +46080,7 @@ struct LaserLineParams {
 			uint32_t __unknown_flag_ll_B : 1; // 2
 		};
 	};
-	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x38, 0x7C0
+	std::array<BulletEffectArgs, BULLET_EFFECT_MAX> effects; // 0x38, 0x7C0
 	int32_t shoot_sound; // 0x458, 0xBE0
 	int32_t transform_sound; // 0x45C, 0xBE4
 	// 0x460, 0xBE8
@@ -47297,7 +46727,7 @@ struct LaserInfiniteParams {
 			uint32_t __unknown_flag_li_A : 1; // 2
 		};
 	};
-	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x60, 0x7E8
+	std::array<BulletEffectArgs, BULLET_EFFECT_MAX> effects; // 0x60, 0x7E8
 	// 0x480, 0xC08
 
 	inline void zero_contents() {
@@ -47718,7 +47148,7 @@ struct LaserCurveParams {
 			uint32_t __unknown_flag_lc_A : 1; // 1
 		};
 	};
-	BulletEffectArgs effects[BULLET_EFFECT_MAX]; // 0x2C, 0x7B4
+	std::array<BulletEffectArgs, BULLET_EFFECT_MAX> effects; // 0x2C, 0x7B4
 	int32_t shoot_sound; // 0x44C, 0xBD4
 	int32_t transform_sound; // 0x450, 0xBD8
 	int32_t effect_index; // 0x454, 0xBDC
@@ -48201,7 +47631,7 @@ struct LaserBeamParams {
 			uint32_t __unknown_flag_lb_A : 1; // 1
 		};
 	};
-	BulletEffectArgs effects[24]; // 0x3C
+	std::array<BulletEffectArgs, BULLET_EFFECT_MAX> effects; // 0x3C
 	// 0x45C
 
 	inline void zero_contents() {
@@ -48246,7 +47676,7 @@ struct LaserBeam : LaserData {
 	// 0x4527D0
 	// Method 0xC
 	dllexport virtual gnu_noinline int thiscall initialize(void* data) override ASR(0x4527D0) {
-		memcpy(&this->params, data, sizeof(LaserBeamParams));
+		this->params = *(LaserBeamParams*)data; // REP MOVSD default operator=
 
 		this->position = this->params.position;
 		this->length = this->params.length;
@@ -48380,7 +47810,7 @@ struct BulletManager : ZUNTask {
 	ZUNListHead<Bullet> bullet_tick_list; // 0xBC
 	unknown_fields(0x20); // 0xCC
 	Bullet bullets[MAX_BULLETS + 1]; // 0xEC
-	AnmID anm_ids[MAX_BULLETS + 1]; // 0x7A228C
+	std::array<AnmID, MAX_BULLETS + 1> anm_ids; // 0x7A228C
 	int32_t __cancel_counter; // 0x7A41D0
 	int32_t __int_7A41D4; // 0x7A41D4
 	BulletIters bullet_iter; // 0x7A41D8
@@ -48416,7 +47846,7 @@ private:
 		zero_array(this->bullets);
 		this->__bullet_ptr_C = this->bullets;
 		this->bullets[MAX_BULLETS].state = BulletState::DummyBullet; // 5
-		zero_array(this->anm_ids);
+		this->anm_ids = {}; // REP STOSD default operator=
 
 		this->bullet_free_list.initialize_with(NULL);
 
@@ -48760,7 +48190,7 @@ public:
 		int32_t effect_index = shooter->start_transform;
 		bullet->effect_index = effect_index;
 
-		memcpy(bullet->effects, shooter->effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+		bullet->effects = shooter->effects; // REP MOVSD default operator=
 
 		if (shooter->effects[effect_index].type == EX_ANIM) {
 			int32_t interrupt_index = (uint16_t)shooter->effects[effect_index].int_values[0];
@@ -49763,7 +49193,7 @@ static inline int laser_cancel_all(CancelType cancel_type) {
 // 0x4490D0
 // Method 0xC
 dllexport gnu_noinline int thiscall LaserLine::initialize(void* data) {
-	memcpy(&this->params, data, sizeof(LaserLineParams));
+	this->params = *(LaserLineParams*)data; // REP MOVSD default operator=
 	this->sprite = this->params.sprite;
 	this->color = this->params.color;
 	this->state = LaserState::State2; // 2
@@ -49932,7 +49362,7 @@ dllexport gnu_noinline int thiscall LaserLine::run_effect_bounce() {
 // 0x44C870
 // Method 0xC
 dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
-	memcpy(&this->params, data, sizeof(LaserInfiniteParams));
+	this->params = *(LaserInfiniteParams*)data; // REP MOVSD default operator=
 	this->sprite = this->params.sprite;
 	this->color = this->params.color;
 	this->state = LaserState::State3; // 3
@@ -49987,7 +49417,7 @@ dllexport gnu_noinline int thiscall LaserInfinite::initialize(void* data) {
 // 0x44ED70
 // Method 0xC
 dllexport gnu_noinline int thiscall LaserCurve::initialize(void* data) {
-	memcpy(&this->params, data, sizeof(LaserCurveParams));
+	this->params = *(LaserCurveParams*)data; // REP MOVSD default operator=
 	this->sprite = this->params.sprite;
 	this->color = this->params.color;
 	this->state = LaserState::State2; // 2
@@ -50440,7 +49870,7 @@ dllexport gnu_noinline void thiscall LaserLine::run_effects() {
 				BOOL cancel_current_bullet = IntArgEx(6);
 				bullet_shooter.speed2 = speed2;
 				bullet_shooter.flags = 0;
-				memcpy(bullet_shooter.effects, this->params.effects, sizeof(bullet_shooter.effects));
+				bullet_shooter.effects = this->params.effects; // REP MOVSD default operator=
 				BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
 				++effect_index;
 				if (cancel_current_bullet) {
@@ -50669,7 +50099,7 @@ dllexport gnu_noinline void thiscall LaserCurve::run_effects() {
 				BOOL cancel_current_bullet = IntArgEx(6);
 				bullet_shooter.speed2 = speed2;
 				bullet_shooter.flags = 0;
-				memcpy(bullet_shooter.effects, this->params.effects, sizeof(bullet_shooter.effects));
+				bullet_shooter.effects = this->params.effects; // REP MOVSD default operator=
 				BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
 				++effect_index;
 				if (cancel_current_bullet) {
@@ -50968,7 +50398,7 @@ dllexport void Bullet::run_effects() {
 				bullet_shooter.color = IntArgEx(5);
 				bullet_shooter.speed2 = speed2;
 				bullet_shooter.flags = 0;
-				memcpy(bullet_shooter.effects, this->effects, sizeof(bullet_shooter.effects));
+				bullet_shooter.effects = this->effects; // REP MOVSD default operator=
 				BULLET_MANAGER_PTR->shoot_bullets(&bullet_shooter);
 				++effect_index;
 				if (cancel_current_bullet) {
@@ -51135,7 +50565,7 @@ dllexport void Bullet::run_effects() {
 						laser_params.transform_sound = 0;
 						laser_params.laser_id = 0;
 						laser_params.distance = 0.0f;
-						__builtin_memcpy(laser_params.effects, this->effects, sizeof(laser_params.effects));
+						laser_params.effects = this->effects; // REP MOVSD default operator=
 						int32_t flags = IntArg(3);
 						laser_params.position = this->position;
 						laser_params.flags = (flags & 0xFD) | 0x2;
@@ -51189,7 +50619,7 @@ dllexport void Bullet::run_effects() {
 						laser_params.effect_index = 0;
 						laser_params.shoot_sound = 0;
 						laser_params.transform_sound = 0;
-						__builtin_memcpy(laser_params.effects, this->effects, sizeof(laser_params.effects));
+						laser_params.effects = this->effects; // REP MOVSD default operator=
 						BOOL cancel_current_bullet = IntArg(3);
 						laser_params.position = this->position;
 						laser_params.sprite = IntArg(1);
@@ -55226,7 +54656,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 		case shooter_copy: { // 614
 			int32_t dst = this->get_int_arg(0);
 			int32_t src = this->get_int_arg(1);
-			this->shooters[dst] = this->shooters[src];
+			this->shooters[dst] = this->shooters[src]; // REP MOVSD default operator=
 			this->shooter_offsets[dst] = this->shooter_offsets[src];
 			this->shooter_origins[dst] = this->shooter_origins[src];
 			break;
@@ -55825,7 +55255,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			LaserLineParams params;
 
 			int32_t slot = this->get_int_arg(0);
-			memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+			params.effects = this->shooters[slot].effects; // REP MOVSD default operator=
 
 			if (this->shooter_origins[slot].z > 0.9f) {
 				params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
@@ -55851,7 +55281,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			LaserInfiniteParams params;
 
 			int32_t slot = this->get_int_arg(0);
-			memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+			params.effects = this->shooters[slot].effects; // REP MOVSD default operator=
 
 			if (this->shooter_origins[slot].z > 0.9f) {
 				params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
@@ -55881,7 +55311,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			LaserBeamParams params;
 
 			int32_t slot = this->get_int_arg(0);
-			memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+			params.effects = this->shooters[slot].effects; // REP MOVSD default operator=
 
 			if (this->shooter_origins[slot].z > 0.9f) {
 				params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
@@ -55901,7 +55331,7 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 			LaserCurveParams params;
 
 			int32_t slot = this->get_int_arg(0);
-			memcpy(params.effects, this->shooters[slot].effects, sizeof(BulletEffectArgs[BULLET_EFFECT_MAX]));
+			params.effects = this->shooters[slot].effects; // REP MOVSD default operator=
 
 			if (this->shooter_origins[slot].z > 0.9f) {
 				params.position.set(this->shooter_offsets[slot].as2() + this->shooter_origins[slot].as2());
@@ -56266,18 +55696,27 @@ dllexport gnu_noinline int32_t thiscall EnemyData::high_ecl_run() {
 	return 0;
 }
 
+// 0x4B6D50
+static const char KEYBOARD_STRING[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=.,!?@:;[]()_/{}|~^#$%&*   ";
+static inline constexpr int32_t KEYBOARD_STRING_TOTAL_KEY_COUNT = countof(KEYBOARD_STRING) - 1;
+static inline constexpr int32_t KEYBOARD_STRING_NORMAL_KEY_COUNT = KEYBOARD_STRING_TOTAL_KEY_COUNT - 3; // 3 special keys
+static inline constexpr int32_t KEYBOARD_STRING_SPACE = KEYBOARD_STRING_NORMAL_KEY_COUNT;
+static inline constexpr int32_t KEYBOARD_STRING_BACK = KEYBOARD_STRING_NORMAL_KEY_COUNT + 1;
+static inline constexpr int32_t KEYBOARD_STRING_CONFIRM = KEYBOARD_STRING_NORMAL_KEY_COUNT + 2;
+static inline constexpr uint32_t KEYBOARD_KEYS_PER_ROW = 13;
+
+extern "C" {
 // 0x4B4144
-static inline constexpr const char* TWO_LETTER_DIFFICULTY_NAMES[] = {
+externcgsic const char *const TWO_LETTER_DIFFICULTY_NAMES[DIFFICULTY_COUNT] cgasm("_TWO_LETTER_DIFFICULTY_NAMES") ecginit(= {
 	"E ",
 	"N ",
 	"H ",
 	"L ",
 	"EX",
 	"OD"
-};
-
+});
 // 0x4B4160
-static inline constexpr const char* THREE_LETTER_STAGE_NAMES[] = {
+alignas(16) externcgsic const char *const THREE_LETTER_STAGE_NAMES[STAGE_COUNT + 3] cgasm("_THREE_LETTER_STAGE_NAMES") ecginit(= {
 	"tst",
 	"St1",
 	"St2",
@@ -56287,11 +55726,11 @@ static inline constexpr const char* THREE_LETTER_STAGE_NAMES[] = {
 	"St6",
 	"Ex ",
 	"All",
-	"ExA"
-};
-
+	"ExA",
+	&KEYBOARD_STRING[0] // ???
+});
 // 0x4B4190
-static inline constexpr const char* SEVEN_LETTER_STAGE_NAMES[] = {
+alignas(16) externcgsic const char *const SEVEN_LETTER_STAGE_NAMES[STAGE_COUNT + 2] cgasm("_SEVEN_LETTER_STAGE_NAMES") ecginit(= {
 	"test   ",
 	"Stage 1",
 	"Stage 2",
@@ -56302,10 +55741,9 @@ static inline constexpr const char* SEVEN_LETTER_STAGE_NAMES[] = {
 	"Extra  ",
 	"Clear  ",
 	"ExClear"
-};
-
+});
 // 0x4B41C0
-static inline constexpr const char* SEVEN_LETTER_DIFFICULTY_NAMES[] = {
+alignas(16) externcgsic const char *const SEVEN_LETTER_DIFFICULTY_NAMES[DIFFICULTY_COUNT + 1] cgasm("_SEVEN_LETTER_DIFFICULTY_NAMES") ecginit(= {
 	"Easy   ",
 	"Normal ",
 	"Hard   ",
@@ -56313,15 +55751,15 @@ static inline constexpr const char* SEVEN_LETTER_DIFFICULTY_NAMES[] = {
 	"Extra  ",
 	"O.D.   ",
 	"r" // This is definitely part of the table. Why?
-};
-
+});
 // 0x4B41E0
-static inline constexpr const char* SIX_LETTER_SHOTTYPE_NAMES[] = {
+alignas(16) externcgsic const char *const SIX_LETTER_SHOTTYPE_NAMES[SHOTTYPES_TOTAL] cgasm("_SIX_LETTER_SHOTTYPE_NAMES") ecginit(= {
 	"Reimu ",
 	"Marisa",
 	"Sakuya",
 	"Sanae "
-};
+});
+}
 
 static inline constexpr uint32_t REPLAY_MAGIC = PackUInt('t', '1', '8', 'r');
 static inline constexpr uint32_t REPLAY_USER_MAGIC = PackUInt('U', 'S', 'E', 'R');
@@ -56961,7 +56399,7 @@ struct ReplayManager : ZUNTask {
 				this->info->spell_practice_mode = GAME_MANAGER.is_spell_practice();
 				this->info->spell_practice_id = GAME_MANAGER.globals.spell_practice_id;
 				if (GameThread* game_thread_ptr = GAME_THREAD_PTR) {
-					this->info->config = game_thread_ptr->config;
+					this->info->config = game_thread_ptr->config; // REP MOVSD default operator=
 				}
 				game_state->stage_number = GAME_MANAGER.globals.current_stage;
 				game_state->rng = REPLAY_RNG.value;
@@ -56970,7 +56408,7 @@ struct ReplayManager : ZUNTask {
 				if (SUPERVISOR.__bool_804) {
 					game_state->player_position = { 0, 0 };
 				}
-				game_state->globals = GAME_MANAGER.globals;
+				game_state->globals = GAME_MANAGER.globals; // NOT a default operator= for some reason
 
 				size_t bs_value = 0;
 				for (size_t i = 0; i < countof(game_state->__int_array_18); ++i) {
@@ -56997,7 +56435,7 @@ struct ReplayManager : ZUNTask {
 			case ReplayPlayback: {
 				REPLAY_MANAGER_PTR = this;
 				if (ZUN_SUCCEEDED(this->__load_from_path(path))) {
-					GAME_THREAD_PTR->config = this->info->config;
+					GAME_THREAD_PTR->config = this->info->config; // REP MOVSD default operator=
 					ReplayStageData& cur_stage_data = this->stage_data[GAME_MANAGER.globals.current_stage];
 					ReplayGamestate* game_state = cur_stage_data.gamestate_start;
 					cur_stage_data.inputs_current = cur_stage_data.input_start;
@@ -57816,15 +57254,6 @@ extern "C" {
 externcg PauseMenu* PAUSE_MENU_PTR cgasm("_PAUSE_MENU_PTR");
 }
 
-// 0x4B6D50
-static const char KEYBOARD_STRING[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-=.,!?@:;[]()_/{}|~^#$%&*   ";
-static inline constexpr int32_t KEYBOARD_STRING_TOTAL_KEY_COUNT = countof(KEYBOARD_STRING) - 1;
-static inline constexpr int32_t KEYBOARD_STRING_NORMAL_KEY_COUNT = KEYBOARD_STRING_TOTAL_KEY_COUNT - 3; // 3 special keys
-static inline constexpr int32_t KEYBOARD_STRING_SPACE = KEYBOARD_STRING_NORMAL_KEY_COUNT;
-static inline constexpr int32_t KEYBOARD_STRING_BACK = KEYBOARD_STRING_NORMAL_KEY_COUNT + 1;
-static inline constexpr int32_t KEYBOARD_STRING_CONFIRM = KEYBOARD_STRING_NORMAL_KEY_COUNT + 2;
-static inline constexpr uint32_t KEYBOARD_KEYS_PER_ROW = 13;
-
 // size: 0x3F8
 struct PauseMenu : ZUNTask {
 	//ZUNTask base; // 0x0
@@ -58154,7 +57583,7 @@ struct PauseMenu : ZUNTask {
 		this->__print_name_entry_and_keyboard(position);
 		position.x = 48.0f;
 		ReplayManager* replay_manager = REPLAY_MANAGER_PTR;
-		memcpy(replay_manager->info->name, DEFAULT_RECORD_NAME, sizeof(DEFAULT_RECORD_NAME));
+		memcpy_str(replay_manager->info->name, DEFAULT_RECORD_NAME);
 		replay_manager->info->__print_in_menuA(selection, &position);
 	}
 
@@ -59481,15 +58910,14 @@ dllexport gnu_noinline void thiscall Gui::__start_msg_vm(int32_t script) {
 	}
 }
 
+extern "C" {
 // 0x4B7B18
-static const char* DEMO_REPLAY_FILENAMES[] = {
+externcgsic const char *const DEMO_REPLAY_FILENAMES[4] cgasm("_DEMO_REPLAY_FILENAMES") ecginit(= {
 	"demo/demo1.rpy",
 	"demo/demo2.rpy",
 	"demo/demo3.rpy",
 	"demo/demo4.rpy"
-};
-
-extern "C" {
+});
 // 0x4CF43C
 externcg MainMenu* MAIN_MENU_PTR cgasm("_MAIN_MENU_PTR");
 }
@@ -59908,10 +59336,8 @@ externcg int32_t UNKNOWN_INT32_E cgasm("_UNKNOWN_INT32_E") ecginit(= -1);
 externcg int32_t MENU_SPELL_PRACTICE_STAGE_SELECTION cgasm("_MENU_SPELL_PRACTICE_STAGE_SELECTION") ecginit(= -1);
 // 0x4C9AC0
 externcg int32_t MENU_STAGE_SELECTION cgasm("_MENU_STAGE_SELECTION") ecginit(= -1);
-}
-
 // 0x4B7A78
-static inline constexpr const char *const MUSIC_ROOM_SPOILER_TEXT_TABLE[] = {
+externcgsic const char *const MUSIC_ROOM_SPOILER_TEXT_TABLE[8] cgasm("_MUSIC_ROOM_SPOILER_TEXT_TABLE") ecginit(= {
 	JpEnStr(
 	  u8"　"_sjis,
 		" "
@@ -59941,7 +59367,8 @@ static inline constexpr const char *const MUSIC_ROOM_SPOILER_TEXT_TABLE[] = {
 	  u8"　　　再生したくない方は、カーソルを移動してください。"_sjis,
 		"   If you don't want to play, please move the cursor."
 	)
-};
+});
+}
 
 struct MainMenuState { enum : int32_t {
 	TitleScreen = 1,
@@ -59981,8 +59408,9 @@ static inline constexpr MenuChoice Option = MenuChoice7;
 static inline constexpr MenuChoice Manual = MenuChoice8;
 static inline constexpr MenuChoice Quit = MenuChoice9;
 
+extern "C" {
 // 0x4B7AF0
-static const char *const LABELS[] = {
+alignas(16) externcgsic const char *const LABELS[10] cgasm("_MAIN_MENU_LABELS") ecginit(= {
 	"Game Start",
 	"Extra Start",
 	"Practice",
@@ -59993,16 +59421,12 @@ static const char *const LABELS[] = {
 	"Option",
 	"Manual",
 	"Quit"
-};
+});
 }
-
-static inline constexpr int32_t SONGS_PER_PAGE = 10;
-static inline constexpr int32_t MUSICCMT_TEXT_LINES = 8;
-static inline constexpr int32_t USER_REPLAY_PAGES = 3;
-static inline constexpr int32_t USER_REPLAY_COUNT = USER_REPLAY_PAGES * REPLAYS_PER_PAGE;
-
+}
+extern "C" {
 // 0x4B6208
-static const float MENU_TEXT_OFFSET_TABLE[][2] = {
+alignas(8) externcgsic const float MENU_TEXT_OFFSET_TABLE[10][2] cgasm("_MENU_TEXT_OFFSET_TABLE") ecginit(= {
 	{  2.0f,  0.0f },
 	{ -1.0f,  2.0f },
 	{  0.0f,  2.0f },
@@ -60013,7 +59437,13 @@ static const float MENU_TEXT_OFFSET_TABLE[][2] = {
 	{  0.0f, -4.0f },
 	{  2.0f,  0.0f },
 	{  2.0f,  0.0f },
-};
+});
+}
+
+static inline constexpr int32_t SONGS_PER_PAGE = 10;
+static inline constexpr int32_t MUSICCMT_TEXT_LINES = 8;
+static inline constexpr int32_t USER_REPLAY_PAGES = 3;
+static inline constexpr int32_t USER_REPLAY_COUNT = USER_REPLAY_PAGES * REPLAYS_PER_PAGE;
 
 // 0x41B1C0
 dllexport gnu_noinline void fastcall __big_menu_text_effects(Float3* position, int32_t index, MenuSelect* menu_select, int32_t time1, int32_t time2) ASR(0x41B1C0);
@@ -60071,7 +59501,7 @@ struct MainMenu : ZUNTask {
 	union {
 		// These array indices match exactly with the script IDs
 		// from title.anm. So script 48 goes in index 48. :KogasaGun:
-		AnmID anms[174]; // 0x398
+		std::array<AnmID, 174> anms; // 0x398
 		struct {
 			unknown_fields(0x1C); // 0x398
 			AnmID __anm_id_3B4; // 0x3B4
@@ -61109,7 +60539,7 @@ public:
 						UNLOCK_CODE_A_CHARS_ENTERED = 0;
 						UNLOCK_CODE_A_TIMER = 0;
 					}
-					DINPUT_KEYS_C = DINPUT_KEYS_B;
+					DINPUT_KEYS_C = DINPUT_KEYS_B; // REP MOVSD default operator=
 					switch (DINPUT_KEYS_B.get_state()) {
 						case 2:
 							// This is dead code, the function never returns 2 at all
@@ -61117,7 +60547,7 @@ public:
 							for (size_t i = 0; i < 26; ++i) {
 								DINPUT_KEYS_D[DIK_A + i] = DINPUT_KEYS_B['A' + i];
 							}
-							DINPUT_KEYS_B = DINPUT_KEYS_D;
+							DINPUT_KEYS_B = DINPUT_KEYS_D; // REP MOVSD default operator=
 						case 1:
 							for (size_t i = 0; i != 256; ++i) {
 								BYTE current = DINPUT_KEYS_B[i];
@@ -62889,7 +62319,7 @@ public:
 						UNLOCK_CODE_B_CHARS_ENTERED = 0;
 						UNLOCK_CODE_B_TIMER = 0;
 					}
-					DINPUT_KEYS_F = DINPUT_KEYS_E;
+					DINPUT_KEYS_F = DINPUT_KEYS_E; // REP MOVSD default operator=
 					switch (DINPUT_KEYS_E.get_state()) {
 						case 2:
 							// This is dead code, the function never returns 2 at all
@@ -62897,7 +62327,7 @@ public:
 							for (size_t i = 0; i < 26; ++i) {
 								DINPUT_KEYS_G[DIK_A + i] = DINPUT_KEYS_E['A' + i];
 							}
-							DINPUT_KEYS_E = DINPUT_KEYS_G;
+							DINPUT_KEYS_E = DINPUT_KEYS_G; // REP MOVSD default operator=
 						case 1:
 							for (size_t i = 0; i != 256; ++i) {
 								BYTE current = DINPUT_KEYS_E[i];
@@ -64597,7 +64027,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera2->__viewport_124.Height = (int32_t)(WINDOW_DATA.game_scale * SCREEN_HEIGHT);
 	this->__setup_camera(camera2);
 	Camera* camera0 = &this->cameras[0];
-	*camera0 = *camera2;
+	*camera0 = *camera2; // REP MOVSD default operator=
 	camera0->camera_index = 0;
 	camera0->viewport.X = (int32_t)(WINDOW_DATA.game_scale * SCREEN_LEFT_BORDER);
 	camera0->viewport.Y = (int32_t)(WINDOW_DATA.game_scale * SCREEN_TOP_BORDER);
@@ -64607,7 +64037,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera0->__viewport_10C = camera0->viewport;
 	this->__setup_camera(camera0);
 	Camera* camera1 = &this->cameras[1];
-	*camera1 = *camera0;
+	*camera1 = *camera0; // REP MOVSD default operator=
 	camera1->camera_index = 1;
 	camera1->viewport.X = (int32_t)(WINDOW_DATA.game_scale * 128.0f);
 	camera1->viewport.Y = (int32_t)(WINDOW_DATA.game_scale * SCREEN_TOP_BORDER);
@@ -64617,7 +64047,7 @@ dllexport gnu_noinline void thiscall Supervisor::__initialize_cameras() {
 	camera1->__viewport_10C = camera1->viewport;
 	this->__setup_camera(camera1);
 	Camera* camera3 = &this->cameras[StdCamera]; // 3
-	*camera3 = *camera0;
+	*camera3 = *camera0; // REP MOVSD default operator=
 	camera3->camera_index = StdCamera;
 	camera3->viewport.X = (int32_t)((WINDOW_DATA.scaled_window_width - (SCREEN_WIDTH + 24.0f)) * 0.5f);
 	camera3->viewport.Width = (int32_t)(SCREEN_WIDTH + 24.0f); // 408
@@ -64694,7 +64124,7 @@ valid_replay:
 	ReplayGamestate* gamestate_ptr = based_pointer<ReplayGamestate>(file, sizeof(ReplayInfo));
 	for (int32_t i = 0; ; ++i) {
 		int32_t stage_count = this->info->stage_count;
-		stage_count = stage_count >= STAGE_COUNT ? 6 : stage_count;
+		stage_count = stage_count >= STAGE_COUNT ? MAIN_GAME_STAGE_COUNT : stage_count;
 		if (i >= stage_count) {
 			break;
 		}
@@ -64773,7 +64203,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 	self->info->slowdown_rate = FPS_COUNTER_PTR->calc_slowdown_rate();
 
 	uint8_t* buffer = (uint8_t*)malloc(alloc_size);
-	*(ReplayInfo*)buffer = *self->info;
+	*(ReplayInfo*)buffer = *self->info; // REP MOVSD default operator=
 
 	size_t offset = sizeof(ReplayInfo);
 	for (int32_t i = 0; i < STAGE_COUNT; ++i) {
@@ -64833,7 +64263,7 @@ dllexport gnu_noinline ZUNResult thiscall ReplayManager::__write_to_path(const c
 	user_write += sprintf(user_write, "Version %s\r\n", "1.00a");
 	user_write += sprintf(user_write, "Name %s\r\n", self->info->name);
 
-	tm* time = localtime(&self->info->time);
+	const tm* time = localtime(&self->info->time);
 
 	user_write += sprintf(user_write, "Date %.2d/%.2d/%.2d %.2d:%.2d\r\n", time->tm_year % 100, time->tm_mon + 1, time->tm_mday, time->tm_hour, time->tm_min);
 
@@ -64934,8 +64364,8 @@ dllexport gnu_noinline ZUNResult thiscall Supervisor::load_config_file(int) {
 		SUPERVISOR.config.initialize();
 	}
 	else {
-		SUPERVISOR.config = *(Config*)config_file;
-		//SUPERVISOR.config.preload_bgm = true;
+		SUPERVISOR.config = *(Config*)config_file; // REP MOVSD default operator=
+		//SUPERVISOR.config.preload_bgm = true; // Enable BGM preload for testing
 		free(config_file);
 		if (
 			SUPERVISOR.config.__color_mode < 2 &&
@@ -65062,7 +64492,6 @@ dllexport gnu_noinline UpdateFuncRet thiscall Supervisor::__update_gamemode() {
 	if (this->gamemode_current != this->gamemode_switch) {
 		CRITICAL_SECTION_MANAGER.enter_section(Menu_CS);
 		{
-
 			GameMode prev_gamemode = this->gamemode_current;
 			GameMode new_gamemode = this->gamemode_switch;
 			this->gamemode_previous = prev_gamemode;
@@ -65781,32 +65210,33 @@ dllexport gnu_noinline UpdateFuncRet thiscall GameThread::on_tick() {
 	return UpdateFuncNext;
 }
 
+extern "C" {
+// 0x4B663C
+externcgsic const int32_t CONTINUE_CREDITS_TABLE[DIFFICULTY_COUNT] cgasm("_CONTINUE_CREDITS_TABLE") ecginit(= {
+	5, 5, 5, 5,
+	0, 0
+});
 // All values are stored / 100
-
-// 0x4B666C
-static const int32_t MIN_POINT_ITEM_VALUES_TABLE[DIFFICULTY_COUNT] = {
-	10000,
-	10000,
-	10000,
-	10000,
-	10000,
-	100000
-};
 // 0x4B6654
-static const int32_t MAX_POINT_ITEM_VALUES_TABLE[DIFFICULTY_COUNT] = {
+externcgsic const int32_t MAX_POINT_ITEM_VALUES_TABLE[DIFFICULTY_COUNT] cgasm("_MAX_POINT_ITEM_VALUES_TABLE") ecginit(= {
 	200000,
 	500000,
 	700000,
 	1000000,
 	500000,
 	1000000
-};
-
-// 0x4B663C
-static const int32_t CONTINUE_CREDITS_TABLE[DIFFICULTY_COUNT] = {
-	5, 5, 5, 5,
-	0, 0
-};
+});
+// All values are stored / 100
+// 0x4B666C
+externcgsic const int32_t MIN_POINT_ITEM_VALUES_TABLE[DIFFICULTY_COUNT] cgasm("_MIN_POINT_ITEM_VALUES_TABLE") ecginit(= {
+	10000,
+	10000,
+	10000,
+	10000,
+	10000,
+	100000
+});
+}
 
 // 0x4432C0
 dllexport gnu_noinline GameThread::~GameThread() {
@@ -66128,7 +65558,7 @@ inline unsigned GameThread::thread_start_impl() {
 	UpdateFuncRegistry::register_on_draw(update_func, DrawPriority::GameThread); // 2
 	this->on_draw_func = update_func;
 
-	this->config = SUPERVISOR.config;
+	this->config = SUPERVISOR.config; // REP MOVSD default operator=
 
 	this->stage_number = STAGE_DATA_PTR->stage_number;
 
@@ -67092,11 +66522,9 @@ dllexport gnu_noinline ZUNResult __make_mutex_and_test_path() {
 
 extern "C" {
 // 0x5705F0
-externcg JOYCAPSA JOYCAPS_GLOBAL cgasm("_JOYCAPS");
-}
-
+alignas(16) externcg JOYCAPSA JOYCAPS_GLOBAL cgasm("_JOYCAPS");
 // 0x4B4280
-static const int ResolutionDialogButtonIDs[] = {
+alignas(16) externcgsic const int RESOLUTION_DIALOG_BUTTON_IDS_A[10] cgasm("_RESOLUTION_DIALOG_BUTTON_IDS_A") ecginit(= {
 	0xD3,
 	0xD2,
 	0xD1,
@@ -67107,10 +66535,9 @@ static const int ResolutionDialogButtonIDs[] = {
 	0xD4,
 	0xCF,
 	0xD0
-};
-
+});
 // 0x4B7FF0
-static const int ResolutionDialogButtonIDsB[] = {
+alignas(16) externcgsic const int RESOLUTION_DIALOG_BUTTON_IDS_B[10] cgasm("_RESOLUTION_DIALOG_BUTTON_IDS_B") ecginit(= {
 	0xCF,
 	0xD0,
 	0xD1,
@@ -67121,12 +66548,12 @@ static const int ResolutionDialogButtonIDsB[] = {
 	0xD6,
 	0xD7,
 	0xD8
-};
-
+});
 // 0x4B7FBC
-static const uint8_t ResolutionConfigValues[] = {
-	0, 0, 0, 0, 1, 0, 0, 0, 2, 0
-};
+externcgsic const uint32_t RESOLUTION_CONFIG_VALUES[10] cgasm("_RESOLUTION_CONFIG_VALUES") ecginit(= {
+	0, 1, 2, 0, 1, 2, 3, 4, 5, 5
+});
+}
 
 // 0x4747D0
 dllexport gnu_noinline void set_selected_resolution() ASR(0x4747D0);
@@ -67136,10 +66563,10 @@ dllexport gnu_noinline void set_selected_resolution() {
 	} else {
 		SUPERVISOR.config.__unknown_flag_co_A = false;
 	}
-	for (int32_t i = 0; i < countof(ResolutionDialogButtonIDs); ++i) {
-		if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, ResolutionDialogButtonIDs[i]) == BST_CHECKED) {
+	for (int32_t i = 0; i < countof(RESOLUTION_DIALOG_BUTTON_IDS_A); ++i) {
+		if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, RESOLUTION_DIALOG_BUTTON_IDS_A[i]) == BST_CHECKED) {
 			SUPERVISOR.config.resolution = i;
-			SUPERVISOR.config.__ubyte_4E = ResolutionConfigValues[i];
+			SUPERVISOR.config.__ubyte_4E = (uint8_t)RESOLUTION_CONFIG_VALUES[i];
 			return;
 		}
 	}
@@ -67160,7 +66587,7 @@ dllexport gnu_noinline INT_PTR CALLBACK ResolutionDlgProc(HWND hWnd, UINT uMsg, 
 			if (SUPERVISOR.config.__unknown_flag_co_A) {
 				SendMessageA(GetDlgItem(hWnd, 0xCA), BM_SETCHECK, BST_CHECKED, 0);
 			}
-			SendMessageA(GetDlgItem(hWnd, ResolutionDialogButtonIDs[SUPERVISOR.config.resolution]), BM_SETCHECK, BST_CHECKED, 0);
+			SendMessageA(GetDlgItem(hWnd, RESOLUTION_DIALOG_BUTTON_IDS_A[SUPERVISOR.config.resolution]), BM_SETCHECK, BST_CHECKED, 0);
 			WINDOW_DATA.__unknown_bitfield_wd_B = 2;
 			break;
 		case WM_CLOSE: // 0x10
@@ -67211,8 +66638,8 @@ dllexport gnu_noinline void process_resolution_dialog() {
 		EnableWindow(GetDlgItem(WINDOW_DATA.resolution_dialogue, 0xD2), FALSE);
 	}
 	int32_t button_index = 0;
-	for (int32_t i = 0; i < countof(ResolutionDialogButtonIDsB); ++i) {
-		if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, ResolutionDialogButtonIDsB[i]) == BST_CHECKED) {
+	for (int32_t i = 0; i < countof(RESOLUTION_DIALOG_BUTTON_IDS_B); ++i) {
+		if (IsDlgButtonChecked(WINDOW_DATA.resolution_dialogue, RESOLUTION_DIALOG_BUTTON_IDS_B[i]) == BST_CHECKED) {
 			button_index = i;
 			break;
 		}
@@ -67241,14 +66668,14 @@ dllexport gnu_noinline void process_resolution_dialog() {
 			button_index < 9
 		) {
 			while (disabled_buttons[++button_index]);
-			CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, ResolutionDialogButtonIDsB[button_index]);
+			CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, RESOLUTION_DIALOG_BUTTON_IDS_B[button_index]);
 		}
 		if (
 			INPUT_P1.check_hardware_inputs_repeating(BUTTON_UP) &&
 			button_index > 0
 		) {
 			while (disabled_buttons[--button_index]);
-			CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, ResolutionDialogButtonIDsB[button_index]);
+			CheckRadioButton(WINDOW_DATA.resolution_dialogue, 0xCF, 0xD8, RESOLUTION_DIALOG_BUTTON_IDS_B[button_index]);
 		}
 		if (!WINDOW_DATA.resolution_dialogue) {
 			return;
@@ -67284,8 +66711,9 @@ struct SimpleInt2 {
 	int32_t y;
 };
 
+extern "C" {
 // 0x4B8020
-static const SimpleInt2 RESOLUTIONS[] = {
+alignas(16) externcgsic const SimpleInt2 RESOLUTIONS[16] cgasm("_RESOLUTIONS") ecginit(= {
 	{ .x = 640, .y = 480 },
 	{ .x = 960, .y = 720 },
 	{ .x = 1024, .y = 768 },
@@ -67302,7 +66730,8 @@ static const SimpleInt2 RESOLUTIONS[] = {
 	{ .x = 2560, .y = 1440 },
 	{ .x = 2560, .y = 1600 },
 	{ .x = 3840, .y = 2160 }
-};
+});
+}
 
 // 0x473B20
 dllexport gnu_noinline ZUNResult fastcall __sub_473B20(BOOL arg1) ASR(0x473B20);

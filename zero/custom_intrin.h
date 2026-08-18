@@ -1477,57 +1477,211 @@ static inline bool repne_scasb(T *restrict dst, int val, size_t byte_len) {
     return ret;
 }
 
-static inline void rep_movsd(void *restrict dst, const void *restrict src, size_t dword_len) {
-    __asm__ volatile (
-        "rep movsl"
-        : asm_arg("+c", dword_len), asm_arg("+S", src), asm_arg("+D", dst)
-        :
-        : "memory"
-    );
-}
-template<typename T = void, typename T2 = T>
-static inline T *restrict rep_movsb(T *restrict dst, const T2 *restrict src, size_t byte_len) {
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsb(T1 *restrict dst, const T2 *restrict src, size_t byte_len) {
     __asm__ volatile (
         "rep movsb"
         : "=c"(byte_len), "+D"(dst), "+S"(src)
         : "0"(byte_len)
         : "memory"
     );
-    //assume(byte_len == 0);
     return dst;
 }
-template<typename T = void, typename T2 = T>
-static inline const T2 *restrict rep_movsbS(T *restrict dst, const T2 *restrict src, size_t byte_len) {
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsbS(T1 *restrict dst, const T2 *restrict src, size_t byte_len) {
     __asm__ volatile (
         "rep movsb"
         : "=c"(byte_len), "+D"(dst), "+S"(src)
         : "0"(byte_len)
         : "memory"
     );
-    //assume(byte_len == 0);
     return src;
 }
-template<typename T = void, typename T2 = T>
-static inline auto rep_movsbP(T *restrict dst, const T2 *restrict src, size_t byte_len) {
+template<typename T1 = void, typename T2 = T1>
+static inline auto rep_movsbP(T1 *restrict dst, const T2 *restrict src, size_t byte_len) {
     __asm__ volatile (
         "rep movsb"
         : "=c"(byte_len), "+D"(dst), "+S"(src)
         : "0"(byte_len)
         : "memory"
     );
-    //assume(byte_len == 0);
     return std::make_pair(dst, src);
 }
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsw(T1 *restrict dst, const T2 *restrict src, size_t word_len) {
+    __asm__ volatile (
+        "rep movsw"
+        : "=c"(word_len), "+D"(dst), "+S"(src)
+        : "0"(word_len)
+        : "memory"
+    );
+    return dst;
+}
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movswS(T1 *restrict dst, const T2 *restrict src, size_t word_len) {
+    __asm__ volatile (
+        "rep movsw"
+        : "=c"(word_len), "+D"(dst), "+S"(src)
+        : "0"(word_len)
+        : "memory"
+    );
+    return src;
+}
+template<typename T1 = void, typename T2 = T1>
+static inline auto rep_movswP(T1 *restrict dst, const T2 *restrict src, size_t word_len) {
+    __asm__ volatile (
+        "rep movsw"
+        : "=c"(word_len), "+D"(dst), "+S"(src)
+        : "0"(word_len)
+        : "memory"
+    );
+    return std::make_pair(dst, src);
+}
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsd(T1 *restrict dst, const T2 *restrict src, size_t dword_len) {
+    __asm__ volatile (
+        "rep movsl"
+        : "=c"(dword_len), "+D"(dst), "+S"(src)
+        : "0"(dword_len)
+        : "memory"
+    );
+    return dst;
+}
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsdS(T1 *restrict dst, const T2 *restrict src, size_t dword_len) {
+    __asm__ volatile (
+        "rep movsl"
+        : "=c"(dword_len), "+D"(dst), "+S"(src)
+        : "0"(dword_len)
+        : "memory"
+    );
+    return src;
+}
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsdP(T1 *restrict dst, const T2 *restrict src, size_t dword_len) {
+    __asm__ volatile (
+        "rep movsl"
+        : "=c"(dword_len), "+D"(dst), "+S"(src)
+        : "0"(dword_len)
+        : "memory"
+    );
+    return std::make_pair(dst, src);
+}
+#if __x86_64__
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsq(T1 *restrict dst, const T2 *restrict src, size_t qword_len) {
+    __asm__ volatile (
+        "rep movsq"
+        : "=c"(qword_len), "+D"(dst), "+S"(src)
+        : "0"(qword_len)
+        : "memory"
+    );
+    return dst;
+}
+template<typename T1 = void, typename T2 = T1>
+static inline T1 *restrict rep_movsqS(T1 *restrict dst, const T2 *restrict src, size_t qword_len) {
+    __asm__ volatile (
+        "rep movsq"
+        : "=c"(qword_len), "+D"(dst), "+S"(src)
+        : "0"(qword_len)
+        : "memory"
+    );
+    return src;
+}
+template<typename T1 = void, typename T2 = T1>
+static inline auto rep_movsqP(T1 *restrict dst, const T2 *restrict src, size_t qword_len) {
+    __asm__ volatile (
+        "rep movsq"
+        : "=c"(qword_len), "+D"(dst), "+S"(src)
+        : "0"(qword_len)
+        : "memory"
+    );
+    return std::make_pair(dst, src);
+}
+#endif
+
+template<typename T1 = void, typename T2 = T1>
+static inline void rep_movs_memcpy(T1 *restrict dst, const T2 *restrict src, size_t byte_len) {
+    rep_movsb(dst, src, byte_len);
+}
+template<typename T>
+static inline void rep_movs_memcpy(T *restrict dst, const T *restrict src) {
+#if __x86_64__
+    if constexpr (!(sizeof(T) % sizeof(uint64_t))) {
+        rep_movsq<T,T>(dst, src, sizeof(T) >> 3);
+    } else
+#endif
+    if constexpr (!(sizeof(T) % sizeof(uint32_t))) {
+        rep_movsd<T, T>(dst, src, sizeof(T) >> 2);
+    } else if constexpr (!(sizeof(T) % sizeof(uint16_t))) {
+        rep_movsw<T, T>(dst, src, sizeof(T) >> 1);
+    } else {
+        rep_movsb<T, T>(dst, src, sizeof(T));
+    }
+}
+
 template<typename T = void>
-static inline T *restrict rep_stosb(T *restrict dst, uint8_t value, size_t byte_len) {
+static inline T* rep_stosb(T* dst, uint8_t value, size_t byte_len) {
     __asm__ volatile (
         "rep stosb"
         : "=c"(byte_len), "+D"(dst)
         : "0"(byte_len), "a"(value)
         : "memory"
     );
-    //assume(byte_len == 0);
     return dst;
+}
+template<typename T = void>
+static inline T* rep_stosw(T* dst, uint16_t value, size_t word_len) {
+    __asm__ volatile (
+        "rep stosw"
+        : "=c"(word_len), "+D"(dst)
+        : "0"(word_len), "a"(value)
+        : "memory"
+    );
+    return dst;
+}
+template<typename T = void>
+static inline T* rep_stosd(T* dst, uint32_t value, size_t dword_len) {
+    __asm__ volatile (
+        "rep stosl"
+        : "=c"(dword_len), "+D"(dst)
+        : "0"(dword_len), "a"(value)
+        : "memory"
+    );
+    return dst;
+}
+#if __x86_64__
+template<typename T = void>
+static inline T* rep_stosq(T* dst, uint64_t value, size_t qword_len) {
+    __asm__ volatile (
+        "rep stosq"
+        : "=c"(qword_len), "+D"(dst)
+        : "0"(qword_len), "a"(value)
+        : "memory"
+    );
+    return dst;
+}
+#endif
+template<typename T = void>
+static inline void rep_stos_memset(T* dst, uint8_t v, size_t byte_len) {
+    rep_stosb<T>(dst, v, byte_len);
+}
+template<typename T = void>
+static inline void rep_stos_memset(T* dst, uint8_t v) {
+#if __x86_64__
+    if constexpr (!(sizeof(T) % sizeof(uint64_t))) {
+        rep_stosq<T>(dst, PackUInt64(v,v,v,v,v,v,v,v), sizeof(T) >> 3);
+    } else
+#endif
+    if constexpr (!(sizeof(T) % sizeof(uint32_t))) {
+        rep_stosd<T>(dst, PackUInt32(v,v,v,v), sizeof(T) >> 2);
+    }
+    else if constexpr (!(sizeof(T) % sizeof(uint16_t))) {
+        rep_stosw<T>(dst, PackUInt16(v,v), sizeof(T) >> 1);
+    }
+    else {
+        rep_stosb<T>(dst, v, sizeof(T));
+    }
 }
 
 template<typename T = void, typename T2 = T>

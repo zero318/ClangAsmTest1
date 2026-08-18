@@ -492,8 +492,31 @@ target_compile_options(${EXE} PRIVATE
 	#/clang:-masm=intel
 )
 
+# Correctness and syntax flags?
+# IDK what to call this group
+target_compile_options(${EXE} PRIVATE
+	# Treat signed integer overflow as two’s complement
+	${SLASH_CLANG_ARG}-fwrapv
+
+	#"SHELL:-Xclang -fassume-sane-operator-new"
+	${SLASH_CLANG_ARG}-fnew-infallible
+
+	# Sized deallocation somehow breaks ABI in a few spots
+	${SLASH_CLANG_ARG}-fno-sized-deallocation
+
+	${SLASH_CLANG_ARG}-flax-vector-conversions=all
+
+	${SLASH_CLANG_ARG}-fstrict-flex-arrays=1
+)
+if(CUSTOM_CLANG)
+target_compile_options(${EXE} PRIVATE
+	# without this ZUN's arcfile destructors crash
+	"SHELL:-Xclang -fno-lifetime-dse"
+)
+endif()
+
+# Optimization Flags
 if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-	# Optimization Flags
 	if(SIZE_OPTIMIZE)
 	target_compile_options(${EXE} PRIVATE
 		# Optimization level
@@ -512,9 +535,6 @@ if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 	endif()
 	target_compile_options(${EXE} PRIVATE
 		#${SLASH_CLANG_ARG}-fglobal-isel
-
-		# Treat signed integer overflow as two’s complement
-		${SLASH_CLANG_ARG}-fwrapv
 
 		# Omit frame pointers
 		#"SHELL:-Xclang -fomit-frame-pointer"
@@ -572,24 +592,27 @@ target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-fcf-protection=none
 	${SLASH_CLANG_ARG}-fno-sanitize-cfi-cross-dso
 	#${SLASH_CLANG_ARG}-mguard=none
+
+	#${SLASH_CLANG_ARG}-mstack-probe-size=93284238
+	${SLASH_CLANG_ARG}-mstack-probe-size=1024
 )
 if(MSVC)
-	target_compile_options(${EXE} PRIVATE
-		# Disable buffer checking
-		/GS-
+target_compile_options(${EXE} PRIVATE
+	# Disable buffer checking
+	/GS-
 
-		# Disable stack cookies
-		/Gs-
+	# Disable stack cookies
+	/Gs-
 
-		#/clang:-fno-exceptions
-		/EHsc
+	#/clang:-fno-exceptions
+	/EHsc
 
-		# Don't use TLS for function scope statics
-		/Zc:threadSafeInit-
+	# Don't use TLS for function scope statics
+	/Zc:threadSafeInit-
 
-		# Don't use C++14 sized delete functions
-		/Zc:sizedDealloc-
-	)
+	# Don't use C++14 sized delete functions
+	/Zc:sizedDealloc-
+)
 endif()
 
 #if(${CLANG_TYPE} STREQUAL "CLANG-CL")
@@ -600,6 +623,8 @@ target_compile_options(${EXE} PRIVATE
 )
 #endif()
 
+# Hacky optimization flags
+if (NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
 target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-fvectorize
 	${SLASH_CLANG_ARG}-ftree-slp-vectorize
@@ -755,29 +780,17 @@ target_compile_options(${EXE} PRIVATE
 	"SHELL:-Xclang -fno-signed-zeros"
 	"SHELL:-Xclang -ffp-contract=fast"
 
-	#"SHELL:-Xclang -fassume-sane-operator-new"
-	${SLASH_CLANG_ARG}-fnew-infallible
-	#-fsized-deallocation
-
-	#${SLASH_CLANG_ARG}-mstack-probe-size=93284238
-	${SLASH_CLANG_ARG}-mstack-probe-size=1024
 	${SLASH_CLANG_ARG}-ffinite-loops
 
 	#-fhonor-infinities
 	#-fhonor-nans
 	#-fsigned-zeros
 
-	${SLASH_CLANG_ARG}-flax-vector-conversions=all
-
-	${SLASH_CLANG_ARG}-fstrict-flex-arrays=1
-
 	#${SLASH_CLANG_ARG}-fthreadsafe-statics
 
 	#"-fno-exceptions"
 	
 	"SHELL:-mllvm -force-loop-cold-block=true"
-
-	${SLASH_CLANG_ARG}-fno-sized-deallocation
 
 	#${SLASH_CLANG_ARG}-S
 	#${SLASH_CLANG_ARG}-emit-llvm
@@ -806,9 +819,9 @@ target_compile_options(${EXE} PRIVATE
 	${SLASH_CLANG_ARG}-fno-honor-nans
 	${SLASH_CLANG_ARG}-fno-honor-infinities
 	"SHELL:-Xclang -mconstructor-aliases"
-	"SHELL:-Xclang -fno-lifetime-dse"
 	"SHELL:-mllvm -post-RA-scheduler=false"
 )
+endif()
 endif()
 
 target_link_options(${EXE} PRIVATE
