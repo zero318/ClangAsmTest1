@@ -80,7 +80,7 @@ add_executable(ghidra_launch)
 add_executable(crappy_launcher)
 add_executable(udoalg_test)
 add_executable(3d_flying_objects)
-#add_executable(3DMazeBucket)
+add_executable(3DMazePearto)
 add_executable(discord_test)
 add_executable(AoCFTest1)
 add_executable(loaddll)
@@ -162,7 +162,7 @@ python_test
 glaux
 glcommon
 3d_flying_objects
-#3DMazeBucket
+3DMazePearto
 discord_test
 twitch_irc_test
 youtube_chat_test
@@ -1720,41 +1720,41 @@ target_link_libraries(3d_flying_objects
 	scrnsave.lib
 )
 
-#set_target_properties(3DMazeBucket PROPERTIES LINKER_LANGUAGE CXX)
-#target_sources(3DMazeBucket PRIVATE
-#	$<TARGET_OBJECTS:glaux>
-#	"screensavers/MAZE2/COLOR.CPP"
-#	"screensavers/MAZE2/DIALOGC.CPP"
-#	"screensavers/MAZE2/FASTDIB.CPP"
-#	"screensavers/MAZE2/GENMAZE.CPP"
-#	"screensavers/MAZE2/GLMAZE.CPP"
-#	"screensavers\\MAZE2\\MATERIAL.CPP"
-#	"screensavers/MAZE2/MATH.CPP"
-#	"screensavers\\MAZE2\\PCH.CPP"
-#	"screensavers\\MAZE2\\SLVMAZE.CPP"
-#	"screensavers\\MAZE2\\SSA8.CPP"
-#	"screensavers\\MAZE2\\SSIMAGE.CPP"
-#	"screensavers\\MAZE2\\SSMAZE.CPP"
-#	"screensavers\\MAZE2\\TEXTURE.CPP"
-#	"screensavers\\MAZE2\\MAZE.RC"
-#)
-#target_compile_definitions(3DMazeBucket PRIVATE
-#	_WINSVC_=1
-#	FX_SINGLE=1
-#	_M_IX86=600
-#	COLOR_KEY_ENABLE
-#)
-#target_include_directories(3DMazeBucket AFTER PRIVATE
-#	"screensavers\\COMMON"
-#	"F:\\My Programming Stuff Expansion\\nt40_win95_sdk1996\\MSTOOLS\\INCLUDE"
-#)
-#target_link_libraries(3DMazeBucket 
-#	opengl32.lib
-#	glu32.lib
-#	comdlg32.lib
-#	comctl32.lib
-#	scrnsave.lib
-#)
+set_target_properties(3DMazePearto PROPERTIES LINKER_LANGUAGE CXX)
+target_sources(3DMazePearto PRIVATE
+	$<TARGET_OBJECTS:glaux>
+	"screensavers/MAZE2/COLOR.CPP"
+	"screensavers/MAZE2/DIALOGC.CPP"
+	"screensavers/MAZE2/FASTDIB.CPP"
+	"screensavers/MAZE2/GENMAZE.CPP"
+	"screensavers/MAZE2/GLMAZE.CPP"
+	"screensavers\\MAZE2\\MATERIAL.CPP"
+	"screensavers/MAZE2/MATH.CPP"
+	"screensavers\\MAZE2\\PCH.CPP"
+	"screensavers\\MAZE2\\SLVMAZE.CPP"
+	"screensavers\\MAZE2\\SSA8.CPP"
+	"screensavers\\MAZE2\\SSIMAGE.CPP"
+	"screensavers\\MAZE2\\SSMAZE.CPP"
+	"screensavers\\MAZE2\\TEXTURE.CPP"
+	"screensavers\\MAZE2\\MAZE.RC"
+)
+target_compile_definitions(3DMazePearto PRIVATE
+	_WINSVC_=1
+	FX_SINGLE=1
+	_M_IX86=600
+	COLOR_KEY_ENABLE
+)
+target_include_directories(3DMazePearto AFTER PRIVATE
+	"screensavers\\COMMON"
+	"F:\\My Programming Stuff Expansion\\nt40_win95_sdk1996\\MSTOOLS\\INCLUDE"
+)
+target_link_libraries(3DMazePearto 
+	opengl32.lib
+	glu32.lib
+	comdlg32.lib
+	comctl32.lib
+	scrnsave.lib
+)
 
 target_sources(discord_test PRIVATE
 	"winhttp_websocket/websocket_impl.cpp"

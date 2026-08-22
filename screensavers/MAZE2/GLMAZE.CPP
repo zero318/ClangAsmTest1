@@ -73,9 +73,10 @@ TEX_RES gTexResSurf[NUM_DEF_SURFACE_TEXTURES] = {
 // Texture resources for objects
 TEX_RES gTexResObject[NUM_OBJECT_TEXTURES] = {
     {TEX_A8,  IDB_START},
-    {TEX_BMP,  IDB_END},
-    //{TEX_A8,  IDB_END},
-    {TEX_A8,  IDB_RAT},
+    //{TEX_BMP,  IDB_END},
+    {TEX_A8,  IDB_END},
+    //{TEX_A8,  IDB_RAT},
+    {TEX_BMP, IDB_RAT},
     {TEX_A8,  IDB_AD},
     {TEX_BMP, IDB_COVER}
 };
@@ -303,8 +304,11 @@ void NewMaze(void)
     {
         PickRandomCell(&cell);
         
-        rats[i].obj.w = FMAZE_CELL_SIZE/4;
-        rats[i].obj.h = FxFltVal(.125);
+        //rats[i].obj.w = FMAZE_CELL_SIZE/4;
+        //rats[i].obj.h = FxFltVal(.125);
+        //rats[i].obj.z = rats[i].obj.h;
+        rats[i].obj.w = FMAZE_CELL_SIZE / 2;
+        rats[i].obj.h = FMAZE_CELL_SIZE / 2;
         rats[i].obj.z = rats[i].obj.h;
         rats[i].obj.col = 16;
         rats[i].obj.draw_style = DRAW_POLYGON;
@@ -365,6 +369,12 @@ void CALLBACK Step(void *data)
         }
         
         goal = SolveMazeStep(&vw, &sol);
+        for (i = 0; i < maze_options.nrats; i++) {
+            if (fabsf(rats[i].vw.pos.x - vw.pos.x) < 0.04f & fabsf(rats[i].vw.pos.y - vw.pos.y) < 0.04f) {
+                solve_state = SST_MAZE_SHRINK;
+                goto switch_break;
+            }
+        }
         if (goal == &maze_goals[GOAL_END])
         {
             solve_state = SST_MAZE_SHRINK;
@@ -423,6 +433,7 @@ void CALLBACK Step(void *data)
         }
         break;
     }
+switch_break:
 
     Draw();
 
@@ -618,7 +629,7 @@ LoadTextures(void)
     //ss_SetTextureTransparency( gTexEnv[TEX_END].pTex, 0.4f, FALSE );
     //ss_SetTextureTransparency( gTexEnv[TEX_AD].pTex, 0.4f, FALSE );
     ss_SetTextureTransparency(gTexEnv[TEX_START].pTex, 1.0f, FALSE);
-    //ss_SetTextureTransparency( gTexEnv[TEX_END].pTex, 0.4f, FALSE );
+    ss_SetTextureTransparency( gTexEnv[TEX_END].pTex, 0.4f, FALSE );
     ss_SetTextureTransparency(gTexEnv[TEX_AD].pTex, 1.0f, FALSE);
 
     // Enable transparency for some of the texture environments

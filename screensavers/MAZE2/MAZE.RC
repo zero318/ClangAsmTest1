@@ -111,9 +111,10 @@ IDB_COVER               100     DISCARDABLE     "cover8.bmp"
 IDB_START               101     DISCARDABLE     "start.a8"
 // Attention localizers ! start.a8 is an image that contains hardcoded the
 // word "START".  For non English locales, replace start.a8 with logo.a8
-IDB_END                 100     DISCARDABLE     "bucket.bmp"
-//IDB_END                 101     DISCARDABLE     "happy.a8"
-IDB_RAT                 101     DISCARDABLE     "rat.a8"
+//IDB_END                 100     DISCARDABLE     "bucket.bmp"
+IDB_END                 101     DISCARDABLE     "happy.a8"
+//IDB_RAT                 101     DISCARDABLE     "rat.a8"
+IDB_RAT                 100     DISCARDABLE     "pearto.bmp"
 IDB_AD                  101     DISCARDABLE     "letters.a8"
 IDB_CURL4               101     DISCARDABLE     "curl4.a8"
 IDB_BHOLE4              101     DISCARDABLE     "bhole.a8"

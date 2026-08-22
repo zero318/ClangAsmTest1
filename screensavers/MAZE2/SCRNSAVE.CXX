@@ -117,6 +117,7 @@ int PASCAL
 WinMainN( HINSTANCE hInst, HINSTANCE hPrev, LPTSTR szCmdLine, int nCmdShow )
 {
    LPCTSTR pch = szCmdLine;
+   //LPCTSTR pch = "S";
    HWND hParent = 0;
    OSVERSIONINFO osvi;
 
