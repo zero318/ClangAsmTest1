@@ -828,10 +828,11 @@ static forceinline float ztanf(float value) {
     }
 }
 
-
 #undef float_inline_state
+#undef sqrt_inline_state
 #undef float_volatile
 #undef float_convention
+#undef float_linkage
 
 } // namespace ZUN
 
