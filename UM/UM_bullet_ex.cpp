@@ -1221,7 +1221,6 @@ namespace Pbg {
 			return NULL;
 		}
 	};
-
 };
 
 // size: 0x10
@@ -3935,12 +3934,12 @@ typedef struct AnmLoaded AnmLoaded;
 // size: 0x1C
 struct ZUNThread {
 	//void* vtable; // 0x0
-	HANDLE thread; // 0x4
-	uint32_t tid; // 0x8
-	BOOL __bool_C; // 0xC
-	BOOL __bool_10; // 0x10
-	HMODULE* phModule; // 0x14
-	_beginthreadex_proc_type start_func; // 0x18
+	HANDLE thread{}; // 0x4
+	uint32_t tid{}; // 0x8
+	BOOL __bool_C{}; // 0xC
+	BOOL __bool_10{}; // 0x10
+	HMODULE* phModule{}; // 0x14
+	_beginthreadex_proc_type start_func{}; // 0x18
 	// 0x1C
 
 	// 0x402B30
@@ -4716,8 +4715,6 @@ struct Supervisor {
 	inline HRESULT d3d_fog_color(D3DCOLOR color);
 	inline HRESULT d3d_fog_start(float start);
 	inline HRESULT d3d_fog_end(float start);
-
-	//inline HRESULT 
 
 private:
 	// 0x454860
@@ -46144,7 +46141,11 @@ struct LaserLine : LaserData {
 	// 0x448220
 	// Method 0x0
 	dllexport virtual gnu_noinline void thiscall __method_0(float magnitude, Float3* out) override ASR(0x448220) {
+		// BUG: uninitialized z coord
 		out->make_from_vector(this->angle, magnitude);
+#if FIX_MINOR_BUGS
+		out->z = 0.0f;
+#endif
 		*out += this->position;
 	}
 

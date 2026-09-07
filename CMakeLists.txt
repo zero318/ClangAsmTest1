@@ -77,6 +77,7 @@ add_executable(winload_tests)
 add_executable(winhttp_test3)
 add_executable(smallest_pe_file)
 add_executable(ghidra_launch)
+add_executable(ghidra_launch_small)
 add_executable(crappy_launcher)
 add_executable(udoalg_test)
 add_executable(3d_flying_objects)
@@ -108,6 +109,8 @@ add_executable(zenc)
 add_executable(jank_test)
 add_executable(shared_section_test)
 add_executable(zasm1)
+add_executable(x64_thcrap_test)
+add_executable(import_scanner)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -156,6 +159,7 @@ wow64win
 parakit_inject
 smallest_pe_file
 ghidra_launch
+ghidra_launch_small
 crappy_launcher
 udoalg_test
 python_test
@@ -201,6 +205,8 @@ jank_test
 shared_section_test
 DSOUND_hijack
 zasm1
+x64_thcrap_test
+import_scanner
 )
 
 enable_language(ASM-ATT)
@@ -792,6 +798,7 @@ target_compile_options(${EXE} PRIVATE
 	
 	"SHELL:-mllvm -force-loop-cold-block=true"
 
+	# dump LLVM IR
 	#${SLASH_CLANG_ARG}-S
 	#${SLASH_CLANG_ARG}-emit-llvm
 )
@@ -1548,6 +1555,42 @@ target_link_options(parakit_inject PRIVATE
 target_sources(ghidra_launch PRIVATE
 	"ghidra_launch/ghidra_launch.cpp"
 	"ghidra_launch/ghidra_launch.rc"
+)
+target_sources(ghidra_launch_small PRIVATE
+	"ghidra_launch/ghidra_launch_small.cpp"
+)
+target_compile_options(ghidra_launch_small PRIVATE
+	${SLASH_CLANG_ARG}-fno-pic
+	#${SLASH_CLANG_ARG}-fno-PIE
+	${SLASH_CLANG_ARG}-mtune=haswell
+	#${SLASH_CLANG_ARG}-mx32
+	${SLASH_CLANG_ARG}-falign-loops=1
+	${SLASH_CLANG_ARG}-fno-async-exceptions
+	${SLASH_CLANG_ARG}-fno-cxx-exceptions
+	${SLASH_CLANG_ARG}-fno-exceptions
+	${SLASH_CLANG_ARG}-fno-unwind-tables
+	#${SLASH_CLANG_ARG}-fno-asynchronous-unwind-tables
+	${SLASH_CLANG_ARG}-mkernel
+	#${SLASH_CLANG_ARG}-falign-functions=1
+	"SHELL:-Xclang -Oz"
+	#${SLASH_CLANG_ARG}-mguard=none
+	/guard:cf-
+	#/guard:none
+)
+target_compile_definitions(ghidra_launch_small PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(ghidra_launch_small PRIVATE
+	/LARGEADDRESSAWARE:NO
+	/DYNAMICBASE:NO
+	/HIGHENTROPYVA:NO
+	/CETCOMPAT:NO
+	/ENTRY:launch
+	/MANIFEST:NO
+	/BASE:0x690000
+	/SECTION:.rdata,RWE
+	"/STUB:F:\\Users\\zero318\\Source\\Repos\\ClangAsmTest1\\empty_dos_stub.exe"
+	-nodefaultlib
 )
 
 target_sources(crappy_launcher PRIVATE
@@ -2326,6 +2369,41 @@ target_compile_options(zasm1 PRIVATE
 )
 target_sources(zasm1 PRIVATE
 	"zasm1.cpp"
+)
+
+target_compile_options(x64_thcrap_test PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(x64_thcrap_test PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_sources(x64_thcrap_test PRIVATE
+	"x64_thcrap_test.cpp"
+)
+target_link_options(x64_thcrap_test PRIVATE
+	${NOSTDLIB_LINK}
+)
+
+target_compile_options(import_scanner PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_sources(import_scanner PRIVATE
+	"import_scanner.cpp"
+)
+target_link_options(import_scanner PRIVATE
+	/CETCOMPAT
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
