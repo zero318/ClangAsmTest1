@@ -111,6 +111,7 @@ add_executable(shared_section_test)
 add_executable(zasm1)
 add_executable(x64_thcrap_test)
 add_executable(import_scanner)
+add_executable(random_testing)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -134,6 +135,7 @@ add_library(dbghelp SHARED)
 add_library(_dbghelp SHARED)
 add_library(vpatch_dll SHARED)
 add_library(DSOUND_hijack SHARED)
+add_library(bcryptprimitives SHARED)
 
 set(programs
 ${PROJECT_NAME}
@@ -207,6 +209,8 @@ DSOUND_hijack
 zasm1
 x64_thcrap_test
 import_scanner
+random_testing
+bcryptprimitives
 )
 
 enable_language(ASM-ATT)
@@ -2404,6 +2408,39 @@ target_sources(import_scanner PRIVATE
 )
 target_link_options(import_scanner PRIVATE
 	/CETCOMPAT
+)
+
+target_compile_options(random_testing PRIVATE
+
+)
+target_sources(random_testing PRIVATE
+	"random_testing.cpp"
+)
+
+target_sources(bcryptprimitives PRIVATE
+	"bcryptprimitives.cpp"
+	"bcryptprimitives.def"
+)
+target_compile_options(bcryptprimitives PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_compile_definitions(bcryptprimitives PRIVATE
+	STOP_LINKING_DEFAULT_LIB_PLZ
+)
+target_link_options(bcryptprimitives PRIVATE
+	${MSLINK_ARG}/DEF:bcryptprimitives.def
+	${MSLINK_ARG}/DLL
+	${MSLINK_ARG}/NOENTRY
+	#${MSLINK_ARG}-nodefaultlib
+	${NOSTDLIB_LINK}
+	#-nodefaultlibs
+	#-nostdlib
 )
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
