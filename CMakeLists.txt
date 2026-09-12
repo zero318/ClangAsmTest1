@@ -112,6 +112,7 @@ add_executable(zasm1)
 add_executable(x64_thcrap_test)
 add_executable(import_scanner)
 add_executable(random_testing)
+add_executable(objdiff_uncrapper)
 add_library(z8086 SHARED)
 add_library(XInput1_4 SHARED)
 add_library(winhttp SHARED)
@@ -211,6 +212,7 @@ x64_thcrap_test
 import_scanner
 random_testing
 bcryptprimitives
+objdiff_uncrapper
 )
 
 enable_language(ASM-ATT)
@@ -2442,6 +2444,21 @@ target_link_options(bcryptprimitives PRIVATE
 	#-nodefaultlibs
 	#-nostdlib
 )
+
+target_compile_options(objdiff_uncrapper PRIVATE
+	"-mno-avx"
+	"-mno-bmi"
+	"-mno-xop"
+	"-mno-tbm"
+	"-mno-sse4a"
+	"-mno-fma4"
+	"-mno-sse3"
+)
+target_sources(objdiff_uncrapper PRIVATE
+	"objdiff_uncrapper.cpp"
+)
+target_link_libraries(objdiff_uncrapper "F:\\Users\\zero318\\Source\\Repos\\thcrap\\bin\\bin\\jansson.lib")
+
 
 #target_link_libraries(UMTest1 "F:\\Touhou_Stuff_2\\disassembly_stuff\\18\\crack\\th18_fake_dll.dll")
 
